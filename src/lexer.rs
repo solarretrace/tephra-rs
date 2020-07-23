@@ -10,7 +10,7 @@
 
 // Local imports.
 use crate::span::Span;
-use crate::span::SpanPosition;
+use crate::span::Pos;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ impl<'text, V> Lexeme<'text, V> {
 #[derive(Debug, Clone, Copy)]
 pub struct Lexer<'text, T> {
     text: &'text str,
-    pos: SpanPosition,
+    pos: Pos,
     inner: T,
 }
 
@@ -49,7 +49,7 @@ impl<'text, T> Lexer<'text, T> {
     pub fn new(inner: T, text: &'text str) -> Self {
         Lexer {
             text,
-            pos: SpanPosition::ZERO,
+            pos: Pos::ZERO,
             inner,
         }
     }
@@ -104,5 +104,5 @@ pub trait Tokenize: Sized {
     /// the length of the text to skip before resuming should be returned. If no
     /// further progress is possible, 0 should be returned instead.
     fn parse_token<'text>(&mut self, text: &'text str)
-        -> Result<(Self::Token, SpanPosition), (Self::Error, SpanPosition)>;
+        -> Result<(Self::Token, Pos), (Self::Error, Pos)>;
 }

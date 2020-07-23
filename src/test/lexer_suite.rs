@@ -11,7 +11,7 @@
 // Local imports.
 use crate::lexer::Tokenize;
 use crate::lexer::Lexer;
-use crate::span::SpanPosition;
+use crate::span::Pos;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,30 +44,30 @@ impl Tokenize for Test {
     type Error = TokenError;
 
     fn parse_token<'text>(&mut self, text: &'text str)
-        -> Result<(Self::Token, SpanPosition), (Self::Error, SpanPosition)>
+        -> Result<(Self::Token, Pos), (Self::Error, Pos)>
     {
         // println!("{:?}", text);
         // println!("{:?}", text.split("\n").collect::<Vec<_>>());
         if text.starts_with("aa") {
-            return Ok((TestToken::Aa, 2.into()));
+            return Ok((TestToken::Aa, Pos::new(2, 0, 2)));
         }
         if text.starts_with('a') {
-            return Ok((TestToken::A, 1.into()));
+            return Ok((TestToken::A, Pos::new(1, 0, 1)));
         }
         if text.starts_with('b') {
-            return Ok((TestToken::B, 1.into()));
+            return Ok((TestToken::B, Pos::new(1, 0, 1)));
         }
         if text.starts_with("def") {
-            return Ok((TestToken::Def, 3.into()));
+            return Ok((TestToken::Def, Pos::new(3, 0, 3)));
         }
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
             let substr = &text[0..substr_len];
-            let span = SpanPosition::new_from_string(substr, "\n");
+            let span = Pos::new_from_string(substr, "\n");
             return Ok((TestToken::Ws, span));
         }
-        Err((TokenError("Unrecognized token"), 1.into()))
+        Err((TokenError("Unrecognized token"), Pos::new(1, 0, 1)))
     }
 }
 

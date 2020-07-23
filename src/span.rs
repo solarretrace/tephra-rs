@@ -8,7 +8,6 @@
 //! Text spans.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Standard library imports.
 
 ////////////////////////////////////////////////////////////////////////////////
 // OwnedSpan
@@ -38,27 +37,36 @@ impl std::fmt::Display for OwnedSpan {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// SpanPosition
+// Pos
 ////////////////////////////////////////////////////////////////////////////////
 /// A span relative to an untracked previous position.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SpanPosition {
+pub struct Pos {
     /// The relative byte position.
     pub byte: usize,
     /// The relative page position.
     pub page: Page,
 }
 
-impl SpanPosition {
+impl Pos {
     /// The initial span position.
-    pub const ZERO: SpanPosition = SpanPosition { byte: 0, page: Page::ZERO };
+    pub const ZERO: Pos = Pos { byte: 0, page: Page::ZERO };
+
+    /// Creates a Pos with the given number of bytes, lines, and
+    /// columns.
+    pub fn new(byte: usize, line: usize, column: usize) -> Self {
+        Pos {
+            byte,
+            page: Page { line, column },
+        }
+    }
 
     /// Return true if the span position is the zero position.
     pub fn is_zero(self) -> bool {
-        self == SpanPosition::ZERO
+        self == Pos::ZERO
     }
 
-    /// Increments the SpanPosition by the given number of bytes, lines, and
+    /// Increments the Pos by the given number of bytes, lines, and
     /// columns.
     pub fn step(&mut self, bytes: usize, lines: usize, columns: usize) {
         self.byte += bytes;
@@ -70,6 +78,12 @@ impl SpanPosition {
         }
     }
 
+    /// Increments the Pos by the given position value.
+    pub fn step_with(&mut self, pos: Pos) {
+        self.step(pos.byte, pos.page.line, pos.page.column)
+    }
+
+
     /// Constructs the end position from the given string.
     pub fn new_from_string<S, N>(text: S, newline: N) -> Self
         where
@@ -77,34 +91,24 @@ impl SpanPosition {
             N: AsRef<str>,
     {
         let text = text.as_ref();
-        SpanPosition {
+        Pos {
             byte: text.len(),
             page: Page::ZERO.advance(text, newline),
         }
     }
 }
 
-impl Default for SpanPosition {
+impl Default for Pos {
     fn default() -> Self {
-        SpanPosition::ZERO
+        Pos::ZERO
     }
 }
 
-impl std::fmt::Display for SpanPosition {
+impl std::fmt::Display for Pos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}, byte {}", self.page, self.byte)
     }
 }
-
-impl From<usize> for SpanPosition {
-    fn from(val: usize) -> Self {
-        SpanPosition {
-            byte: val,
-            page: Page { line: 0, column: val },
-        }
-    }
-}
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +137,7 @@ impl<'text> Span<'text> {
 
     /// Constructs a new empty span in the given source text, starting from the
     /// given byte and page.
-    pub fn new_from(pos: SpanPosition, source: &'text str) -> Self {
+    pub fn new_from(pos: Pos, source: &'text str) -> Self {
         Span {
             source,
             byte: ByteSpan { start: pos.byte, end: pos.byte },
@@ -142,7 +146,7 @@ impl<'text> Span<'text> {
     }
 
     /// Extends the span by the given span position.
-    pub fn extend_by(&mut self, pos: SpanPosition) {
+    pub fn extend_by(&mut self, pos: Pos) {
         self.byte.end += pos.byte;
         if pos.page.line == 0 {
             self.page.end = Page {
@@ -185,16 +189,16 @@ impl<'text> Span<'text> {
     }
 
     /// Returns the start position of the span.
-    pub fn start_position(&self) -> SpanPosition {
-        SpanPosition {
+    pub fn start_position(&self) -> Pos {
+        Pos {
             byte: self.byte.start,
             page: self.page.start,
         }
     }
 
     /// Returns the end position of the span.
-    pub fn end_position(&self) -> SpanPosition {
-        SpanPosition {
+    pub fn end_position(&self) -> Pos {
+        Pos {
             byte: self.byte.end,
             page: self.page.end,
         }
@@ -335,11 +339,13 @@ impl Page {
         let mut line = self.line;
         let mut column = self.column;
         let mut split = text.as_ref().split(newline.as_ref());
-        // TODO: Account for multibyte characters.
+
 
         match split.next() {
             Some(substr) if !substr.is_empty()
+                // TODO: Avoid iterating over chars twice.
                 => column += substr.chars().count(),
+
             _   => (),
         }
 

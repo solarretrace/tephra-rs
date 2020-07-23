@@ -11,9 +11,11 @@
 // Local imports.
 use crate::lexer::Tokenize;
 use crate::lexer::Lexer;
-use crate::span::SpanPosition;
+use crate::span::Pos;
 use crate::span::Page;
 
+// Standard library imports.
+use std::convert::TryInto as _;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Token parser.
@@ -52,8 +54,8 @@ enum AtmaToken {
 #[derive(Debug, Clone)]
 struct AtmaScriptTokenizer {
     open: Option<AtmaToken>,
-    raw_string_bracket_count: u8,
     newline_token: Box<str>,
+    raw_string_bracket_count: u64,
 }
 
 impl AtmaScriptTokenizer {
@@ -67,11 +69,11 @@ impl AtmaScriptTokenizer {
 
     /// Parses a CommandChunk token.
     fn parse_command_chunk(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
         let tok = text.split_whitespace().next().unwrap();
         if tok.len() > 0 {
-            let span = SpanPosition::new_from_string(tok, &*self.newline_token);
+            let span = Pos::new_from_string(tok, &*self.newline_token);
             Some((AtmaToken::CommandChunk, span))
         } else {
             None
@@ -80,9 +82,9 @@ impl AtmaScriptTokenizer {
 
     /// Parses a RawStringOpen token.
     fn parse_raw_string_open(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
-        let mut pos = SpanPosition::ZERO;
+        let mut pos = Pos::ZERO;
         let mut chars = text.chars();
         match chars.next() {
             Some('r') => pos.step(1, 0, 1),
@@ -108,10 +110,10 @@ impl AtmaScriptTokenizer {
 
     /// Parses a RawStringClose token.
     fn parse_raw_string_close(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
         let mut raw_count = 0;
-        let mut pos = SpanPosition::ZERO;
+        let mut pos = Pos::ZERO;
         let mut chars = text.chars();
         match chars.next() {
             Some('"') => pos.step(1, 0, 1),
@@ -122,30 +124,33 @@ impl AtmaScriptTokenizer {
                 '#' => {
                     pos.step(1, 0, 1);
                     raw_count += 1;
-                    continue;
+                    if raw_count >= self.raw_string_bracket_count {
+                        break;
+                    }
                 },
                 _ => break,
             }
         }
 
         if self.raw_string_bracket_count == raw_count {
-            self.raw_string_bracket_count = 0;
             Some((AtmaToken::RawStringClose, pos))
         } else {
             None
         }
     }
 
-
     /// Parses a RawStringText token.
     fn parse_raw_string_text(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
-        let mut pos = SpanPosition::ZERO;
+        let mut pos = Pos::ZERO;
         let mut chars = text.chars();
         while let Some(c) = chars.next() {
             if c == '"' {
-                return Some((AtmaToken::RawStringText, pos));
+                if self.parse_raw_string_close(&text[pos.byte..]).is_some() {
+                    self.open = Some(AtmaToken::RawStringText);
+                    return Some((AtmaToken::RawStringText, pos));
+                }
             }
 
             if c == '\n' {
@@ -160,10 +165,10 @@ impl AtmaScriptTokenizer {
 
     /// Parses a StringOpenSingle token.
     fn parse_string_open_single(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
         if text.starts_with("'") {
-            Some((AtmaToken::StringOpenSingle, SpanPosition::from(1)))
+            Some((AtmaToken::StringOpenSingle, Pos::new(1, 0, 1)))
         } else {
             None
         }
@@ -171,10 +176,10 @@ impl AtmaScriptTokenizer {
     
     /// Parses a StringCloseSingle token.
     fn parse_string_close_single(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
         if text.starts_with("'") {
-            Some((AtmaToken::StringCloseSingle, SpanPosition::from(1)))
+            Some((AtmaToken::StringCloseSingle, Pos::new(1, 0, 1)))
         } else {
             None
         }
@@ -182,10 +187,10 @@ impl AtmaScriptTokenizer {
 
     /// Parses a StringOpenDouble token.
     fn parse_string_open_double(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
         if text.starts_with("\"") {
-            Some((AtmaToken::StringOpenDouble, SpanPosition::from(1)))
+            Some((AtmaToken::StringOpenDouble, Pos::new(1, 0, 1)))
         } else {
             None
         }
@@ -193,10 +198,10 @@ impl AtmaScriptTokenizer {
 
     /// Parses a StringCloseDouble token.
     fn parse_string_close_double(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
         if text.starts_with("\"") {
-            Some((AtmaToken::StringCloseDouble, SpanPosition::from(1)))
+            Some((AtmaToken::StringCloseDouble, Pos::new(1, 0, 1)))
         } else {
             None
         }
@@ -204,9 +209,9 @@ impl AtmaScriptTokenizer {
 
     /// Parses a StringText token.
     fn parse_string_text(&mut self, text: &str, open: AtmaToken)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
-        let mut pos = SpanPosition::ZERO;
+        let mut pos = Pos::ZERO;
         let mut chars = text.chars();
         while let Some(c) = chars.next() {
             if c == '\\' {
@@ -239,10 +244,10 @@ impl AtmaScriptTokenizer {
 
     /// Parses a LineCommentOpen token.
     fn parse_line_comment_open(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
         if text.starts_with("#") {
-            Some((AtmaToken::LineCommentOpen, SpanPosition::from(1)))
+            Some((AtmaToken::LineCommentOpen, Pos::new(1, 0, 1)))
         } else {
             None
         }
@@ -250,10 +255,10 @@ impl AtmaScriptTokenizer {
 
     /// Parses a LineCommentText token.
     fn parse_line_comment_text(&mut self, text: &str)
-        -> (AtmaToken, SpanPosition)
+        -> (AtmaToken, Pos)
     {
         if let Some(first) = text.split(&*self.newline_token).next() {
-            let span = SpanPosition {
+            let span = Pos {
                 byte: first.len(),
                 page: Page { line: 0, column: first.len() },
             };
@@ -265,12 +270,12 @@ impl AtmaScriptTokenizer {
 
     /// Parses a Whitespace token.
     fn parse_whitespace(&mut self, text: &str)
-        -> Option<(AtmaToken, SpanPosition)>
+        -> Option<(AtmaToken, Pos)>
     {
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
-            let span = SpanPosition::new_from_string(
+            let span = Pos::new_from_string(
                 &text[0..substr_len],
                 &*self.newline_token);
             Some((AtmaToken::Whitespace, span))
@@ -285,31 +290,36 @@ impl Tokenize for AtmaScriptTokenizer {
     type Error = TokenError;
 
     fn parse_token<'text>(&mut self, text: &'text str)
-        -> Result<(Self::Token, SpanPosition), (Self::Error, SpanPosition)>
+        -> Result<(Self::Token, Pos), (Self::Error, Pos)>
     {
         use AtmaToken::*;
         match self.open.take() {
             Some(LineCommentOpen) => {
                 Ok(self.parse_line_comment_text(text))
             },
+            
             Some(RawStringText) => {
-                if let Some(parse) = self.parse_raw_string_close(text) {
-                    return Ok(parse);
-                }
-                Err((TokenError("Non-terminated raw string"), 0.into()))
-            }
+                // Because it is necessary to recognize the RawStringClose to
+                // finish parsing RawStringText, we should never get here unless
+                // we know the next part of the text is the appropriately sized
+                // RawStringClose token.
+                let byte: usize = (self.raw_string_bracket_count + 1)
+                    .try_into()
+                    .expect("Pos overflow");
+                Ok((RawStringClose, Pos::new(byte, 0, byte)))
+            },
             Some(RawStringOpen) => {
                 if let Some(parse) = self.parse_raw_string_close(text) {
+                    self.raw_string_bracket_count = 0;
                     return Ok(parse);
                 }
-                if let Some(parse) = self.parse_raw_string_text(text)
-                {
-                    self.open = Some(RawStringText);
+                if let Some(parse) = self.parse_raw_string_text(text) {
                     Ok(parse)
                 } else {
-                    Err((TokenError("Non-terminated raw string"), 0.into()))
+                    Err((TokenError("Non-terminated raw string"), Pos::ZERO))
                 }
             },
+
             Some(StringOpenSingle) => {
                 if let Some(parse) = self.parse_string_close_single(text) {
                     return Ok(parse);
@@ -320,7 +330,8 @@ impl Tokenize for AtmaScriptTokenizer {
                     self.open = Some(StringOpenSingle);
                     Ok(parse)
                 } else {
-                    Err((TokenError("Unrecognized string escape"), 1.into()))
+                    Err((TokenError("Unrecognized string escape"),
+                        Pos::new(1, 0, 1)))
                 }
             },
             Some(StringOpenDouble) => {
@@ -333,11 +344,15 @@ impl Tokenize for AtmaScriptTokenizer {
                     self.open = Some(StringOpenDouble);
                     Ok(parse)
                 } else {
-                    Err((TokenError("Unrecognized string escape"), 1.into()))
+                    Err((TokenError("Unrecognized string escape"),
+                        Pos::new(1, 0, 1)))
                 }
             },
 
             None => {
+                if let Some(parse) = self.parse_whitespace(text) {
+                    return Ok(parse);
+                }
                 if let Some(parse) = self.parse_line_comment_open(text) {
                     self.open = Some(LineCommentOpen);
                     return Ok(parse);
@@ -354,14 +369,11 @@ impl Tokenize for AtmaScriptTokenizer {
                     self.open = Some(StringOpenDouble);
                     return Ok(parse);
                 }
-                if let Some(parse) = self.parse_whitespace(text) {
-                    return Ok(parse);
-                }
                 if let Some(parse) = self.parse_command_chunk(text) {
                     return Ok(parse);
                 }
 
-                Err((TokenError("Unrecognized token"), 1.into()))
+                Err((TokenError("Unrecognized token"), Pos::new(1, 0, 1)))
             },
 
             Some(_) => panic!("invalid lexer state"),
@@ -728,44 +740,45 @@ fn as_lexer_line_string_raw_mismatched() {
     let _ = lexer.next(); // Panics due to unwrap of error.
 }
 
-// /// Tests AtmaScriptTokenizer with a non-empty raw-quoted string.
-// #[test]
-// fn as_lexer_line_string_raw_text() {
-//     use AtmaToken::*;
-//     let text = "'abc \n xyz'";
-//     let as_tok = AtmaScriptTokenizer::new();
-//     let lexer = Lexer::new(as_tok, text);
+/// Tests AtmaScriptTokenizer with a non-empty raw-quoted string.
+#[test]
+fn as_lexer_line_string_raw_text() {
+    use AtmaToken::*;
+    let text = "r########\"abc \n xyz\"########";
+    let as_tok = AtmaScriptTokenizer::new();
+    let lexer = Lexer::new(as_tok, text);
 
-//     assert_eq!(
-//         lexer.map(|res| {
-//                 let tok = res.unwrap();
-//                 (tok.value, format!("{}", tok.span))
-//             })
-//             .collect::<Vec<_>>(),
-//         vec![
-//             (StringOpenSingle,  "\"'\" (0:0-0:1, bytes 0-1)".to_owned()),
-//             (StringText,        "\"abc \n xyz\" (0:1-1:4, bytes 1-10)".to_owned()),
-//             (StringCloseSingle, "\"'\" (1:4-1:5, bytes 10-11)".to_owned()),
-//         ]);
-// }
+    assert_eq!(
+        lexer.map(|res| {
+                let tok = res.unwrap();
+                (tok.value, format!("{}", tok.span))
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            (RawStringOpen,  "\"r########\"\" (0:0-0:10, bytes 0-10)".to_owned()),
+            (RawStringText,  "\"abc \n xyz\" (0:10-1:4, bytes 10-19)".to_owned()),
+            (RawStringClose, "\"\"########\" (1:4-1:13, bytes 19-28)".to_owned()),
+        ]);
+}
 
-// /// Tests AtmaScriptTokenizer with a quote-containing raw-quoted string.
-// #[test]
-// fn as_lexer_line_string_raw_quotes() {
-//     use AtmaToken::*;
-//     let text = "'abc\"\n\\'xyz'";
-//     let as_tok = AtmaScriptTokenizer::new();
-//     let lexer = Lexer::new(as_tok, text);
+/// Tests AtmaScriptTokenizer with a non-empty raw-quoted string with quotes
+/// inside.
+#[test]
+fn as_lexer_line_string_raw_quoted_text() {
+    use AtmaToken::*;
+    let text = "r########\"abc \n xyz\"########";
+    let as_tok = AtmaScriptTokenizer::new();
+    let lexer = Lexer::new(as_tok, text);
 
-//     assert_eq!(
-//         lexer.map(|res| {
-//                 let tok = res.unwrap();
-//                 (tok.value, format!("{}", tok.span))
-//             })
-//             .collect::<Vec<_>>(),
-//         vec![
-//             (StringOpenSingle,  "\"'\" (0:0-0:1, bytes 0-1)".to_owned()),
-//             (StringText,        "\"abc\"\n\\'xyz\" (0:1-1:5, bytes 1-11)".to_owned()),
-//             (StringCloseSingle, "\"'\" (1:5-1:6, bytes 11-12)".to_owned()),
-//         ]);
-// }
+    assert_eq!(
+        lexer.map(|res| {
+                let tok = res.unwrap();
+                (tok.value, format!("{}", tok.span))
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            (RawStringOpen,  "\"r########\"\" (0:0-0:10, bytes 0-10)".to_owned()),
+            (RawStringText,  "\"abc \n xyz\" (0:10-1:4, bytes 10-19)".to_owned()),
+            (RawStringClose, "\"\"########\" (1:4-1:13, bytes 19-28)".to_owned()),
+        ]);
+}
