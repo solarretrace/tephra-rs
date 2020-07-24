@@ -480,7 +480,7 @@ fn as_lexer_line_comments_remove_whitespace() {
     let text = "\n\t \n#abc\n \t#def\n ";
     let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text);
-    lexer.set_filters(&[Whitespace]);
+    lexer.set_filter(|tok| *tok != Whitespace);
 
     assert_eq!(
         lexer
@@ -992,12 +992,12 @@ fn as_lexer_combined_terminated() {
 /// Tests AtmaScriptScannerr with a combination of tokens separated by
 /// terminators with whitespace filtered out.
 #[test]
-fn as_lexer_combined_terminated_filtered() {
+fn as_lexer_combined_terminated_remove_whitespace() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
     let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text);
-    lexer.set_filters(&[Whitespace]);
+    lexer.set_filter(|tok| *tok != Whitespace);
 
     let actual = lexer
         .map(|res| {
@@ -1023,6 +1023,47 @@ fn as_lexer_combined_terminated_filtered() {
         (CommandTerminator, "\";\" (4:0-4:1, bytes 35-36)".to_owned()),
         (CommandChunk,      "\"--zyx\" (5:0-5:5, bytes 37-42)".to_owned()),
         (CommandTerminator, "\";\" (5:5-5:6, bytes 42-43)".to_owned()),
+        (CommandChunk,      "\"--wvut\" (5:6-5:12, bytes 43-49)".to_owned()),
+    ];
+    for (i, act) in actual.iter().enumerate() {
+        println!("{:?}", act);
+        println!("{:?}", expected[i]);
+        println!("");
+    }
+    assert_eq!(actual, expected);
+}
+
+/// Tests AtmaScriptScannerr with a combination of tokens separated by
+/// terminators with multiple tokens filtered out.
+#[test]
+fn as_lexer_combined_terminated_filtered() {
+    use AtmaToken::*;
+    let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
+    let as_tok = AtmaScriptScannerr::new();
+    let mut lexer = Lexer::new(as_tok, text);
+    lexer.set_filter(|tok|
+        *tok != Whitespace &&
+        *tok != LineCommentOpen &&
+        *tok != LineCommentText &&
+        *tok != CommandTerminator);
+
+    let actual = lexer
+        .map(|res| {
+            let lex = res.unwrap();
+            (*lex.token(), format!("{}", lex.span()))
+        })
+        .collect::<Vec<_>>();
+    let expected = vec![
+        (StringOpenDouble,  "\"\"\" (2:1-2:2, bytes 7-8)".to_owned()),
+        (StringText,        "\"a;bc\\\"\" (2:2-2:8, bytes 8-14)".to_owned()),
+        (StringCloseDouble, "\"\"\" (2:8-2:9, bytes 14-15)".to_owned()),
+        (StringOpenSingle,  "\"\'\" (2:10-2:11, bytes 16-17)".to_owned()),
+        (StringText,        "\"d;ef\" (2:11-2:15, bytes 17-21)".to_owned()),
+        (StringCloseSingle, "\"\'\" (2:15-2:16, bytes 21-22)".to_owned()),
+        (RawStringOpen,     "\"r##\"\" (2:17-2:21, bytes 23-27)".to_owned()),
+        (RawStringText,     "\"\t;\" (2:21-2:23, bytes 27-29)".to_owned()),
+        (RawStringClose,    "\"\"##\" (2:23-2:26, bytes 29-32)".to_owned()),
+        (CommandChunk,      "\"--zyx\" (5:0-5:5, bytes 37-42)".to_owned()),
         (CommandChunk,      "\"--wvut\" (5:6-5:12, bytes 43-49)".to_owned()),
     ];
     for (i, act) in actual.iter().enumerate() {

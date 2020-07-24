@@ -12,7 +12,13 @@ This makes it easier to back up in case of a failure.
 ## Do not box/own all parse errors.
 ## Impl `PartialEq` on results for testing.
 ## Return value, token, rest on success.
+
+Implemented as value, span, lexer.
+
 ## Return context, expected, source, and rest on failure.
+
+Implemented as reason, source, span, lexer.
+
 ## Separate lexer and parser.
 
 This allows us to easily filter lexed tokens, i.e., to remove whitespace or comments. It also allows injecting tokens, i.e., to specify indentation levels, or to analyze comments using a separate parser stream. 
@@ -81,7 +87,7 @@ Error constructing value
 
 
 
-abc
+a
 
     error: Unexpected end of text.
       --> {source_name?}:LN:COL (bytes N-M)

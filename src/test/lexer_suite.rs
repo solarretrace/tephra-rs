@@ -115,7 +115,7 @@ fn lexer_no_whitespace() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
     let mut lexer = Lexer::new(Test, text);
-    lexer.set_filters(&[Ws]);
+    lexer.set_filter(|tok| *tok != Ws);
 
 
     assert_eq!(

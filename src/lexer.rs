@@ -14,6 +14,7 @@ use crate::span::Pos;
 
 // Standard library imports.
 use std::fmt::Debug;
+use std::sync::Arc;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,12 +41,12 @@ pub trait Scanner: Clone {
 // Lexer
 ////////////////////////////////////////////////////////////////////////////////
 /// A lexical analyzer which lazily parses tokens from the source text.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Lexer<'text, K> where K: Scanner {
     text: &'text str,
     pos: Pos,
     scanner: K,
-    filters: Vec<K::Token>,
+    filter: Arc<dyn Fn(&K::Token) -> bool>,
 }
 
 impl<'text, K> Lexer<'text, K> where K: Scanner {
@@ -55,13 +56,20 @@ impl<'text, K> Lexer<'text, K> where K: Scanner {
             text,
             pos: Pos::ZERO,
             scanner,
-            filters: Vec::new(),
+            filter: Arc::new(|_| true),
         }
     }
 
-    /// Sets the lexer's filter.
-    pub fn set_filters(&mut self, filters: &[K::Token]) {
-        self.filters = filters.to_vec();
+    /// Sets the token filter.
+    pub fn set_filter<F>(&mut self, filter: F) 
+        where F: for<'a> Fn(&'a K::Token) -> bool + 'static
+    {
+        self.filter = Arc::new(filter);
+    }
+
+    /// Clears the token filter.
+    pub fn clear_filters(&mut self) {
+        self.filter = Arc::new(|_| true);
     }
 
     /// Returns the current lexer position.
@@ -91,7 +99,7 @@ impl<'text, K> Iterator for Lexer<'text, K>
         while self.pos.byte < self.text.len() {
 
             match self.scanner.lex_prefix_token(&self.text[self.pos.byte..]) {
-                Ok((token, skip)) if self.filters.contains(&token) => {
+                Ok((token, skip)) if !(self.filter)(&token) => {
                     self.pos.step_with(skip);
                 },
 
@@ -120,6 +128,11 @@ impl<'text, K> std::iter::FusedIterator for Lexer<'text, K>
     where K: Scanner,
 {}
 
+impl<'text, K> Debug for Lexer<'text, K> where K: Scanner {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "")
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Lexeme
