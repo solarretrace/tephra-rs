@@ -22,9 +22,9 @@ use crate::result::Reason;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Parses the end of the text.
-pub fn end_of_text<'t, F, K, V>(mut lexer: Lexer<'t, K>)
-    -> ParseResult<'t, K, ()>
-    where K: Scanner,
+pub fn end_of_text<'t, F, S, V>(mut lexer: Lexer<'t, S>)
+    -> ParseResult<'t, S, ()>
+    where S: Scanner,
 {
     let saved = lexer.clone();
     match lexer.next() {
@@ -54,9 +54,9 @@ pub fn end_of_text<'t, F, K, V>(mut lexer: Lexer<'t, K>)
 
 /// Returns a parser which consumes a single token if it matches the given
 /// token.
-pub fn one<'t, F, K, V>(token: K::Token)
-    -> impl FnMut(Lexer<'t, K>) -> ParseResult<'t, K, ()>
-    where K: Scanner
+pub fn one<'t, F, S, V>(token: S::Token)
+    -> impl FnMut(Lexer<'t, S>) -> ParseResult<'t, S, ()>
+    where S: Scanner
 {
     move |mut lexer| {
         let saved = lexer.clone();

@@ -24,24 +24,24 @@ use crate::lexer::Scanner;
 // ParseResult
 ////////////////////////////////////////////////////////////////////////////////
 /// The result of a parse attempt.
-pub type ParseResult<'text, K, V> 
-        = Result<Success<'text, K, V>, Failure<'text, K>>;
+pub type ParseResult<'text, S, V> 
+        = Result<Success<'text, S, V>, Failure<'text, S>>;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseResultExt
 ////////////////////////////////////////////////////////////////////////////////
 /// Extension trait for `ParseResult`s.
-pub trait ParseResultExt<'text, K, V> 
-    where K: Scanner,
+pub trait ParseResultExt<'text, S, V> 
+    where S: Scanner,
 {
     /// Converts the ParseResult into a Result containing the parsed value,
     /// discarding any associated spans or lexer state.
     fn finish(self) -> Result<V, FailureOwned>;
 }
 
-impl<'text, K, V> ParseResultExt<'text, K, V> for ParseResult<'text, K, V>
-    where K: Scanner,
+impl<'text, S, V> ParseResultExt<'text, S, V> for ParseResult<'text, S, V>
+    where S: Scanner,
 {
     fn finish(self) -> Result<V, FailureOwned> {
         self

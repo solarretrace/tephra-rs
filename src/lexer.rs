@@ -42,16 +42,17 @@ pub trait Scanner: Clone {
 ////////////////////////////////////////////////////////////////////////////////
 /// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Clone)]
-pub struct Lexer<'text, K> where K: Scanner {
+pub struct Lexer<'text, S> where S: Scanner {
     text: &'text str,
     pos: Pos,
-    scanner: K,
-    filter: Arc<dyn Fn(&K::Token) -> bool>,
+    scanner: S,
+    filter: Arc<dyn Fn(&S::Token) -> bool>,
+    // TODO: Push/lookahead buffer
 }
 
-impl<'text, K> Lexer<'text, K> where K: Scanner {
+impl<'text, S> Lexer<'text, S> where S: Scanner {
     /// Constructs a new Lexer for the given text and span newlines.
-    pub fn new(scanner: K, text: &'text str) -> Self {
+    pub fn new(scanner: S, text: &'text str) -> Self {
         Lexer {
             text,
             pos: Pos::ZERO,
@@ -62,7 +63,7 @@ impl<'text, K> Lexer<'text, K> where K: Scanner {
 
     /// Sets the token filter.
     pub fn set_filter<F>(&mut self, filter: F) 
-        where F: for<'a> Fn(&'a K::Token) -> bool + 'static
+        where F: for<'a> Fn(&'a S::Token) -> bool + 'static
     {
         self.filter = Arc::new(filter);
     }
@@ -90,10 +91,10 @@ impl<'text, K> Lexer<'text, K> where K: Scanner {
     }
 }
 
-impl<'text, K> Iterator for Lexer<'text, K>
-    where K: Scanner,
+impl<'text, S> Iterator for Lexer<'text, S>
+    where S: Scanner,
 {
-    type Item = Result<Lexeme<'text, K::Token>, K::Error>;
+    type Item = Result<Lexeme<'text, S::Token>, S::Error>;
     
     fn next(&mut self) -> Option<Self::Item> {
         while self.pos.byte < self.text.len() {
@@ -124,11 +125,11 @@ impl<'text, K> Iterator for Lexer<'text, K>
     }
 }
 
-impl<'text, K> std::iter::FusedIterator for Lexer<'text, K>
-    where K: Scanner,
+impl<'text, S> std::iter::FusedIterator for Lexer<'text, S>
+    where S: Scanner,
 {}
 
-impl<'text, K> Debug for Lexer<'text, K> where K: Scanner {
+impl<'text, S> Debug for Lexer<'text, S> where S: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "")
     }

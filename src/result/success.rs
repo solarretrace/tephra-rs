@@ -19,16 +19,16 @@ use crate::span::Span;
 ////////////////////////////////////////////////////////////////////////////////
 /// The result of a successful parse.
 #[derive(Debug, Clone)]
-pub struct Success<'text, K, V> where K: Scanner {
+pub struct Success<'text, S, V> where S: Scanner {
     /// The lexer state for continuing after the parse.
-    pub lexer: Lexer<'text, K>,
+    pub lexer: Lexer<'text, S>,
     /// The span of the parse result.
     pub span: Span<'text>,
     /// The parsed value.
     pub value: V,
 }
 
-impl<'text, K, V> Success<'text, K, V> where K: Scanner {
+impl<'text, S, V> Success<'text, S, V> where S: Scanner {
     /// Consumes the Success and returns its parsed value.
     pub fn into_value(self) -> V {
         self.value

@@ -22,9 +22,9 @@ use std::borrow::Cow;
 // Failure
 ////////////////////////////////////////////////////////////////////////////////
 /// A struct representing a failed parse with borrowed data.
-pub struct Failure<'text, K> where K: Scanner {
+pub struct Failure<'text, S> where S: Scanner {
     /// The lexer state for continuing after the parse.
-    pub lexer: Lexer<'text, K>,
+    pub lexer: Lexer<'text, S>,
     /// The span of the failed parse.
     pub span: Span<'text>,
     /// The failure reason.
@@ -34,19 +34,19 @@ pub struct Failure<'text, K> where K: Scanner {
 }
 
 
-impl<'text, K> std::fmt::Debug for Failure<'text, K> where K: Scanner {
+impl<'text, S> std::fmt::Debug for Failure<'text, S> where S: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl<'text, K> std::fmt::Display for Failure<'text, K> where K: Scanner {
+impl<'text, S> std::fmt::Display for Failure<'text, S> where S: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "")
     }
 }
 
-impl<'text, K> std::error::Error for Failure<'text, K> where K: Scanner {
+impl<'text, S> std::error::Error for Failure<'text, S> where S: Scanner {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source.as_ref().map(|src| {
             // Cast away Send + Sync bounds.
@@ -78,8 +78,8 @@ pub struct FailureOwned {
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-impl<'text, K> From<Failure<'text, K>> for FailureOwned where K: Scanner {
-    fn from(other: Failure<'text, K>) -> Self {
+impl<'text, S> From<Failure<'text, S>> for FailureOwned where S: Scanner {
+    fn from(other: Failure<'text, S>) -> Self {
         FailureOwned {
             span: other.span.into_owned(),
             reason: other.reason,
