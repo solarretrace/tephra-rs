@@ -19,6 +19,7 @@ This allows us to easily filter lexed tokens, i.e., to remove whitespace or comm
 
 Without a dedicated lexer, all intermediate syntactical structure must be filtered or created inline, and it becomes difficult to separate and analyze.
 
+
     result
     span
     lexer
@@ -31,6 +32,23 @@ Without a dedicated lexer, all intermediate syntactical structure must be filter
         integer
         list
         string
+
+# Lexer conversions
+
+There's a bit of wasted effort in not doing value production in the lexer. Lexing a number or escaped string is redundant with converting it to the associated value. However, there are several ways to avoid this problem, each with different tradeoffs.
+
+## 1. Non-trival lexer tokens.
+
+The lexer can produce the data in a single pass and emit it with the token. This means token matching becomes more complex, so we'll need to separate Tokens carrying values from TokenTypes, which are used in matching.
+
+## 2. Data in the lexeme.
+
+The lexer always produces a value and stores it in the lexeme. This requires the parser to know which tokens produce values and of which type, so that they may be retrieved. This could involve wrapping low-level parsers in data-extractor combinators, which could be confusing.
+
+## 3. No data conversions in the lexer.
+
+The lexer always produces a simple token and its span. There is some redundant effort in calculating data conversions, but it can be done using normal data conversion combinators. Additionally, if the data is unused (eg., part of a fallible parse,) this may be the most efficient approach.
+
 
 # Error Handling
 
