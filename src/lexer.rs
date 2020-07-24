@@ -15,45 +15,26 @@ use crate::span::Pos;
 // Standard library imports.
 use std::fmt::Debug;
 
+
 ////////////////////////////////////////////////////////////////////////////////
-// Lexeme
+// Tokenize
 ////////////////////////////////////////////////////////////////////////////////
-/// A specific section of the source text associated with a lexed token.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Lexeme<'text, T> {
-    /// The parsed token.
-    token: T,
-    /// The span of the parsed text.
-    span: Span<'text>
+/// Trait for parsing a value from a string prefix. Contains the lexer state for
+/// a set of parseable tokens.
+pub trait Tokenize: Clone {
+    /// The parse token type.
+    type Token: PartialEq + Send + Sync + 'static;
+    /// The parse error type.
+    type Error: std::error::Error + Send + Sync + 'static;
+
+    /// Parses a value from the given string. When the parse success, the
+    /// length of the consumed text should be returned. When the parse fails,
+    /// the length of the text to skip before resuming should be returned. If no
+    /// further progress is possible, 0 should be returned instead.
+    fn parse_token<'text>(&mut self, text: &'text str)
+        -> Result<(Self::Token, Pos), (Self::Error, Pos)>;
 }
 
-impl<'text, T> Lexeme<'text, T> where T: PartialEq {
-    /// Returns true if the token was parsed from whitespace.
-    pub fn is_whitespace(&self) -> bool {
-        self.span.text().chars().all(char::is_whitespace)
-    }
-
-    /// Returns a reference to the lexed token.
-    pub fn token(&self) -> &T {
-        &self.token
-    }
-
-    /// Returns a reference to the lexed token's span.
-    pub fn span(&self) -> &Span<'text> {
-        &self.span
-    }
-
-    /// Consumes the lexeme and returns its span.
-    pub fn into_span(self) -> Span<'text> {
-        self.span
-    }
-}
-
-impl<'text, T> PartialEq<T> for Lexeme<'text, T> where T: PartialEq {
-    fn eq(&self, other: &T) -> bool {
-        self.token == *other
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer
@@ -128,20 +109,43 @@ impl<'text, K> std::iter::FusedIterator for Lexer<'text, K>
     where K: Tokenize,
 {}
 
-////////////////////////////////////////////////////////////////////////////////
-// Tokenize
-////////////////////////////////////////////////////////////////////////////////
-/// Trait for parsing a value from a string prefix.
-pub trait Tokenize: Sized {
-    /// The parse token type.
-    type Token: PartialEq + Send + Sync + 'static;
-    /// The parse error type.
-    type Error: std::error::Error + Send + Sync + 'static;
 
-    /// Parses a value from the given string. When the parse success, the
-    /// length of the consumed text should be returned. When the parse fails,
-    /// the length of the text to skip before resuming should be returned. If no
-    /// further progress is possible, 0 should be returned instead.
-    fn parse_token<'text>(&mut self, text: &'text str)
-        -> Result<(Self::Token, Pos), (Self::Error, Pos)>;
+////////////////////////////////////////////////////////////////////////////////
+// Lexeme
+////////////////////////////////////////////////////////////////////////////////
+/// A specific section of the source text associated with a lexed token.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Lexeme<'text, T> {
+    /// The parsed token.
+    token: T,
+    /// The span of the parsed text.
+    span: Span<'text>
+}
+
+impl<'text, T> Lexeme<'text, T> where T: PartialEq {
+    /// Returns true if the token was parsed from whitespace.
+    pub fn is_whitespace(&self) -> bool {
+        self.span.text().chars().all(char::is_whitespace)
+    }
+
+    /// Returns a reference to the lexed token.
+    pub fn token(&self) -> &T {
+        &self.token
+    }
+
+    /// Returns a reference to the lexed token's span.
+    pub fn span(&self) -> &Span<'text> {
+        &self.span
+    }
+
+    /// Consumes the lexeme and returns its span.
+    pub fn into_span(self) -> Span<'text> {
+        self.span
+    }
+}
+
+impl<'text, T> PartialEq<T> for Lexeme<'text, T> where T: PartialEq {
+    fn eq(&self, other: &T) -> bool {
+        self.token == *other
+    }
 }

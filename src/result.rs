@@ -58,10 +58,10 @@ pub struct Failure<'text, K> {
     pub lexer: Lexer<'text, K>,
     /// The span of the failed parse.
     pub span: Span<'text>,
+    /// The failure reason.
+    pub reason: Reason,
     /// The source of the failure.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
-    /// A description of the process which failed.
-    pub context: Option<Cow<'static, str>>,
 }
 
 impl<'text, K> std::fmt::Debug for Failure<'text, K> {
@@ -102,10 +102,10 @@ impl<'text, K> std::error::Error for Failure<'text, K> {
 pub struct FailureOwned {
     /// The span of the failed parse.
     pub span: OwnedSpan,
+    /// The failure reason.
+    pub reason: Reason,
     /// The source of the failure.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
-    /// A description of the process which failed.
-    pub context: Option<Cow<'static, str>>,
 }
 
 impl std::fmt::Display for FailureOwned {
@@ -127,35 +127,33 @@ impl std::error::Error for FailureOwned {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Error
+// Reason
 ////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct UnexpectedEndOfText;
-
-impl std::fmt::Display for UnexpectedEndOfText {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "unexpected end of text")
-    }
+/// The reason for a parse failure.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Reason {
+    /// A parse was not completed due to another error.
+    IncompleteParse {
+        /// A description of the parse which was left incomplete.
+        context: Cow<'static, str>,
+    },
+    /// An unexpected token was encountered.
+    UnexpectedToken,
+    /// The end of the text was unexpectedly encountered.
+    UnexpectedEndOfText,
+    /// A lexer error occurred.
+    LexerError,
 }
 
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct UnexpectedToken<T> {
-    pub token: T,
-}
-
-impl std::fmt::Display for UnexpectedToken {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "unexpected token")
-    }
-}
-
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct UnclosedDelimiter;
-
-impl std::fmt::Display for UnclosedDelimiter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "unclosed delimiter")
+impl Reason {
+    /// Returns true if the failure is of a recoverable kind.
+    pub fn is_recoverable(&self) -> bool {
+        use Reason::*;
+        match self {
+            IncompleteParse { .. } => true,
+            UnexpectedToken        => true,
+            UnexpectedEndOfText    => false,
+            LexerError             => false,
+        }
     }
 }
