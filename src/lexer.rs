@@ -47,17 +47,17 @@ pub trait Scanner: Clone {
 pub struct Lexer<'text, K> {
     text: &'text str,
     pos: Pos,
-    inner: K,
+    scanner: K,
     filter_whitespace: bool,
 }
 
 impl<'text, K> Lexer<'text, K> {
     /// Constructs a new Lexer for the given text and span newlines.
-    pub fn new(inner: K, text: &'text str) -> Self {
+    pub fn new(scanner: K, text: &'text str) -> Self {
         Lexer {
             text,
             pos: Pos::ZERO,
-            inner,
+            scanner,
             filter_whitespace: false,
         }
     }
@@ -93,7 +93,7 @@ impl<'text, K> Iterator for Lexer<'text, K>
     fn next(&mut self) -> Option<Self::Item> {
         while self.pos.byte < self.text.len() {
 
-            match self.inner.lex_prefix_token(&self.text[self.pos.byte..]) {
+            match self.scanner.lex_prefix_token(&self.text[self.pos.byte..]) {
                 Ok((token, skip)) 
                     if self.filter_whitespace && token == K::WHITESPACE => 
                 {
