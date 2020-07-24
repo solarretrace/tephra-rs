@@ -27,7 +27,10 @@ pub trait Tokenize: Clone {
     /// The parse error type.
     type Error: std::error::Error + Send + Sync + 'static;
 
-    /// Parses a value from the given string. When the parse success, the
+    /// A token which will match all whitespace tokens.
+    const WHITESPACE: Self::Token;
+
+    /// Parses a token from the given string. When the parse success, the
     /// length of the consumed text should be returned. When the parse fails,
     /// the length of the text to skip before resuming should be returned. If no
     /// further progress is possible, 0 should be returned instead.
@@ -40,11 +43,12 @@ pub trait Tokenize: Clone {
 // Lexer
 ////////////////////////////////////////////////////////////////////////////////
 /// A lexical analyzer which lazily parses tokens from the source text.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Lexer<'text, K> {
     text: &'text str,
     pos: Pos,
     inner: K,
+    filter_whitespace: bool,
 }
 
 impl<'text, K> Lexer<'text, K> {
@@ -54,7 +58,13 @@ impl<'text, K> Lexer<'text, K> {
             text,
             pos: Pos::ZERO,
             inner,
+            filter_whitespace: false,
         }
+    }
+
+    /// Sets the lexer's whitespace fitler mode.
+    pub fn filter_whitespace(&mut self, filter: bool) {
+        self.filter_whitespace = filter;
     }
 
     /// Returns the current lexer position.
@@ -81,27 +91,33 @@ impl<'text, K> Iterator for Lexer<'text, K>
     type Item = Result<Lexeme<'text, K::Token>, K::Error>;
     
     fn next(&mut self) -> Option<Self::Item> {
-        if self.pos.byte >= self.text.len() {
-            return None;
+        while self.pos.byte < self.text.len() {
+
+            match self.inner.parse_token(&self.text[self.pos.byte..]) {
+                Ok((token, skip)) 
+                    if self.filter_whitespace && token == K::WHITESPACE => 
+                {
+                    self.pos.step_with(skip);
+                },
+
+                Ok((token, skip)) => {
+                    let mut span = Span::new_from(self.pos, self.text);
+                    span.extend_by(skip);
+                    self.pos = span.end_position();
+                    return Some(Ok(Lexeme { token, span }))
+                },
+
+                Err((error, skip)) => {
+                    if skip.is_zero() { self.pos.byte = self.text.len() }
+
+                    let mut span = Span::new_from(self.pos, self.text);
+                    span.extend_by(skip);
+                    self.pos = span.end_position();
+                    return Some(Err(error))
+                },
+            }
         }
-
-        match self.inner.parse_token(&self.text[self.pos.byte..]) {
-            Ok((token, skip)) => {
-                let mut span = Span::new_from(self.pos, self.text);
-                span.extend_by(skip);
-                self.pos = span.end_position();
-                Some(Ok(Lexeme { token, span }))
-            },
-
-            Err((error, skip)) => {
-                if skip.is_zero() { self.pos.byte = self.text.len() }
-
-                let mut span = Span::new_from(self.pos, self.text);
-                span.extend_by(skip);
-                self.pos = span.end_position();
-                Some(Err(error))
-            },
-        }
+        None
     }
 }
 

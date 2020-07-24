@@ -33,6 +33,19 @@ Without a dedicated lexer, all intermediate syntactical structure must be filter
         list
         string
 
+# Lexer filtering and span construction
+
+The lexer output should be filterable and contain full-constructed spans before any parser code works on it.
+
+## 1. Lexer trait.
+
+The Lexer could be a trait requiring Iterator over the lexemes. This would allow iterator combinators to do filtering and transformation of the lexer output, as well as allow arbitrary parsers to transform the lexer on demand. On the other hand, it is likely that combinator errors would get difficult to analyze, as the lexer would have many type variables. This also makes it almost impossible to interact with the lexer state during parsing. At a minumum every iterator would need to be clonable so allow backtracking in case of a failed parse.
+
+## 2. Lexer struct.
+
+The lexer could present a struct interface. This is problematic in that it strongly constrains what the lexer is allowed to do. It doesn't allow parsers to transform the lexer without including stateful operations on the lexer. Fortunately, there is not a whole lot that the typical lexer will need to do: filter whitespace, backtrack, push tokens into the stream, ... Most other options can be handled in the parser code.
+
+
 # Lexer conversions
 
 There's a bit of wasted effort in not doing value production in the lexer. Lexing a number or escaped string is redundant with converting it to the associated value. However, there are several ways to avoid this problem, each with different tradeoffs.
@@ -43,7 +56,7 @@ The lexer can produce the data in a single pass and emit it with the token. This
 
 ## 2. Data in the lexeme.
 
-The lexer always produces a value and stores it in the lexeme. This requires the parser to know which tokens produce values and of which type, so that they may be retrieved. This could involve wrapping low-level parsers in data-extractor combinators, which could be confusing.
+The lexer always produces a value and stores it in the lexeme. This requires the parser to know which tokens produce values and of which type, so that they may be retrieved. This could involve wrapping low-level parsers in data-extractor combinators, which could be confusing. (And doing it automatically would essentially look the same as #1.)
 
 ## 3. No data conversions in the lexer.
 

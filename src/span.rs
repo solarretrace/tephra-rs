@@ -23,6 +23,16 @@ pub struct OwnedSpan {
     pub page: PageSpan,
 }
 
+impl<'text> From<Span<'text>> for OwnedSpan {
+    fn from(other: Span<'text>) -> Self {
+        OwnedSpan {
+            text: other.source.to_owned().into(),
+            byte: other.byte,
+            page: other.page,
+        }
+    }
+}
+
 impl PartialOrd for OwnedSpan {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.byte.partial_cmp(&other.byte)
@@ -175,7 +185,7 @@ impl<'text> Span<'text> {
     }
 
     /// Converts the span into and OwnedSpan.
-    pub fn to_owned_span(self) -> OwnedSpan {
+    pub fn into_owned(self) -> OwnedSpan {
         OwnedSpan {
             text: self.source.to_owned().into(),
             byte: self.byte,

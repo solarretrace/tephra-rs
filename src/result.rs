@@ -28,10 +28,18 @@ pub type ParseResult<'text, K, V>
 // ParseResultExt
 ////////////////////////////////////////////////////////////////////////////////
 /// Extension trait for `ParseResult`s.
-pub trait ParseResultExt {
+pub trait ParseResultExt<'text, K, V> {
+    /// Converts the ParseResult into a Result containing the parsed value,
+    /// discarding any associated spans or lexer state.
+    fn finish(self) -> Result<V, FailureOwned>;
 }
 
-impl<'text, K, V> ParseResultExt for ParseResult<'text, K, V> {
+impl<'text, K, V> ParseResultExt<'text, K, V> for ParseResult<'text, K, V> {
+    fn finish(self) -> Result<V, FailureOwned> {
+        self
+            .map(Success::into_value)
+            .map_err(FailureOwned::from)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,6 +54,13 @@ pub struct Success<'text, K, V> {
     pub span: Span<'text>,
     /// The parsed value.
     pub value: V,
+}
+
+impl<'text, K, V> Success<'text, K, V> {
+    /// Consumes the Success and returns its parsed value.
+    pub fn into_value(self) -> V {
+        self.value
+    }
 }
 
 
@@ -63,6 +78,7 @@ pub struct Failure<'text, K> {
     /// The source of the failure.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
+
 
 impl<'text, K> std::fmt::Debug for Failure<'text, K> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -106,6 +122,16 @@ pub struct FailureOwned {
     pub reason: Reason,
     /// The source of the failure.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+}
+
+impl<'text, K> From<Failure<'text, K>> for FailureOwned {
+    fn from(other: Failure<'text, K>) -> Self {
+        FailureOwned {
+            span: other.span.into_owned(),
+            reason: other.reason,
+            source: other.source,
+        }
+    }
 }
 
 impl std::fmt::Display for FailureOwned {

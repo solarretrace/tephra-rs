@@ -230,6 +230,8 @@ impl AtmaScriptTokenizer {
         while let Some(c) = chars.next() {
             if c == '\\' {
                 match chars.next() {
+                    // NOTE: These should all step by column, because they're
+                    // escaped text.
                     Some('\\') | 
                     Some('"')  | 
                     Some('\'') | 
@@ -302,6 +304,7 @@ impl AtmaScriptTokenizer {
 impl Tokenize for AtmaScriptTokenizer {
     type Token = AtmaToken;
     type Error = TokenError;
+    const WHITESPACE: Self::Token = AtmaToken::Whitespace;
 
     fn parse_token<'text>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>
@@ -477,17 +480,14 @@ fn as_lexer_line_comments_remove_whitespace() {
     use AtmaToken::*;
     let text = "\n\t \n#abc\n \t#def\n ";
     let as_tok = AtmaScriptTokenizer::new();
-    let lexer = Lexer::new(as_tok, text);
+    let mut lexer = Lexer::new(as_tok, text);
+    lexer.filter_whitespace(true);
 
     assert_eq!(
         lexer
-            .filter_map(|res| {
+            .map(|res| {
                 let lex = res.unwrap();
-                if lex.is_whitespace() { 
-                    None
-                } else {
-                    Some((*lex.token(), format!("{}", lex.span())))
-                }
+                (*lex.token(), format!("{}", lex.span()))
             })
             .collect::<Vec<_>>(),
         vec![
@@ -978,6 +978,50 @@ fn as_lexer_combined_terminated() {
         (Whitespace,        "\"\n\n\" (2:27-4:0, bytes 33-35)".to_owned()),
         (CommandTerminator, "\";\" (4:0-4:1, bytes 35-36)".to_owned()),
         (Whitespace,        "\"\n\" (4:1-5:0, bytes 36-37)".to_owned()),
+        (CommandChunk,      "\"--zyx\" (5:0-5:5, bytes 37-42)".to_owned()),
+        (CommandTerminator, "\";\" (5:5-5:6, bytes 42-43)".to_owned()),
+        (CommandChunk,      "\"--wvut\" (5:6-5:12, bytes 43-49)".to_owned()),
+    ];
+    for (i, act) in actual.iter().enumerate() {
+        println!("{:?}", act);
+        println!("{:?}", expected[i]);
+        println!("");
+    }
+    assert_eq!(actual, expected);
+}
+
+/// Tests AtmaScriptTokenizer with a combination of tokens separated by
+/// terminators with whitespace filtered out.
+#[test]
+fn as_lexer_combined_terminated_filtered() {
+    use AtmaToken::*;
+    let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
+    let as_tok = AtmaScriptTokenizer::new();
+    let mut lexer = Lexer::new(as_tok, text);
+    lexer.filter_whitespace(true);
+
+    let actual = lexer
+        .map(|res| {
+            let lex = res.unwrap();
+            (*lex.token(), format!("{}", lex.span()))
+        })
+        .collect::<Vec<_>>();
+    let expected = vec![
+        (CommandTerminator, "\";\" (0:0-0:1, bytes 0-1)".to_owned()),
+        (LineCommentOpen,   "\"#\" (0:1-0:2, bytes 1-2)".to_owned()),
+        (LineCommentText,   "\"; \" (0:2-0:4, bytes 2-4)".to_owned()),
+        (StringOpenDouble,  "\"\"\" (2:1-2:2, bytes 7-8)".to_owned()),
+        (StringText,        "\"a;bc\\\"\" (2:2-2:8, bytes 8-14)".to_owned()),
+        (StringCloseDouble, "\"\"\" (2:8-2:9, bytes 14-15)".to_owned()),
+        (CommandTerminator, "\";\" (2:9-2:10, bytes 15-16)".to_owned()),
+        (StringOpenSingle,  "\"\'\" (2:10-2:11, bytes 16-17)".to_owned()),
+        (StringText,        "\"d;ef\" (2:11-2:15, bytes 17-21)".to_owned()),
+        (StringCloseSingle, "\"\'\" (2:15-2:16, bytes 21-22)".to_owned()),
+        (RawStringOpen,     "\"r##\"\" (2:17-2:21, bytes 23-27)".to_owned()),
+        (RawStringText,     "\"\t;\" (2:21-2:23, bytes 27-29)".to_owned()),
+        (RawStringClose,    "\"\"##\" (2:23-2:26, bytes 29-32)".to_owned()),
+        (CommandTerminator, "\";\" (2:26-2:27, bytes 32-33)".to_owned()),
+        (CommandTerminator, "\";\" (4:0-4:1, bytes 35-36)".to_owned()),
         (CommandChunk,      "\"--zyx\" (5:0-5:5, bytes 37-42)".to_owned()),
         (CommandTerminator, "\";\" (5:5-5:6, bytes 42-43)".to_owned()),
         (CommandChunk,      "\"--wvut\" (5:6-5:12, bytes 43-49)".to_owned()),

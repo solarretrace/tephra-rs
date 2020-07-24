@@ -42,6 +42,7 @@ struct Test;
 impl Tokenize for Test {
     type Token = TestToken;
     type Error = TokenError;
+    const WHITESPACE: Self::Token = TestToken::Ws;
 
     fn parse_token<'text>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>
@@ -114,11 +115,12 @@ fn lexer_simple() {
 fn lexer_no_whitespace() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
-    let lexer = Lexer::new(Test, text);
+    let mut lexer = Lexer::new(Test, text);
+    lexer.filter_whitespace(true);
+
 
     assert_eq!(
         lexer
-            .filter(|res| !res.unwrap().is_whitespace())
             .map(|res| {
                 let lex = res.unwrap();
                 (*lex.token(), format!("{}", lex.span()))
