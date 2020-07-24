@@ -297,7 +297,7 @@ impl Tokenize for AtmaScriptTokenizer {
             Some(LineCommentOpen) => {
                 Ok(self.parse_line_comment_text(text))
             },
-            
+
             Some(RawStringText) => {
                 // Because it is necessary to recognize the RawStringClose to
                 // finish parsing RawStringText, we should never get here unless
@@ -328,11 +328,10 @@ impl Tokenize for AtmaScriptTokenizer {
                     .parse_string_text(text, StringOpenSingle)
                 {
                     self.open = Some(StringOpenSingle);
-                    Ok(parse)
-                } else {
-                    Err((TokenError("Unrecognized string escape"),
-                        Pos::new(1, 0, 1)))
+                    return Ok(parse);
                 }
+                Err((TokenError("Unrecognized string escape"),
+                    Pos::new(1, 0, 1)))
             },
             Some(StringOpenDouble) => {
                 if let Some(parse) = self.parse_string_close_double(text) {
@@ -342,11 +341,10 @@ impl Tokenize for AtmaScriptTokenizer {
                     .parse_string_text(text, StringOpenDouble)
                 {
                     self.open = Some(StringOpenDouble);
-                    Ok(parse)
-                } else {
-                    Err((TokenError("Unrecognized string escape"),
-                        Pos::new(1, 0, 1)))
+                    return Ok(parse);
                 }
+                Err((TokenError("Unrecognized string escape"),
+                    Pos::new(1, 0, 1)))
             },
 
             None => {
@@ -471,7 +469,7 @@ fn as_lexer_line_comments_remove_whitespace() {
 
 /// Tests AtmaScriptTokenizer with an empty single-quoted string.
 #[test]
-fn as_lexer_line_string_single_empty() {
+fn as_lexer_string_single_empty() {
     use AtmaToken::*;
     let text = "''";
     let as_tok = AtmaScriptTokenizer::new();
@@ -492,7 +490,7 @@ fn as_lexer_line_string_single_empty() {
 /// Tests AtmaScriptTokenizer with an unclosed single-quoted string.
 #[test]
 #[should_panic]
-fn as_lexer_line_string_single_unclosed() {
+fn as_lexer_string_single_unclosed() {
     use AtmaToken::*;
     let text = "'abc";
     let as_tok = AtmaScriptTokenizer::new();
@@ -515,7 +513,7 @@ fn as_lexer_line_string_single_unclosed() {
 
 /// Tests AtmaScriptTokenizer with a non-empty single-quoted string.
 #[test]
-fn as_lexer_line_string_single_text() {
+fn as_lexer_string_single_text() {
     use AtmaToken::*;
     let text = "'abc \n xyz'";
     let as_tok = AtmaScriptTokenizer::new();
@@ -536,7 +534,7 @@ fn as_lexer_line_string_single_text() {
 
 /// Tests AtmaScriptTokenizer with a quote-containing single-quoted string.
 #[test]
-fn as_lexer_line_string_single_quotes() {
+fn as_lexer_string_single_quotes() {
     use AtmaToken::*;
     let text = "'abc\"\n\\'xyz'";
     let as_tok = AtmaScriptTokenizer::new();
@@ -558,7 +556,7 @@ fn as_lexer_line_string_single_quotes() {
 
 /// Tests AtmaScriptTokenizer with an empty double-quoted string.
 #[test]
-fn as_lexer_line_string_double_empty() {
+fn as_lexer_string_double_empty() {
     use AtmaToken::*;
     let text = "\"\"";
     let as_tok = AtmaScriptTokenizer::new();
@@ -580,7 +578,7 @@ fn as_lexer_line_string_double_empty() {
 /// Tests AtmaScriptTokenizer with an unclosed double-quoted string.
 #[test]
 #[should_panic]
-fn as_lexer_line_string_double_unclosed() {
+fn as_lexer_string_double_unclosed() {
     use AtmaToken::*;
     let text = "\"abc";
     let as_tok = AtmaScriptTokenizer::new();
@@ -604,7 +602,7 @@ fn as_lexer_line_string_double_unclosed() {
 
 /// Tests AtmaScriptTokenizer with a non-empty double-quoted string.
 #[test]
-fn as_lexer_line_string_double_text() {
+fn as_lexer_string_double_text() {
     use AtmaToken::*;
     let text = "\"abc \n xyz\"";
     let as_tok = AtmaScriptTokenizer::new();
@@ -625,7 +623,7 @@ fn as_lexer_line_string_double_text() {
 
 /// Tests AtmaScriptTokenizer with a quote-containing double-quoted string.
 #[test]
-fn as_lexer_line_string_double_quotes() {
+fn as_lexer_string_double_quotes() {
     use AtmaToken::*;
     let text = "\"abc\\\"\n'xyz\"";
     let as_tok = AtmaScriptTokenizer::new();
@@ -645,15 +643,9 @@ fn as_lexer_line_string_double_quotes() {
 }
 
 
-
-
-
-
-
-
 /// Tests AtmaScriptTokenizer with an empty raw-quoted string.
 #[test]
-fn as_lexer_line_string_raw_empty() {
+fn as_lexer_string_raw_empty() {
     use AtmaToken::*;
     let text = "r\"\"";
     let as_tok = AtmaScriptTokenizer::new();
@@ -674,7 +666,7 @@ fn as_lexer_line_string_raw_empty() {
 
 /// Tests AtmaScriptTokenizer with an empty raw-quoted string using hashes.
 #[test]
-fn as_lexer_line_string_raw_empty_hashed() {
+fn as_lexer_string_raw_empty_hashed() {
     use AtmaToken::*;
     let text = "r##\"\"##";
     let as_tok = AtmaScriptTokenizer::new();
@@ -695,7 +687,7 @@ fn as_lexer_line_string_raw_empty_hashed() {
 /// Tests AtmaScriptTokenizer with an unclosed raw-quoted string.
 #[test]
 #[should_panic]
-fn as_lexer_line_string_raw_unclosed() {
+fn as_lexer_string_raw_unclosed() {
     use AtmaToken::*;
     let text = "r###\"abc";
     let as_tok = AtmaScriptTokenizer::new();
@@ -719,7 +711,7 @@ fn as_lexer_line_string_raw_unclosed() {
 /// Tests AtmaScriptTokenizer with an mismatched raw-quoted string.
 #[test]
 #[should_panic]
-fn as_lexer_line_string_raw_mismatched() {
+fn as_lexer_string_raw_mismatched() {
     use AtmaToken::*;
     let text = "r###\"abc\"#";
     let as_tok = AtmaScriptTokenizer::new();
@@ -742,7 +734,7 @@ fn as_lexer_line_string_raw_mismatched() {
 
 /// Tests AtmaScriptTokenizer with a non-empty raw-quoted string.
 #[test]
-fn as_lexer_line_string_raw_text() {
+fn as_lexer_string_raw_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
     let as_tok = AtmaScriptTokenizer::new();
@@ -764,7 +756,7 @@ fn as_lexer_line_string_raw_text() {
 /// Tests AtmaScriptTokenizer with a non-empty raw-quoted string with quotes
 /// inside.
 #[test]
-fn as_lexer_line_string_raw_quoted_text() {
+fn as_lexer_string_raw_quoted_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
     let as_tok = AtmaScriptTokenizer::new();
@@ -780,5 +772,58 @@ fn as_lexer_line_string_raw_quoted_text() {
             (RawStringOpen,  "\"r########\"\" (0:0-0:10, bytes 0-10)".to_owned()),
             (RawStringText,  "\"abc \n xyz\" (0:10-1:4, bytes 10-19)".to_owned()),
             (RawStringClose, "\"\"########\" (1:4-1:13, bytes 19-28)".to_owned()),
+        ]);
+}
+
+/// Tests AtmaScriptTokenizer with a CommandChunk.
+#[test]
+fn as_lexer_command_chunk() {
+    use AtmaToken::*;
+    let text = "abc-def";
+    let as_tok = AtmaScriptTokenizer::new();
+    let lexer = Lexer::new(as_tok, text);
+
+    assert_eq!(
+        lexer.map(|res| {
+                let tok = res.unwrap();
+                (tok.value, format!("{}", tok.span))
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            (CommandChunk,  "\"abc-def\" (0:0-0:7, bytes 0-7)".to_owned()),
+        ]);
+}
+
+
+/// Tests AtmaScriptTokenizer with a combination of tokens.
+#[test]
+fn as_lexer_combined() {
+    use AtmaToken::*;
+    let text = "# \n\n \"abc\\\"\"'def' r##\"\t\"##\n\n\n--zyx--wvut";
+    let as_tok = AtmaScriptTokenizer::new();
+    let lexer = Lexer::new(as_tok, text);
+
+    assert_eq!(
+        lexer.map(|res| {
+                let tok = res.unwrap();
+                (tok.value, format!("{}", tok.span))
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            (LineCommentOpen,   "\"#\" (0:0-0:1, bytes 0-1)".to_owned()),
+            (LineCommentText,   "\" \" (0:1-0:2, bytes 1-2)".to_owned()),
+            (Whitespace,        "\"\n\n \" (0:2-2:1, bytes 2-5)".to_owned()),
+            (StringOpenDouble,  "\"\"\" (2:1-2:2, bytes 5-6)".to_owned()),
+            (StringText,        "\"abc\\\"\" (2:2-2:7, bytes 6-11)".to_owned()),
+            (StringCloseDouble, "\"\"\" (2:7-2:8, bytes 11-12)".to_owned()),
+            (StringOpenSingle,  "\"'\" (2:8-2:9, bytes 12-13)".to_owned()),
+            (StringText,        "\"def\" (2:9-2:12, bytes 13-16)".to_owned()),
+            (StringCloseSingle, "\"'\" (2:12-2:13, bytes 16-17)".to_owned()),
+            (Whitespace,        "\" \" (2:13-2:14, bytes 17-18)".to_owned()),
+            (RawStringOpen,     "\"r##\"\" (2:14-2:18, bytes 18-22)".to_owned()),
+            (RawStringText,     "\"\t\" (2:18-2:19, bytes 22-23)".to_owned()),
+            (RawStringClose,    "\"\"##\" (2:19-2:22, bytes 23-26)".to_owned()),
+            (Whitespace,        "\"\n\n\n\" (2:22-5:0, bytes 26-29)".to_owned()),
+            (CommandChunk,      "\"--zyx--wvut\" (5:0-5:11, bytes 29-40)".to_owned()),
         ]);
 }
