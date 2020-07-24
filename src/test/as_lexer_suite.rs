@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::lexer::Tokenize;
+use crate::lexer::Scanner;
 use crate::lexer::Lexer;
 use crate::span::Pos;
 use crate::span::Page;
@@ -53,15 +53,15 @@ enum AtmaToken {
 }
 
 #[derive(Debug, Clone)]
-struct AtmaScriptTokenizer {
+struct AtmaScriptScannerr {
     open: Option<AtmaToken>,
     newline_token: Box<str>,
     raw_string_bracket_count: u64,
 }
 
-impl AtmaScriptTokenizer {
+impl AtmaScriptScannerr {
     fn new() -> Self {
-        AtmaScriptTokenizer {
+        AtmaScriptScannerr {
             open: None,
             raw_string_bracket_count: 0,
             newline_token: "\n".into(),
@@ -301,12 +301,12 @@ impl AtmaScriptTokenizer {
     }
 }
 
-impl Tokenize for AtmaScriptTokenizer {
+impl Scanner for AtmaScriptScannerr {
     type Token = AtmaToken;
     type Error = TokenError;
     const WHITESPACE: Self::Token = AtmaToken::Whitespace;
 
-    fn parse_token<'text>(&mut self, text: &'text str)
+    fn lex_prefix_token<'text>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>
     {
         use AtmaToken::*;
@@ -404,11 +404,11 @@ impl Tokenize for AtmaScriptTokenizer {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-/// Tests `Lexer::new` for the AtmaScriptTokenizer.
+/// Tests `Lexer::new` for the AtmaScriptScannerr.
 #[test]
 fn as_lexer_empty() {
     let text = "";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text);
 
     assert_eq!(
@@ -417,12 +417,12 @@ fn as_lexer_empty() {
 }
 
 
-/// Tests AtmaScriptTokenizer with a line comment.
+/// Tests AtmaScriptScannerr with a line comment.
 #[test]
 fn as_lexer_line_comment() {
     use AtmaToken::*;
     let text = "#abc\n";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -445,12 +445,12 @@ fn as_lexer_line_comment() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with a line comment surrounded by whitespace.
+/// Tests AtmaScriptScannerr with a line comment surrounded by whitespace.
 #[test]
 fn as_lexer_line_comment_circumfix_whitespace() {
     use AtmaToken::*;
     let text = "\n\t \n#abc\n \t\n ";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -474,12 +474,12 @@ fn as_lexer_line_comment_circumfix_whitespace() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with a line comment surrounded by whitespace.
+/// Tests AtmaScriptScannerr with a line comment surrounded by whitespace.
 #[test]
 fn as_lexer_line_comments_remove_whitespace() {
     use AtmaToken::*;
     let text = "\n\t \n#abc\n \t#def\n ";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text);
     lexer.filter_whitespace(true);
 
@@ -498,12 +498,12 @@ fn as_lexer_line_comments_remove_whitespace() {
         ]);
 }
 
-/// Tests AtmaScriptTokenizer with an empty single-quoted string.
+/// Tests AtmaScriptScannerr with an empty single-quoted string.
 #[test]
 fn as_lexer_string_single_empty() {
     use AtmaToken::*;
     let text = "''";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -525,13 +525,13 @@ fn as_lexer_string_single_empty() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with an unclosed single-quoted string.
+/// Tests AtmaScriptScannerr with an unclosed single-quoted string.
 #[test]
 #[should_panic]
 fn as_lexer_string_single_unclosed() {
     use AtmaToken::*;
     let text = "'abc";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text)
         .map(|res| {
             let lex = res.unwrap();
@@ -549,12 +549,12 @@ fn as_lexer_string_single_unclosed() {
     let _ = lexer.next(); // Panics due to unwrap of error.
 }
 
-/// Tests AtmaScriptTokenizer with a non-empty single-quoted string.
+/// Tests AtmaScriptScannerr with a non-empty single-quoted string.
 #[test]
 fn as_lexer_string_single_text() {
     use AtmaToken::*;
     let text = "'abc \n xyz'";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -577,12 +577,12 @@ fn as_lexer_string_single_text() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with a quote-containing single-quoted string.
+/// Tests AtmaScriptScannerr with a quote-containing single-quoted string.
 #[test]
 fn as_lexer_string_single_quotes() {
     use AtmaToken::*;
     let text = "'abc\"\n\\'xyz'";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -606,12 +606,12 @@ fn as_lexer_string_single_quotes() {
 }
 
 
-/// Tests AtmaScriptTokenizer with an empty double-quoted string.
+/// Tests AtmaScriptScannerr with an empty double-quoted string.
 #[test]
 fn as_lexer_string_double_empty() {
     use AtmaToken::*;
     let text = "\"\"";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -634,13 +634,13 @@ fn as_lexer_string_double_empty() {
 }
 
 
-/// Tests AtmaScriptTokenizer with an unclosed double-quoted string.
+/// Tests AtmaScriptScannerr with an unclosed double-quoted string.
 #[test]
 #[should_panic]
 fn as_lexer_string_double_unclosed() {
     use AtmaToken::*;
     let text = "\"abc";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text)
         .map(|res| {
             let lex = res.unwrap();
@@ -659,12 +659,12 @@ fn as_lexer_string_double_unclosed() {
 }
 
 
-/// Tests AtmaScriptTokenizer with a non-empty double-quoted string.
+/// Tests AtmaScriptScannerr with a non-empty double-quoted string.
 #[test]
 fn as_lexer_string_double_text() {
     use AtmaToken::*;
     let text = "\"abc \n xyz\"";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -687,12 +687,12 @@ fn as_lexer_string_double_text() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with a quote-containing double-quoted string.
+/// Tests AtmaScriptScannerr with a quote-containing double-quoted string.
 #[test]
 fn as_lexer_string_double_quotes() {
     use AtmaToken::*;
     let text = "\"abc\\\"\n'xyz\"";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -716,12 +716,12 @@ fn as_lexer_string_double_quotes() {
 }
 
 
-/// Tests AtmaScriptTokenizer with an empty raw-quoted string.
+/// Tests AtmaScriptScannerr with an empty raw-quoted string.
 #[test]
 fn as_lexer_string_raw_empty() {
     use AtmaToken::*;
     let text = "r\"\"";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -744,12 +744,12 @@ fn as_lexer_string_raw_empty() {
 }
 
 
-/// Tests AtmaScriptTokenizer with an empty raw-quoted string using hashes.
+/// Tests AtmaScriptScannerr with an empty raw-quoted string using hashes.
 #[test]
 fn as_lexer_string_raw_empty_hashed() {
     use AtmaToken::*;
     let text = "r##\"\"##";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -771,13 +771,13 @@ fn as_lexer_string_raw_empty_hashed() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with an unclosed raw-quoted string.
+/// Tests AtmaScriptScannerr with an unclosed raw-quoted string.
 #[test]
 #[should_panic]
 fn as_lexer_string_raw_unclosed() {
     use AtmaToken::*;
     let text = "r###\"abc";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text)
         .map(|res| {
             let lex = res.unwrap();
@@ -795,13 +795,13 @@ fn as_lexer_string_raw_unclosed() {
     let _ = lexer.next(); // Panics due to unwrap of error.
 }
 
-/// Tests AtmaScriptTokenizer with an mismatched raw-quoted string.
+/// Tests AtmaScriptScannerr with an mismatched raw-quoted string.
 #[test]
 #[should_panic]
 fn as_lexer_string_raw_mismatched() {
     use AtmaToken::*;
     let text = "r###\"abc\"#";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text)
         .map(|res| {
             let lex = res.unwrap();
@@ -819,12 +819,12 @@ fn as_lexer_string_raw_mismatched() {
     let _ = lexer.next(); // Panics due to unwrap of error.
 }
 
-/// Tests AtmaScriptTokenizer with a non-empty raw-quoted string.
+/// Tests AtmaScriptScannerr with a non-empty raw-quoted string.
 #[test]
 fn as_lexer_string_raw_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -847,13 +847,13 @@ fn as_lexer_string_raw_text() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with a non-empty raw-quoted string with quotes
+/// Tests AtmaScriptScannerr with a non-empty raw-quoted string with quotes
 /// inside.
 #[test]
 fn as_lexer_string_raw_quoted_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -876,12 +876,12 @@ fn as_lexer_string_raw_quoted_text() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with a CommandChunk.
+/// Tests AtmaScriptScannerr with a CommandChunk.
 #[test]
 fn as_lexer_command_chunk() {
     use AtmaToken::*;
     let text = "abc-def";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -903,12 +903,12 @@ fn as_lexer_command_chunk() {
 }
 
 
-/// Tests AtmaScriptTokenizer with a combination of tokens.
+/// Tests AtmaScriptScannerr with a combination of tokens.
 #[test]
 fn as_lexer_combined() {
     use AtmaToken::*;
     let text = "# \n\n \"abc\\\"\"'def' r##\"\t\"##\n\n\n--zyx--wvut";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -943,13 +943,13 @@ fn as_lexer_combined() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with a combination of tokens separated by
+/// Tests AtmaScriptScannerr with a combination of tokens separated by
 /// terminators.
 #[test]
 fn as_lexer_combined_terminated() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let lexer = Lexer::new(as_tok, text);
 
     let actual = lexer
@@ -990,13 +990,13 @@ fn as_lexer_combined_terminated() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptTokenizer with a combination of tokens separated by
+/// Tests AtmaScriptScannerr with a combination of tokens separated by
 /// terminators with whitespace filtered out.
 #[test]
 fn as_lexer_combined_terminated_filtered() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
-    let as_tok = AtmaScriptTokenizer::new();
+    let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text);
     lexer.filter_whitespace(true);
 

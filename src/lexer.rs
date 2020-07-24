@@ -17,11 +17,11 @@ use std::fmt::Debug;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Tokenize
+// Scanner
 ////////////////////////////////////////////////////////////////////////////////
 /// Trait for parsing a value from a string prefix. Contains the lexer state for
 /// a set of parseable tokens.
-pub trait Tokenize: Clone {
+pub trait Scanner: Clone {
     /// The parse token type.
     type Token: PartialEq + Send + Sync + 'static;
     /// The parse error type.
@@ -34,7 +34,7 @@ pub trait Tokenize: Clone {
     /// length of the consumed text should be returned. When the parse fails,
     /// the length of the text to skip before resuming should be returned. If no
     /// further progress is possible, 0 should be returned instead.
-    fn parse_token<'text>(&mut self, text: &'text str)
+    fn lex_prefix_token<'text>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>;
 }
 
@@ -86,14 +86,14 @@ impl<'text, K> Lexer<'text, K> {
 }
 
 impl<'text, K> Iterator for Lexer<'text, K>
-    where K: Tokenize,
+    where K: Scanner,
 {
     type Item = Result<Lexeme<'text, K::Token>, K::Error>;
     
     fn next(&mut self) -> Option<Self::Item> {
         while self.pos.byte < self.text.len() {
 
-            match self.inner.parse_token(&self.text[self.pos.byte..]) {
+            match self.inner.lex_prefix_token(&self.text[self.pos.byte..]) {
                 Ok((token, skip)) 
                     if self.filter_whitespace && token == K::WHITESPACE => 
                 {
@@ -122,7 +122,7 @@ impl<'text, K> Iterator for Lexer<'text, K>
 }
 
 impl<'text, K> std::iter::FusedIterator for Lexer<'text, K>
-    where K: Tokenize,
+    where K: Scanner,
 {}
 
 

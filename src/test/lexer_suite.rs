@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::lexer::Tokenize;
+use crate::lexer::Scanner;
 use crate::lexer::Lexer;
 use crate::span::Pos;
 
@@ -39,12 +39,12 @@ enum TestToken {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Test;
 
-impl Tokenize for Test {
+impl Scanner for Test {
     type Token = TestToken;
     type Error = TokenError;
     const WHITESPACE: Self::Token = TestToken::Ws;
 
-    fn parse_token<'text>(&mut self, text: &'text str)
+    fn lex_prefix_token<'text>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>
     {
         // println!("{:?}", text);
