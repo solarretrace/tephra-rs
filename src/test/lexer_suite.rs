@@ -97,8 +97,8 @@ fn lexer_simple() {
     assert_eq!(
         lexer
             .map(|res| {
-                let tok = res.unwrap();
-                (tok.value, format!("{}", tok.span))
+                let lex = res.unwrap();
+                (*lex.token(), format!("{}", lex.span()))
             })
             .collect::<Vec<_>>(),
         vec![
@@ -120,8 +120,8 @@ fn lexer_no_whitespace() {
         lexer
             .filter(|res| !res.unwrap().is_whitespace())
             .map(|res| {
-                let tok = res.unwrap();
-                (tok.value, format!("{}", tok.span))
+                let lex = res.unwrap();
+                (*lex.token(), format!("{}", lex.span()))
             })
             .collect::<Vec<_>>(),
         vec![

@@ -146,14 +146,23 @@ pub enum Reason {
 }
 
 impl Reason {
+    /// Constructs a Reason::IncompleteParse using the given string.
+    pub fn incomplete<S>(msg: S) -> Self
+        where S: Into<Cow<'static, str>>,
+    {
+        Reason::IncompleteParse {
+            context: msg.into(),
+        }
+    }
+
     /// Returns true if the failure is of a recoverable kind.
     pub fn is_recoverable(&self) -> bool {
         use Reason::*;
         match self {
-            IncompleteParse { .. } => true,
-            UnexpectedToken        => true,
-            UnexpectedEndOfText    => false,
-            LexerError             => false,
+            IncompleteParse { .. }     => true,
+            UnexpectedToken            => true,
+            UnexpectedEndOfText        => false,
+            LexerError                 => true,
         }
     }
 }
