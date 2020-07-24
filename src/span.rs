@@ -184,7 +184,7 @@ impl<'text> Span<'text> {
     }
 
     /// Returns the spanned text.
-    pub fn text(&self) -> &str {
+    pub fn text(&self) -> &'text str {
         &self.source[self.byte.start..self.byte.end]
     }
 

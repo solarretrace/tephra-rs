@@ -31,3 +31,31 @@ Without a dedicated lexer, all intermediate syntactical structure must be filter
         integer
         list
         string
+
+# Error Handling
+
+Unexpected eot
+    During parse of...
+        * Source EOT error
+Unrecognized token
+    During parse of...
+    Skip token and continue lexing?
+        * Span of fail
+Parsed wrong token
+    During parse of...
+Error constructing value
+    During parse of...
+    Which token value...
+        * Span of fail
+
+
+
+abc
+
+    error: Unexpected end of text.
+      --> {source_name?}:LN:COL (bytes N-M)
+       |
+    LN | [suround] [SPAN OF TOKEN] [suround]
+       |            ~~~~~~~~~~~~~~~
+    ... During parse of [CONTEXT].
+

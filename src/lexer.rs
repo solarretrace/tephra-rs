@@ -12,53 +12,92 @@
 use crate::span::Span;
 use crate::span::Pos;
 
+// Standard library imports.
+use std::fmt::Debug;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Lexeme
 ////////////////////////////////////////////////////////////////////////////////
-/// A specific section of the source text associated with a lexed value.
+/// A specific section of the source text associated with a lexed token.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Lexeme<'text, V> {
+pub struct Lexeme<'text, T> {
     /// The parsed token.
-    pub value: V,
+    token: T,
     /// The span of the parsed text.
-    pub span: Span<'text>
+    span: Span<'text>
 }
 
-impl<'text, V> Lexeme<'text, V> {
+impl<'text, T> Lexeme<'text, T> where T: PartialEq {
     /// Returns true if the token was parsed from whitespace.
     pub fn is_whitespace(&self) -> bool {
         self.span.text().chars().all(char::is_whitespace)
     }
+
+    /// Returns a reference to the lexed token.
+    pub fn token(&self) -> &T {
+        &self.token
+    }
+
+    /// Returns a reference to the lexed token's span.
+    pub fn span(&self) -> &Span<'text> {
+        &self.span
+    }
+
+    /// Consumes the lexeme and returns its span.
+    pub fn into_span(self) -> Span<'text> {
+        self.span
+    }
 }
 
+impl<'text, T> PartialEq<T> for Lexeme<'text, T> where T: PartialEq {
+    fn eq(&self, other: &T) -> bool {
+        self.token == *other
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer
 ////////////////////////////////////////////////////////////////////////////////
 /// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Debug, Clone, Copy)]
-pub struct Lexer<'text, T> {
+pub struct Lexer<'text, K> {
     text: &'text str,
     pos: Pos,
-    inner: T,
+    inner: K,
 }
 
-impl<'text, T> Lexer<'text, T> {
+impl<'text, K> Lexer<'text, K> {
     /// Constructs a new Lexer for the given text and span newlines.
-    pub fn new(inner: T, text: &'text str) -> Self {
+    pub fn new(inner: K, text: &'text str) -> Self {
         Lexer {
             text,
             pos: Pos::ZERO,
             inner,
         }
     }
+
+    /// Returns the current lexer position.
+    pub fn current_pos(&self) -> Pos {
+        self.pos
+    }
+
+    /// Returns the empty span of the current lexer position.
+    pub fn current_span(&self) -> Span<'text> {
+        Span::new_from(self.pos, self.text)
+    }
+
+    /// Returns the span of all previously lexed text.
+    pub fn lexed_span(&self) -> Span<'text> {
+        let mut span = Span::new(self.text);
+        span.extend_by(self.pos);
+        span
+    }
 }
 
-impl<'text, T> Iterator for Lexer<'text, T>
-    where T: Tokenize,
+impl<'text, K> Iterator for Lexer<'text, K>
+    where K: Tokenize,
 {
-    type Item = Result<Lexeme<'text, T::Token>, T::Error>;
+    type Item = Result<Lexeme<'text, K::Token>, K::Error>;
     
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos.byte >= self.text.len() {
@@ -66,11 +105,11 @@ impl<'text, T> Iterator for Lexer<'text, T>
         }
 
         match self.inner.parse_token(&self.text[self.pos.byte..]) {
-            Ok((value, skip)) => {
+            Ok((token, skip)) => {
                 let mut span = Span::new_from(self.pos, self.text);
                 span.extend_by(skip);
                 self.pos = span.end_position();
-                Some(Ok(Lexeme { value, span }))
+                Some(Ok(Lexeme { token, span }))
             },
 
             Err((error, skip)) => {
@@ -85,8 +124,8 @@ impl<'text, T> Iterator for Lexer<'text, T>
     }
 }
 
-impl<'text, T> std::iter::FusedIterator for Lexer<'text, T>
-    where T: Tokenize,
+impl<'text, K> std::iter::FusedIterator for Lexer<'text, K>
+    where K: Tokenize,
 {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +134,7 @@ impl<'text, T> std::iter::FusedIterator for Lexer<'text, T>
 /// Trait for parsing a value from a string prefix.
 pub trait Tokenize: Sized {
     /// The parse token type.
-    type Token: Send + Sync + 'static;
+    type Token: PartialEq + Send + Sync + 'static;
     /// The parse error type.
     type Error: std::error::Error + Send + Sync + 'static;
 
