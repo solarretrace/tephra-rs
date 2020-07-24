@@ -56,6 +56,13 @@ impl<'text, S> std::error::Error for Failure<'text, S> where S: Scanner {
     }
 }
 
+#[cfg(test)]
+impl<'text, S> PartialEq for Failure<'text, S> where S: Scanner {
+    fn eq(&self, other: &Self) -> bool {
+        format!("{:?}", self) == format!("{:?}", other)
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // FailureOwned

@@ -9,405 +9,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::lexer::Scanner;
 use crate::lexer::Lexer;
-use crate::span::Pos;
-use crate::span::Page;
+use crate::test::atma_script::*;
 
-// Standard library imports.
-use std::convert::TryInto as _;
 
-////////////////////////////////////////////////////////////////////////////////
-// Token parser.
-////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct TokenError(&'static str);
-impl std::error::Error for TokenError {}
-
-impl std::fmt::Display for TokenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-enum AtmaToken {
-    CommandChunk,
-    CommandTerminator,
-    
-    RawStringOpen,
-    RawStringClose,
-    RawStringText,
-    
-    StringOpenSingle,
-    StringCloseSingle,
-    StringOpenDouble,
-    StringCloseDouble,
-    StringText,
-
-    LineCommentOpen,
-    LineCommentText,
-    
-    Whitespace,
-}
-
-#[derive(Debug, Clone)]
-struct AtmaScriptScannerr {
-    open: Option<AtmaToken>,
-    newline_token: Box<str>,
-    raw_string_bracket_count: u64,
-}
-
-impl AtmaScriptScannerr {
-    fn new() -> Self {
-        AtmaScriptScannerr {
-            open: None,
-            raw_string_bracket_count: 0,
-            newline_token: "\n".into(),
-        }
-    }
-
-    /// Parses a CommandChunk token.
-    fn parse_command_chunk(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        let tok = text
-            .split(|c: char| c.is_whitespace() || c == ';')
-            .next().unwrap();
-        if tok.len() > 0 {
-            let pos = Pos::new_from_string(tok, &*self.newline_token);
-            Some((AtmaToken::CommandChunk, pos))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a CommandTerminator token.
-    fn parse_command_terminator(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with(";") {
-            Some((AtmaToken::CommandTerminator, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a RawStringOpen token.
-    fn parse_raw_string_open(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        let mut pos = Pos::ZERO;
-        let mut chars = text.chars();
-        match chars.next() {
-            Some('r') => pos.step(1, 0, 1),
-            _         => return None,
-        }
-        while let Some(c) = chars.next() {
-            match c {
-                '#' => {
-                    pos.step(1, 0, 1);
-                    self.raw_string_bracket_count += 1;
-                    continue;
-                },
-                '"' => {
-                    pos.step(1, 0, 1);
-                    return Some((AtmaToken::RawStringOpen, pos));
-                },
-                _ => return None,
-            }
-        }
-
-        None
-    }
-
-    /// Parses a RawStringClose token.
-    fn parse_raw_string_close(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        let mut raw_count = 0;
-        let mut pos = Pos::ZERO;
-        let mut chars = text.chars();
-        match chars.next() {
-            Some('"') => pos.step(1, 0, 1),
-            _         => return None,
-        }
-        while let Some(c) = chars.next() {
-            match c {
-                '#' => {
-                    pos.step(1, 0, 1);
-                    raw_count += 1;
-                    if raw_count >= self.raw_string_bracket_count {
-                        break;
-                    }
-                },
-                _ => break,
-            }
-        }
-
-        if self.raw_string_bracket_count == raw_count {
-            Some((AtmaToken::RawStringClose, pos))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a RawStringText token.
-    fn parse_raw_string_text(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        let mut pos = Pos::ZERO;
-        let mut chars = text.chars();
-        while let Some(c) = chars.next() {
-            if c == '"' {
-                if self.parse_raw_string_close(&text[pos.byte..]).is_some() {
-                    self.open = Some(AtmaToken::RawStringText);
-                    return Some((AtmaToken::RawStringText, pos));
-                }
-            }
-
-            if c == '\n' {
-                pos.step(1, 1, 0);
-            } else {
-                pos.step(c.len_utf8(), 0, 1);
-            }
-        }
-
-        None
-    }
-
-    /// Parses a StringOpenSingle token.
-    fn parse_string_open_single(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("'") {
-            Some((AtmaToken::StringOpenSingle, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-    
-    /// Parses a StringCloseSingle token.
-    fn parse_string_close_single(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("'") {
-            Some((AtmaToken::StringCloseSingle, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a StringOpenDouble token.
-    fn parse_string_open_double(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("\"") {
-            Some((AtmaToken::StringOpenDouble, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a StringCloseDouble token.
-    fn parse_string_close_double(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("\"") {
-            Some((AtmaToken::StringCloseDouble, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a StringText token.
-    fn parse_string_text(&mut self, text: &str, open: AtmaToken)
-        -> Option<(AtmaToken, Pos)>
-    {
-        let mut pos = Pos::ZERO;
-        let mut chars = text.chars();
-        while let Some(c) = chars.next() {
-            if c == '\\' {
-                match chars.next() {
-                    // NOTE: These should all step by column, because they're
-                    // escaped text.
-                    Some('\\') | 
-                    Some('"')  | 
-                    Some('\'') | 
-                    Some('t')  | 
-                    Some('r')  |
-                    Some('n')  => pos.step(2, 0, 2),
-                    Some('u')  => unimplemented!("unicode escapes unsupported"),
-                    Some(_)    |
-                    None       => return None,
-                }
-                continue;
-            }
-
-            match (c, open) {
-                ('\'', AtmaToken::StringOpenSingle) |
-                ('"', AtmaToken::StringOpenDouble)  => {
-                    return Some((AtmaToken::StringText, pos));
-                },
-                ('\n', _) => pos.step(1, 1, 0),
-                _         => pos.step(c.len_utf8(), 0, 1),
-            }
-        }
-
-        None
-    }
-
-    /// Parses a LineCommentOpen token.
-    fn parse_line_comment_open(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("#") {
-            Some((AtmaToken::LineCommentOpen, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a LineCommentText token.
-    fn parse_line_comment_text(&mut self, text: &str)
-        -> (AtmaToken, Pos)
-    {
-        if let Some(first) = text.split(&*self.newline_token).next() {
-            let span = Pos {
-                byte: first.len(),
-                page: Page { line: 0, column: first.len() },
-            };
-            (AtmaToken::LineCommentText, span)
-        } else {
-            unreachable!()
-        }
-    }
-
-    /// Parses a Whitespace token.
-    fn parse_whitespace(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        let rest = text.trim_start_matches(char::is_whitespace);
-        if rest.len() < text.len() {
-            let substr_len = text.len() - rest.len();
-            let span = Pos::new_from_string(
-                &text[0..substr_len],
-                &*self.newline_token);
-            Some((AtmaToken::Whitespace, span))
-        } else {
-            None
-        }
-    }
-}
-
-impl Scanner for AtmaScriptScannerr {
-    type Token = AtmaToken;
-    type Error = TokenError;
-
-    fn lex_prefix_token<'text>(&mut self, text: &'text str)
-        -> Result<(Self::Token, Pos), (Self::Error, Pos)>
-    {
-        use AtmaToken::*;
-        match self.open.take() {
-            Some(LineCommentOpen) => {
-                Ok(self.parse_line_comment_text(text))
-            },
-
-            Some(RawStringText) => {
-                // Because it is necessary to recognize the RawStringClose to
-                // finish parsing RawStringText, we should never get here unless
-                // we know the next part of the text is the appropriately sized
-                // RawStringClose token.
-                let byte: usize = (self.raw_string_bracket_count + 1)
-                    .try_into()
-                    .expect("Pos overflow");
-                Ok((RawStringClose, Pos::new(byte, 0, byte)))
-            },
-            Some(RawStringOpen) => {
-                if let Some(parse) = self.parse_raw_string_close(text) {
-                    self.raw_string_bracket_count = 0;
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_raw_string_text(text) {
-                    Ok(parse)
-                } else {
-                    Err((TokenError("Non-terminated raw string"), Pos::ZERO))
-                }
-            },
-
-            Some(StringOpenSingle) => {
-                if let Some(parse) = self.parse_string_close_single(text) {
-                    return Ok(parse);
-                }
-                if let Some(parse) = self
-                    .parse_string_text(text, StringOpenSingle)
-                {
-                    self.open = Some(StringOpenSingle);
-                    return Ok(parse);
-                }
-                Err((TokenError("Unrecognized string escape"),
-                    Pos::new(1, 0, 1)))
-            },
-            Some(StringOpenDouble) => {
-                if let Some(parse) = self.parse_string_close_double(text) {
-                    return Ok(parse);
-                }
-                if let Some(parse) = self
-                    .parse_string_text(text, StringOpenDouble)
-                {
-                    self.open = Some(StringOpenDouble);
-                    return Ok(parse);
-                }
-                Err((TokenError("Unrecognized string escape"),
-                    Pos::new(1, 0, 1)))
-            },
-
-            None => {
-                if let Some(parse) = self.parse_command_terminator(text) {
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_whitespace(text) {
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_line_comment_open(text) {
-                    self.open = Some(LineCommentOpen);
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_raw_string_open(text) {
-                    self.open = Some(RawStringOpen);
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_string_open_single(text) {
-                    self.open = Some(StringOpenSingle);
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_string_open_double(text) {
-                    self.open = Some(StringOpenDouble);
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_command_chunk(text) {
-                    return Ok(parse);
-                }
-
-                Err((TokenError("Unrecognized token"), Pos::new(1, 0, 1)))
-            },
-
-            Some(_) => panic!("invalid lexer state"),
-        }
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
 
 
-/// Tests `Lexer::new` for the AtmaScriptScannerr.
+/// Tests `Lexer::new` for the AtmaScriptScanner.
 #[test]
 fn as_lexer_empty() {
     let text = "";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text);
 
     assert_eq!(
@@ -415,13 +31,12 @@ fn as_lexer_empty() {
         None);
 }
 
-
-/// Tests AtmaScriptScannerr with a line comment.
+/// Tests AtmaScriptScanner with a line comment.
 #[test]
 fn as_lexer_line_comment() {
     use AtmaToken::*;
     let text = "#abc\n";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -444,12 +59,12 @@ fn as_lexer_line_comment() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a line comment surrounded by whitespace.
+/// Tests AtmaScriptScanner with a line comment surrounded by whitespace.
 #[test]
 fn as_lexer_line_comment_circumfix_whitespace() {
     use AtmaToken::*;
     let text = "\n\t \n#abc\n \t\n ";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -473,12 +88,12 @@ fn as_lexer_line_comment_circumfix_whitespace() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a line comment surrounded by whitespace.
+/// Tests AtmaScriptScanner with a line comment surrounded by whitespace.
 #[test]
 fn as_lexer_line_comments_remove_whitespace() {
     use AtmaToken::*;
     let text = "\n\t \n#abc\n \t#def\n ";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text);
     lexer.set_filter(|tok| *tok != Whitespace);
 
@@ -497,12 +112,12 @@ fn as_lexer_line_comments_remove_whitespace() {
         ]);
 }
 
-/// Tests AtmaScriptScannerr with an empty single-quoted string.
+/// Tests AtmaScriptScanner with an empty single-quoted string.
 #[test]
 fn as_lexer_string_single_empty() {
     use AtmaToken::*;
     let text = "''";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -524,13 +139,13 @@ fn as_lexer_string_single_empty() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with an unclosed single-quoted string.
+/// Tests AtmaScriptScanner with an unclosed single-quoted string.
 #[test]
 #[should_panic]
 fn as_lexer_string_single_unclosed() {
     use AtmaToken::*;
     let text = "'abc";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text)
         .map(|res| {
             let lex = res.unwrap();
@@ -548,12 +163,12 @@ fn as_lexer_string_single_unclosed() {
     let _ = lexer.next(); // Panics due to unwrap of error.
 }
 
-/// Tests AtmaScriptScannerr with a non-empty single-quoted string.
+/// Tests AtmaScriptScanner with a non-empty single-quoted string.
 #[test]
 fn as_lexer_string_single_text() {
     use AtmaToken::*;
     let text = "'abc \n xyz'";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -576,12 +191,12 @@ fn as_lexer_string_single_text() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a quote-containing single-quoted string.
+/// Tests AtmaScriptScanner with a quote-containing single-quoted string.
 #[test]
 fn as_lexer_string_single_quotes() {
     use AtmaToken::*;
     let text = "'abc\"\n\\'xyz'";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -605,12 +220,12 @@ fn as_lexer_string_single_quotes() {
 }
 
 
-/// Tests AtmaScriptScannerr with an empty double-quoted string.
+/// Tests AtmaScriptScanner with an empty double-quoted string.
 #[test]
 fn as_lexer_string_double_empty() {
     use AtmaToken::*;
     let text = "\"\"";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -633,13 +248,13 @@ fn as_lexer_string_double_empty() {
 }
 
 
-/// Tests AtmaScriptScannerr with an unclosed double-quoted string.
+/// Tests AtmaScriptScanner with an unclosed double-quoted string.
 #[test]
 #[should_panic]
 fn as_lexer_string_double_unclosed() {
     use AtmaToken::*;
     let text = "\"abc";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text)
         .map(|res| {
             let lex = res.unwrap();
@@ -658,12 +273,12 @@ fn as_lexer_string_double_unclosed() {
 }
 
 
-/// Tests AtmaScriptScannerr with a non-empty double-quoted string.
+/// Tests AtmaScriptScanner with a non-empty double-quoted string.
 #[test]
 fn as_lexer_string_double_text() {
     use AtmaToken::*;
     let text = "\"abc \n xyz\"";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -686,12 +301,12 @@ fn as_lexer_string_double_text() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a quote-containing double-quoted string.
+/// Tests AtmaScriptScanner with a quote-containing double-quoted string.
 #[test]
 fn as_lexer_string_double_quotes() {
     use AtmaToken::*;
     let text = "\"abc\\\"\n'xyz\"";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -715,12 +330,12 @@ fn as_lexer_string_double_quotes() {
 }
 
 
-/// Tests AtmaScriptScannerr with an empty raw-quoted string.
+/// Tests AtmaScriptScanner with an empty raw-quoted string.
 #[test]
 fn as_lexer_string_raw_empty() {
     use AtmaToken::*;
     let text = "r\"\"";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -743,12 +358,12 @@ fn as_lexer_string_raw_empty() {
 }
 
 
-/// Tests AtmaScriptScannerr with an empty raw-quoted string using hashes.
+/// Tests AtmaScriptScanner with an empty raw-quoted string using hashes.
 #[test]
 fn as_lexer_string_raw_empty_hashed() {
     use AtmaToken::*;
     let text = "r##\"\"##";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -770,13 +385,13 @@ fn as_lexer_string_raw_empty_hashed() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with an unclosed raw-quoted string.
+/// Tests AtmaScriptScanner with an unclosed raw-quoted string.
 #[test]
 #[should_panic]
 fn as_lexer_string_raw_unclosed() {
     use AtmaToken::*;
     let text = "r###\"abc";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text)
         .map(|res| {
             let lex = res.unwrap();
@@ -794,13 +409,13 @@ fn as_lexer_string_raw_unclosed() {
     let _ = lexer.next(); // Panics due to unwrap of error.
 }
 
-/// Tests AtmaScriptScannerr with an mismatched raw-quoted string.
+/// Tests AtmaScriptScanner with an mismatched raw-quoted string.
 #[test]
 #[should_panic]
 fn as_lexer_string_raw_mismatched() {
     use AtmaToken::*;
     let text = "r###\"abc\"#";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text)
         .map(|res| {
             let lex = res.unwrap();
@@ -818,12 +433,12 @@ fn as_lexer_string_raw_mismatched() {
     let _ = lexer.next(); // Panics due to unwrap of error.
 }
 
-/// Tests AtmaScriptScannerr with a non-empty raw-quoted string.
+/// Tests AtmaScriptScanner with a non-empty raw-quoted string.
 #[test]
 fn as_lexer_string_raw_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -846,13 +461,13 @@ fn as_lexer_string_raw_text() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a non-empty raw-quoted string with quotes
+/// Tests AtmaScriptScanner with a non-empty raw-quoted string with quotes
 /// inside.
 #[test]
 fn as_lexer_string_raw_quoted_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -875,12 +490,12 @@ fn as_lexer_string_raw_quoted_text() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a CommandChunk.
+/// Tests AtmaScriptScanner with a CommandChunk.
 #[test]
 fn as_lexer_command_chunk() {
     use AtmaToken::*;
     let text = "abc-def";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -902,12 +517,12 @@ fn as_lexer_command_chunk() {
 }
 
 
-/// Tests AtmaScriptScannerr with a combination of tokens.
+/// Tests AtmaScriptScanner with a combination of tokens.
 #[test]
 fn as_lexer_combined() {
     use AtmaToken::*;
     let text = "# \n\n \"abc\\\"\"'def' r##\"\t\"##\n\n\n--zyx--wvut";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
 
@@ -942,13 +557,13 @@ fn as_lexer_combined() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a combination of tokens separated by
+/// Tests AtmaScriptScanner with a combination of tokens separated by
 /// terminators.
 #[test]
 fn as_lexer_combined_terminated() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text);
 
     let actual = lexer
@@ -989,13 +604,13 @@ fn as_lexer_combined_terminated() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a combination of tokens separated by
+/// Tests AtmaScriptScanner with a combination of tokens separated by
 /// terminators with whitespace filtered out.
 #[test]
 fn as_lexer_combined_terminated_remove_whitespace() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text);
     lexer.set_filter(|tok| *tok != Whitespace);
 
@@ -1033,13 +648,13 @@ fn as_lexer_combined_terminated_remove_whitespace() {
     assert_eq!(actual, expected);
 }
 
-/// Tests AtmaScriptScannerr with a combination of tokens separated by
+/// Tests AtmaScriptScanner with a combination of tokens separated by
 /// terminators with multiple tokens filtered out.
 #[test]
 fn as_lexer_combined_terminated_filtered() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
-    let as_tok = AtmaScriptScannerr::new();
+    let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text);
     lexer.set_filter(|tok|
         *tok != Whitespace &&

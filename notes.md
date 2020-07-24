@@ -4,6 +4,8 @@
 
 This makes it easier to back up in case of a failure. 
 
+Different parser designs may be able to accomodate different data formats. In order to build a streaming parser, the lexer won't be able to return slices into the source, as the lexeme borrows from the lexer's internal buffer, rather than the external source text buffer.
+
 ## Use `std::Result`.
 ## If a function takes extra args, return a parser.
 ## If a function takes no extra args, it is the parser.

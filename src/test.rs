@@ -9,6 +9,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
-mod span_suite;
-mod lexer_suite;
 mod as_lexer_suite;
+mod atma_script;
+mod error_suite;
+mod lexer_suite;
+mod span_suite;

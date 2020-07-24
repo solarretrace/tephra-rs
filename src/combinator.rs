@@ -22,7 +22,8 @@ use crate::result::Success;
 /// A combinator which discards a parsed value, replacing it with `()`.
 pub fn discard<'t, F, S, V>(mut parser: F)
     -> impl FnMut(Lexer<'t, S>) -> ParseResult<'t, S, ()>
-    where F: FnMut(Lexer<'t, S>) -> ParseResult<'t, S, V>,
+    where
+        F: FnMut(Lexer<'t, S>) -> ParseResult<'t, S, V>,
         S: Scanner,
 {
     move |lx| {
@@ -43,7 +44,8 @@ pub fn discard<'t, F, S, V>(mut parser: F)
 /// parsed span.
 pub fn text<'t, F, S, V>(mut parser: F)
     -> impl FnMut(Lexer<'t, S>) -> ParseResult<'t, S, &'t str>
-    where F: FnMut(Lexer<'t, S>) -> ParseResult<'t, S, V>,
+    where
+        F: FnMut(Lexer<'t, S>) -> ParseResult<'t, S, V>,
         S: Scanner,
 {
     move |lx| {

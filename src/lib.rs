@@ -29,7 +29,6 @@
 #![warn(trivial_casts)]
 #![warn(trivial_numeric_casts)]
 #![warn(unconditional_recursion)]
-#![warn(unreachable_pub)]
 #![warn(unused)]
 #![warn(unused_allocation)]
 #![warn(unused_comparisons)]

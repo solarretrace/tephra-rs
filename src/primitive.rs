@@ -54,7 +54,7 @@ pub fn end_of_text<'t, F, S, V>(mut lexer: Lexer<'t, S>)
 
 /// Returns a parser which consumes a single token if it matches the given
 /// token.
-pub fn one<'t, F, S, V>(token: S::Token)
+pub fn one<'t, S>(token: S::Token)
     -> impl FnMut(Lexer<'t, S>) -> ParseResult<'t, S, ()>
     where S: Scanner
 {

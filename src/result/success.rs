@@ -19,6 +19,7 @@ use crate::span::Span;
 ////////////////////////////////////////////////////////////////////////////////
 /// The result of a successful parse.
 #[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Success<'text, S, V> where S: Scanner {
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, S>,

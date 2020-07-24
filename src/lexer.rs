@@ -22,9 +22,9 @@ use std::sync::Arc;
 ////////////////////////////////////////////////////////////////////////////////
 /// Trait for parsing a value from a string prefix. Contains the lexer state for
 /// a set of parseable tokens.
-pub trait Scanner: Clone {
+pub trait Scanner: Debug + Clone + PartialEq {
     /// The parse token type.
-    type Token: PartialEq + Clone + Debug + Send + Sync + 'static;
+    type Token: Debug + Clone + PartialEq + Send + Sync + 'static;
     /// The parse error type.
     type Error: std::error::Error + Send + Sync + 'static;
 
@@ -46,7 +46,7 @@ pub struct Lexer<'text, S> where S: Scanner {
     text: &'text str,
     pos: Pos,
     scanner: S,
-    filter: Arc<dyn Fn(&S::Token) -> bool>,
+    filter: Option<Arc<dyn Fn(&S::Token) -> bool>>,
     // TODO: Push/lookahead buffer
 }
 
@@ -57,7 +57,7 @@ impl<'text, S> Lexer<'text, S> where S: Scanner {
             text,
             pos: Pos::ZERO,
             scanner,
-            filter: Arc::new(|_| true),
+            filter: None,
         }
     }
 
@@ -65,12 +65,12 @@ impl<'text, S> Lexer<'text, S> where S: Scanner {
     pub fn set_filter<F>(&mut self, filter: F) 
         where F: for<'a> Fn(&'a S::Token) -> bool + 'static
     {
-        self.filter = Arc::new(filter);
+        self.filter = Some(Arc::new(filter));
     }
 
     /// Clears the token filter.
     pub fn clear_filters(&mut self) {
-        self.filter = Arc::new(|_| true);
+        self.filter = None;
     }
 
     /// Returns the current lexer position.
@@ -100,7 +100,10 @@ impl<'text, S> Iterator for Lexer<'text, S>
         while self.pos.byte < self.text.len() {
 
             match self.scanner.lex_prefix_token(&self.text[self.pos.byte..]) {
-                Ok((token, skip)) if !(self.filter)(&token) => {
+                Ok((token, skip)) if self.filter
+                    .as_ref()
+                    .map_or(false, |f| !(f)(&token)) => 
+                {
                     self.pos.step_with(skip);
                 },
 
@@ -132,6 +135,14 @@ impl<'text, S> std::iter::FusedIterator for Lexer<'text, S>
 impl<'text, S> Debug for Lexer<'text, S> where S: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "")
+    }
+}
+
+impl<'text, S> PartialEq for Lexer<'text, S> where S: Scanner {
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text &&
+            self.pos == other.pos
+
     }
 }
 
