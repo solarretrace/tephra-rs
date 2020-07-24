@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::lexer::Lexer;
+use crate::lexer::Scanner;
 use crate::span::Span;
 
 
@@ -18,7 +19,7 @@ use crate::span::Span;
 ////////////////////////////////////////////////////////////////////////////////
 /// The result of a successful parse.
 #[derive(Debug, Clone)]
-pub struct Success<'text, K, V> {
+pub struct Success<'text, K, V> where K: Scanner {
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, K>,
     /// The span of the parse result.
@@ -27,7 +28,7 @@ pub struct Success<'text, K, V> {
     pub value: V,
 }
 
-impl<'text, K, V> Success<'text, K, V> {
+impl<'text, K, V> Success<'text, K, V> where K: Scanner {
     /// Consumes the Success and returns its parsed value.
     pub fn into_value(self) -> V {
         self.value

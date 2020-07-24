@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::lexer::Lexer;
+use crate::lexer::Scanner;
 use crate::result::ParseResult;
 use crate::result::Success;
 
@@ -22,6 +23,7 @@ use crate::result::Success;
 pub fn discard<'t, F, K, V>(mut parser: F)
     -> impl FnMut(Lexer<'t, K>) -> ParseResult<'t, K, ()>
     where F: FnMut(Lexer<'t, K>) -> ParseResult<'t, K, V>,
+        K: Scanner,
 {
     move |lx| {
         match (parser)(lx) {
@@ -42,6 +44,7 @@ pub fn discard<'t, F, K, V>(mut parser: F)
 pub fn text<'t, F, K, V>(mut parser: F)
     -> impl FnMut(Lexer<'t, K>) -> ParseResult<'t, K, &'t str>
     where F: FnMut(Lexer<'t, K>) -> ParseResult<'t, K, V>,
+        K: Scanner,
 {
     move |lx| {
         match (parser)(lx) {

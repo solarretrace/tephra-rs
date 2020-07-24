@@ -23,12 +23,9 @@ use std::fmt::Debug;
 /// a set of parseable tokens.
 pub trait Scanner: Clone {
     /// The parse token type.
-    type Token: PartialEq + Send + Sync + 'static;
+    type Token: PartialEq + Clone + Debug + Send + Sync + 'static;
     /// The parse error type.
     type Error: std::error::Error + Send + Sync + 'static;
-
-    /// A token which will match all whitespace tokens.
-    const WHITESPACE: Self::Token;
 
     /// Parses a token from the given string. When the parse success, the
     /// length of the consumed text should be returned. When the parse fails,
@@ -44,27 +41,27 @@ pub trait Scanner: Clone {
 ////////////////////////////////////////////////////////////////////////////////
 /// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Debug, Clone)]
-pub struct Lexer<'text, K> {
+pub struct Lexer<'text, K> where K: Scanner {
     text: &'text str,
     pos: Pos,
     scanner: K,
-    filter_whitespace: bool,
+    filters: Vec<K::Token>,
 }
 
-impl<'text, K> Lexer<'text, K> {
+impl<'text, K> Lexer<'text, K> where K: Scanner {
     /// Constructs a new Lexer for the given text and span newlines.
     pub fn new(scanner: K, text: &'text str) -> Self {
         Lexer {
             text,
             pos: Pos::ZERO,
             scanner,
-            filter_whitespace: false,
+            filters: Vec::new(),
         }
     }
 
-    /// Sets the lexer's whitespace fitler mode.
-    pub fn filter_whitespace(&mut self, filter: bool) {
-        self.filter_whitespace = filter;
+    /// Sets the lexer's filter.
+    pub fn set_filters(&mut self, filters: &[K::Token]) {
+        self.filters = filters.to_vec();
     }
 
     /// Returns the current lexer position.
@@ -94,9 +91,7 @@ impl<'text, K> Iterator for Lexer<'text, K>
         while self.pos.byte < self.text.len() {
 
             match self.scanner.lex_prefix_token(&self.text[self.pos.byte..]) {
-                Ok((token, skip)) 
-                    if self.filter_whitespace && token == K::WHITESPACE => 
-                {
+                Ok((token, skip)) if self.filters.contains(&token) => {
                     self.pos.step_with(skip);
                 },
 

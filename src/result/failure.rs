@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::lexer::Lexer;
+use crate::lexer::Scanner;
 use crate::span::Span;
 use crate::span::OwnedSpan;
 
@@ -21,7 +22,7 @@ use std::borrow::Cow;
 // Failure
 ////////////////////////////////////////////////////////////////////////////////
 /// A struct representing a failed parse with borrowed data.
-pub struct Failure<'text, K> {
+pub struct Failure<'text, K> where K: Scanner {
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, K>,
     /// The span of the failed parse.
@@ -33,19 +34,19 @@ pub struct Failure<'text, K> {
 }
 
 
-impl<'text, K> std::fmt::Debug for Failure<'text, K> {
+impl<'text, K> std::fmt::Debug for Failure<'text, K> where K: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl<'text, K> std::fmt::Display for Failure<'text, K> {
+impl<'text, K> std::fmt::Display for Failure<'text, K> where K: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "")
     }
 }
 
-impl<'text, K> std::error::Error for Failure<'text, K> {
+impl<'text, K> std::error::Error for Failure<'text, K> where K: Scanner {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source.as_ref().map(|src| {
             // Cast away Send + Sync bounds.
@@ -77,7 +78,7 @@ pub struct FailureOwned {
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-impl<'text, K> From<Failure<'text, K>> for FailureOwned {
+impl<'text, K> From<Failure<'text, K>> for FailureOwned where K: Scanner {
     fn from(other: Failure<'text, K>) -> Self {
         FailureOwned {
             span: other.span.into_owned(),

@@ -42,7 +42,6 @@ struct Test;
 impl Scanner for Test {
     type Token = TestToken;
     type Error = TokenError;
-    const WHITESPACE: Self::Token = TestToken::Ws;
 
     fn lex_prefix_token<'text>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>
@@ -116,7 +115,7 @@ fn lexer_no_whitespace() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
     let mut lexer = Lexer::new(Test, text);
-    lexer.filter_whitespace(true);
+    lexer.set_filters(&[Ws]);
 
 
     assert_eq!(

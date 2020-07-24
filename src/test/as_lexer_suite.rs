@@ -304,7 +304,6 @@ impl AtmaScriptScannerr {
 impl Scanner for AtmaScriptScannerr {
     type Token = AtmaToken;
     type Error = TokenError;
-    const WHITESPACE: Self::Token = AtmaToken::Whitespace;
 
     fn lex_prefix_token<'text>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>
@@ -481,7 +480,7 @@ fn as_lexer_line_comments_remove_whitespace() {
     let text = "\n\t \n#abc\n \t#def\n ";
     let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text);
-    lexer.filter_whitespace(true);
+    lexer.set_filters(&[Whitespace]);
 
     assert_eq!(
         lexer
@@ -998,7 +997,7 @@ fn as_lexer_combined_terminated_filtered() {
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
     let as_tok = AtmaScriptScannerr::new();
     let mut lexer = Lexer::new(as_tok, text);
-    lexer.filter_whitespace(true);
+    lexer.set_filters(&[Whitespace]);
 
     let actual = lexer
         .map(|res| {
