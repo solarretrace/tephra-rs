@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::span::Span;
+use crate::span::Lf;
 use crate::span::Pos;
 
 
@@ -21,7 +22,7 @@ use crate::span::Pos;
 #[test]
 fn span_empty() {
     let text = "abcd";
-    let span = Span::new(text);
+    let span: Span<'_, Lf> = Span::new(text);
 
     assert_eq!(
         span.text(),
@@ -35,8 +36,8 @@ fn span_empty() {
 #[test]
 fn span_extend_by_bytes() {
     let text = "abcd";
-    let mut span = Span::new(text);
-    span.extend_by_bytes(2, "\n");
+    let mut span: Span<'_, Lf> = Span::new(text);
+    span.extend_by_bytes(2);
 
     assert_eq!(
         format!("{}", span),
@@ -47,8 +48,8 @@ fn span_extend_by_bytes() {
 #[test]
 fn span_extend_by_bytes_newline() {
     let text = "a\nbcd";
-    let mut span = Span::new(text);
-    span.extend_by_bytes(2, "\n");
+    let mut span: Span<'_, Lf> = Span::new(text);
+    span.extend_by_bytes(2);
 
     assert_eq!(
         format!("{}", span),
@@ -59,8 +60,8 @@ fn span_extend_by_bytes_newline() {
 #[test]
 fn span_extend_by_bytes_newline_split() {
     let text = "a\nbcd";
-    let mut span = Span::new(text);
-    span.extend_by_bytes(3, "\n");
+    let mut span: Span<'_, Lf> = Span::new(text);
+    span.extend_by_bytes(3);
 
     assert_eq!(
         format!("{}", span),
@@ -72,7 +73,7 @@ fn span_extend_by_bytes_newline_split() {
 #[test]
 fn span_new_from() {
     let text = " \n  abcd  \n ";
-    let mut span = Span::new_from(Pos::new(4, 1, 2), text);
+    let mut span: Span<'_, Lf> = Span::new_from(Pos::new(4, 1, 2), text);
     span.extend_by(Pos::new(4, 0, 4));
 
     assert_eq!(
@@ -85,11 +86,11 @@ fn span_new_from() {
 #[test]
 fn span_widen_to_line() {
     let text = " \n  abcd  \n ";
-    let mut span = Span::new_from(Pos::new(4, 1, 2), text);
+    let mut span: Span<'_, Lf> = Span::new_from(Pos::new(4, 1, 2), text);
     span.extend_by(Pos::new(4, 0, 4));
 
     assert_eq!(
-        format!("{}", span.widen_to_line("\n")),
+        format!("{}", span.widen_to_line()),
         "\"  abcd  \" (1:0-1:8, bytes 2-10)");
 }
 
@@ -97,10 +98,10 @@ fn span_widen_to_line() {
 #[test]
 fn span_widen_empty_to_line() {
     let text = " \n  abcd  \n ";
-    let mut span = Span::new_from(Pos::new(6, 1, 4), text);
+    let span: Span<'_, Lf> = Span::new_from(Pos::new(6, 1, 4), text);
 
     assert_eq!(
-        format!("{}", span.widen_to_line("\n")),
+        format!("{}", span.widen_to_line()),
         "\"  abcd  \" (1:0-1:8, bytes 2-10)");
 }
 
@@ -109,11 +110,11 @@ fn span_widen_empty_to_line() {
 #[test]
 fn span_widen_full_to_line() {
     let text = " \n  abcd  \n ";
-    let mut span = Span::new(text);
-    span.extend_by(Pos::new_from_string(text, "\n"));
+    let mut span: Span<'_, Lf> = Span::new(text);
+    span.extend_by(Pos::new_from_string::<_, Lf>(text));
 
     assert_eq!(
-        format!("{}", span.widen_to_line("\n")),
+        format!("{}", span.widen_to_line()),
         "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)");
 }
 
@@ -122,11 +123,11 @@ fn span_widen_full_to_line() {
 #[test]
 fn span_trim() {
     let text = " \n  abcd  \n ";
-    let mut span = Span::new_from(Pos::new(2, 1, 0), text);
+    let mut span: Span<'_, Lf> = Span::new_from(Pos::new(2, 1, 0), text);
     span.extend_by(Pos::new(8, 0, 8));
 
     assert_eq!(
-        format!("{}", span.trim("\n")),
+        format!("{}", span.trim()),
         "\"abcd\" (1:2-1:6, bytes 4-8)");
 }
 
@@ -134,10 +135,10 @@ fn span_trim() {
 #[test]
 fn span_split_lines() {
     let text = "\n \n\n \nabcd\n def \nghi\n";
-    let mut span = Span::new_full(text, "\n");
+    let span: Span<'_, Lf> = Span::new_full(text);
 
     let actual = span
-        .split_lines("\n")
+        .split_lines()
         .map(|v| format!("{}", v))
         .collect::<Vec<_>>();
     let expected = vec![

@@ -9,6 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
+use crate::span::NewLine;
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::result::ParseResult;
@@ -22,9 +23,11 @@ use crate::result::Reason;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Parses the end of the text.
-pub fn end_of_text<'t, F, S, V>(mut lexer: Lexer<'t, S>)
-    -> ParseResult<'t, S, ()>
-    where S: Scanner,
+pub fn end_of_text<'t, F, S, Nl, V>(mut lexer: Lexer<'t, S, Nl>)
+    -> ParseResult<'t, S, Nl, ()>
+    where
+        S: Scanner,
+        Nl: NewLine,
 {
     let saved = lexer.clone();
     match lexer.next() {
@@ -54,9 +57,11 @@ pub fn end_of_text<'t, F, S, V>(mut lexer: Lexer<'t, S>)
 
 /// Returns a parser which consumes a single token if it matches the given
 /// token.
-pub fn one<'t, S>(token: S::Token)
-    -> impl FnMut(Lexer<'t, S>) -> ParseResult<'t, S, ()>
-    where S: Scanner
+pub fn one<'t, S, Nl>(token: S::Token)
+    -> impl FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, ()>
+    where
+        S: Scanner,
+        Nl: NewLine,
 {
     move |mut lexer| {
         let saved = lexer.clone();

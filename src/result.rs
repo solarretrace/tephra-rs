@@ -24,8 +24,8 @@ use crate::lexer::Scanner;
 // ParseResult
 ////////////////////////////////////////////////////////////////////////////////
 /// The result of a parse attempt.
-pub type ParseResult<'text, S, V> 
-        = Result<Success<'text, S, V>, Failure<'text, S>>;
+pub type ParseResult<'text, S, Nl, V> 
+        = Result<Success<'text, S, Nl, V>, Failure<'text, S, Nl>>;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ pub trait ParseResultExt<'text, S, V>
     fn finish(self) -> Result<V, FailureOwned>;
 }
 
-impl<'text, S, V> ParseResultExt<'text, S, V> for ParseResult<'text, S, V>
+impl<'text, S, Nl, V> ParseResultExt<'text, S, V> for ParseResult<'text, S, Nl, V>
     where S: Scanner,
 {
     fn finish(self) -> Result<V, FailureOwned> {

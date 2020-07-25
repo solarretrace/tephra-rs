@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::span::Span;
+use crate::span::NewLine;
 use crate::span::Pos;
 
 // Standard library imports.
@@ -32,8 +33,9 @@ pub trait Scanner: Debug + Clone + PartialEq {
     /// length of the consumed text should be returned. When the parse fails,
     /// the length of the text to skip before resuming should be returned. If no
     /// further progress is possible, 0 should be returned instead.
-    fn lex_prefix_token<'text>(&mut self, text: &'text str)
-        -> Result<(Self::Token, Pos), (Self::Error, Pos)>;
+    fn lex_prefix_token<'text, Nl>(&mut self, text: &'text str)
+        -> Result<(Self::Token, Pos), (Self::Error, Pos)>
+        where Nl: NewLine;
 }
 
 
@@ -42,7 +44,8 @@ pub trait Scanner: Debug + Clone + PartialEq {
 ////////////////////////////////////////////////////////////////////////////////
 /// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Clone)]
-pub struct Lexer<'text, S> where S: Scanner {
+pub struct Lexer<'text, S, Nl> where S: Scanner {
+    newline: std::marker::PhantomData<Nl>,
     text: &'text str,
     pos: Pos,
     scanner: S,
@@ -50,10 +53,11 @@ pub struct Lexer<'text, S> where S: Scanner {
     // TODO: Push/lookahead buffer
 }
 
-impl<'text, S> Lexer<'text, S> where S: Scanner {
+impl<'text, S, Nl> Lexer<'text, S, Nl> where S: Scanner {
     /// Constructs a new Lexer for the given text and span newlines.
     pub fn new(scanner: S, text: &'text str) -> Self {
         Lexer {
+            newline: std::marker::PhantomData::<Nl>,
             text,
             pos: Pos::ZERO,
             scanner,
@@ -77,29 +81,39 @@ impl<'text, S> Lexer<'text, S> where S: Scanner {
     pub fn current_pos(&self) -> Pos {
         self.pos
     }
+}
 
+impl<'text, S, Nl> Lexer<'text, S, Nl>
+    where
+        S: Scanner,
+        Nl: NewLine,
+{
     /// Returns the empty span of the current lexer position.
-    pub fn current_span(&self) -> Span<'text> {
+    pub fn current_span(&self) -> Span<'text, Nl> {
         Span::new_from(self.pos, self.text)
     }
 
     /// Returns the span of all previously lexed text.
-    pub fn lexed_span(&self) -> Span<'text> {
+    pub fn lexed_span(&self) -> Span<'text, Nl> {
         let mut span = Span::new(self.text);
         span.extend_by(self.pos);
         span
     }
 }
 
-impl<'text, S> Iterator for Lexer<'text, S>
-    where S: Scanner,
+impl<'text, S, Nl> Iterator for Lexer<'text, S, Nl>
+    where
+        S: Scanner,
+        Nl: NewLine,
 {
-    type Item = Result<Lexeme<'text, S::Token>, S::Error>;
+    type Item = Result<Lexeme<'text, S::Token, Nl>, S::Error>;
     
     fn next(&mut self) -> Option<Self::Item> {
         while self.pos.byte < self.text.len() {
 
-            match self.scanner.lex_prefix_token(&self.text[self.pos.byte..]) {
+            match self.scanner
+                .lex_prefix_token::<Nl>(&self.text[self.pos.byte..])
+            {
                 Ok((token, skip)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
@@ -117,7 +131,9 @@ impl<'text, S> Iterator for Lexer<'text, S>
                 Err((error, skip)) => {
                     if skip.is_zero() { self.pos.byte = self.text.len() }
 
-                    let mut span = Span::new_from(self.pos, self.text);
+                    let mut span: Span<'_, Nl> = Span::new_from(
+                        self.pos,
+                        self.text);
                     span.extend_by(skip);
                     self.pos = span.end_position();
                     return Some(Err(error))
@@ -128,17 +144,19 @@ impl<'text, S> Iterator for Lexer<'text, S>
     }
 }
 
-impl<'text, S> std::iter::FusedIterator for Lexer<'text, S>
-    where S: Scanner,
+impl<'text, S, Nl> std::iter::FusedIterator for Lexer<'text, S, Nl>
+    where
+        S: Scanner,
+        Nl: NewLine,
 {}
 
-impl<'text, S> Debug for Lexer<'text, S> where S: Scanner {
+impl<'text, S, Nl> Debug for Lexer<'text, S, Nl> where S: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "")
     }
 }
 
-impl<'text, S> PartialEq for Lexer<'text, S> where S: Scanner {
+impl<'text, S, Nl> PartialEq for Lexer<'text, S, Nl> where S: Scanner {
     fn eq(&self, other: &Self) -> bool {
         self.text == other.text &&
             self.pos == other.pos
@@ -151,14 +169,17 @@ impl<'text, S> PartialEq for Lexer<'text, S> where S: Scanner {
 ////////////////////////////////////////////////////////////////////////////////
 /// A specific section of the source text associated with a lexed token.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Lexeme<'text, T> {
+pub struct Lexeme<'text, T, Nl> {
     /// The parsed token.
     token: T,
     /// The span of the parsed text.
-    span: Span<'text>
+    span: Span<'text, Nl>
 }
 
-impl<'text, T> Lexeme<'text, T> where T: PartialEq {
+impl<'text, T, Nl> Lexeme<'text, T, Nl>
+    where
+        T: PartialEq,
+{
     /// Returns true if the token was parsed from whitespace.
     pub fn is_whitespace(&self) -> bool {
         self.span.text().chars().all(char::is_whitespace)
@@ -170,17 +191,19 @@ impl<'text, T> Lexeme<'text, T> where T: PartialEq {
     }
 
     /// Returns a reference to the lexed token's span.
-    pub fn span(&self) -> &Span<'text> {
+    pub fn span(&self) -> &Span<'text, Nl> {
         &self.span
     }
 
     /// Consumes the lexeme and returns its span.
-    pub fn into_span(self) -> Span<'text> {
+    pub fn into_span(self) -> Span<'text, Nl> {
         self.span
     }
 }
 
-impl<'text, T> PartialEq<T> for Lexeme<'text, T> where T: PartialEq {
+impl<'text, T, Nl> PartialEq<T> for Lexeme<'text, T, Nl>
+    where T: PartialEq
+{
     fn eq(&self, other: &T) -> bool {
         self.token == *other
     }

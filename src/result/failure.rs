@@ -12,6 +12,7 @@
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::span::Span;
+use crate::span::NewLine;
 use crate::span::OwnedSpan;
 use crate::result::display::*;
 
@@ -23,11 +24,11 @@ use std::borrow::Cow;
 // Failure
 ////////////////////////////////////////////////////////////////////////////////
 /// A struct representing a failed parse with borrowed data.
-pub struct Failure<'text, S> where S: Scanner {
+pub struct Failure<'text, S, Nl> where S: Scanner {
     /// The lexer state for continuing after the parse.
-    pub lexer: Lexer<'text, S>,
+    pub lexer: Lexer<'text, S, Nl>,
     /// The span of the failed parse.
-    pub span: Span<'text>,
+    pub span: Span<'text, Nl>,
     /// The failure reason.
     pub reason: Reason,
     /// The source of the failure.
@@ -35,27 +36,33 @@ pub struct Failure<'text, S> where S: Scanner {
 }
 
 
-impl<'text, S> std::fmt::Debug for Failure<'text, S> where S: Scanner {
+impl<'text, S, Nl> std::fmt::Debug for Failure<'text, S, Nl>
+    where
+        S: Scanner,
+        Nl: NewLine,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl<'text, S> std::fmt::Display for Failure<'text, S> where S: Scanner {
+impl<'text, S, Nl> std::fmt::Display for Failure<'text, S, Nl>
+    where
+        S: Scanner,
+        Nl: NewLine,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write_error_line(f, &self.reason)?;
-        write_source_info_line(f, "[text]", self.span)?;
-        write_gutter(f, 3, None)?;
-        writeln!(f, "")?;
-        write_gutter(f, 3, Some(1))?;
-        writeln!(f, "")?;
-        write_gutter(f, 3, None)?;
-        writeln!(f, "")
+        write_source_span(f, "[text]", self.span)
 
     }
 }
 
-impl<'text, S> std::error::Error for Failure<'text, S> where S: Scanner {
+impl<'text, S, Nl> std::error::Error for Failure<'text, S, Nl>
+    where
+        S: Scanner,
+        Nl: NewLine,
+{
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source.as_ref().map(|src| {
             // Cast away Send + Sync bounds.
@@ -66,7 +73,11 @@ impl<'text, S> std::error::Error for Failure<'text, S> where S: Scanner {
 }
 
 #[cfg(test)]
-impl<'text, S> PartialEq for Failure<'text, S> where S: Scanner {
+impl<'text, S, Nl> PartialEq for Failure<'text, S, Nl>
+    where
+        S: Scanner,
+        Nl: NewLine,
+{
     fn eq(&self, other: &Self) -> bool {
         format!("{:?}", self) == format!("{:?}", other)
     }
@@ -94,8 +105,8 @@ pub struct FailureOwned {
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-impl<'text, S> From<Failure<'text, S>> for FailureOwned where S: Scanner {
-    fn from(other: Failure<'text, S>) -> Self {
+impl<'text, S, Nl> From<Failure<'text, S, Nl>> for FailureOwned where S: Scanner {
+    fn from(other: Failure<'text, S, Nl>) -> Self {
         FailureOwned {
             span: other.span.into_owned(),
             reason: other.reason,

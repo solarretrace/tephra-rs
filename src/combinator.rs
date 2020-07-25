@@ -20,10 +20,10 @@ use crate::result::Success;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A combinator which discards a parsed value, replacing it with `()`.
-pub fn discard<'t, F, S, V>(mut parser: F)
-    -> impl FnMut(Lexer<'t, S>) -> ParseResult<'t, S, ()>
+pub fn discard<'t, F, S, Nl, V>(mut parser: F)
+    -> impl FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, ()>
     where
-        F: FnMut(Lexer<'t, S>) -> ParseResult<'t, S, V>,
+        F: FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, V>,
         S: Scanner,
 {
     move |lx| {
@@ -42,10 +42,10 @@ pub fn discard<'t, F, S, V>(mut parser: F)
 
 /// A combinator which replaces a parsed value with the source text of the
 /// parsed span.
-pub fn text<'t, F, S, V>(mut parser: F)
-    -> impl FnMut(Lexer<'t, S>) -> ParseResult<'t, S, &'t str>
+pub fn text<'t, F, S, Nl, V>(mut parser: F)
+    -> impl FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, &'t str>
     where
-        F: FnMut(Lexer<'t, S>) -> ParseResult<'t, S, V>,
+        F: FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, V>,
         S: Scanner,
 {
     move |lx| {

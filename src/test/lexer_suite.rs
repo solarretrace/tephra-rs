@@ -12,6 +12,8 @@
 use crate::lexer::Scanner;
 use crate::lexer::Lexer;
 use crate::span::Pos;
+use crate::span::Lf;
+use crate::span::NewLine;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,8 +45,9 @@ impl Scanner for Test {
     type Token = TestToken;
     type Error = TokenError;
 
-    fn lex_prefix_token<'text>(&mut self, text: &'text str)
+    fn lex_prefix_token<'text, Nl>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>
+        where Nl: NewLine,
     {
         // println!("{:?}", text);
         // println!("{:?}", text.split("\n").collect::<Vec<_>>());
@@ -64,7 +67,7 @@ impl Scanner for Test {
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
             let substr = &text[0..substr_len];
-            let span = Pos::new_from_string(substr, "\n");
+            let span = Pos::new_from_string::<_, Nl>(substr);
             return Ok((TestToken::Ws, span));
         }
         Err((TokenError("Unrecognized token"), Pos::new(1, 0, 1)))
@@ -79,7 +82,7 @@ impl Scanner for Test {
 #[test]
 fn lexer_empty() {
     let text = "";
-    let mut lexer = Lexer::new(Test, text);
+    let mut lexer: Lexer<'_, _, Lf> = Lexer::new(Test, text);
 
     assert_eq!(
         lexer.next(),
@@ -92,7 +95,7 @@ fn lexer_empty() {
 fn lexer_simple() {
     use TestToken::*;
     let text = "aa b";
-    let lexer = Lexer::new(Test, text);
+    let lexer: Lexer<'_, _, Lf> = Lexer::new(Test, text);
 
     assert_eq!(
         lexer
@@ -114,7 +117,7 @@ fn lexer_simple() {
 fn lexer_no_whitespace() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
-    let mut lexer = Lexer::new(Test, text);
+    let mut lexer: Lexer<'_, _, Lf> = Lexer::new(Test, text);
     lexer.set_filter(|tok| *tok != Ws);
 
 

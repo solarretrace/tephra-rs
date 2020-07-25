@@ -11,6 +11,7 @@
 // Local imports.
 use crate::lexer::Scanner;
 use crate::span::Pos;
+use crate::span::NewLine;
 use crate::span::Page;
 
 // Standard library imports.
@@ -57,7 +58,6 @@ pub enum AtmaToken {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AtmaScriptScanner {
     open: Option<AtmaToken>,
-    newline_token: Box<str>,
     raw_string_bracket_count: u64,
 }
 
@@ -66,19 +66,19 @@ impl AtmaScriptScanner {
         AtmaScriptScanner {
             open: None,
             raw_string_bracket_count: 0,
-            newline_token: "\n".into(),
         }
     }
 
     /// Parses a CommandChunk token.
-    fn parse_command_chunk(&mut self, text: &str)
+    fn parse_command_chunk<Nl>(&mut self, text: &str)
         -> Option<(AtmaToken, Pos)>
+        where Nl: NewLine,
     {
         let tok = text
             .split(|c: char| c.is_whitespace() || c == ';')
             .next().unwrap();
         if tok.len() > 0 {
-            let pos = Pos::new_from_string(tok, &*self.newline_token);
+            let pos = Pos::new_from_string::<_, Nl>(tok);
             Some((AtmaToken::CommandChunk, pos))
         } else {
             None
@@ -156,8 +156,9 @@ impl AtmaScriptScanner {
     }
 
     /// Parses a RawStringText token.
-    fn parse_raw_string_text(&mut self, text: &str)
+    fn parse_raw_string_text<Nl>(&mut self, text: &str)
         -> Option<(AtmaToken, Pos)>
+        where Nl: NewLine,
     {
         let mut pos = Pos::ZERO;
         let mut chars = text.chars();
@@ -272,10 +273,11 @@ impl AtmaScriptScanner {
     }
 
     /// Parses a LineCommentText token.
-    fn parse_line_comment_text(&mut self, text: &str)
+    fn parse_line_comment_text<Nl>(&mut self, text: &str)
         -> (AtmaToken, Pos)
+        where Nl: NewLine,
     {
-        if let Some(first) = text.split(&*self.newline_token).next() {
+        if let Some(first) = text.split(Nl::STR).next() {
             let span = Pos {
                 byte: first.len(),
                 page: Page { line: 0, column: first.len() },
@@ -287,15 +289,14 @@ impl AtmaScriptScanner {
     }
 
     /// Parses a Whitespace token.
-    fn parse_whitespace(&mut self, text: &str)
+    fn parse_whitespace<Nl>(&mut self, text: &str)
         -> Option<(AtmaToken, Pos)>
+        where Nl: NewLine,
     {
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
-            let span = Pos::new_from_string(
-                &text[0..substr_len],
-                &*self.newline_token);
+            let span = Pos::new_from_string::<_, Nl>(&text[0..substr_len]);
             Some((AtmaToken::Whitespace, span))
         } else {
             None
@@ -307,13 +308,14 @@ impl Scanner for AtmaScriptScanner {
     type Token = AtmaToken;
     type Error = TokenError;
 
-    fn lex_prefix_token<'text>(&mut self, text: &'text str)
+    fn lex_prefix_token<'text, Nl>(&mut self, text: &'text str)
         -> Result<(Self::Token, Pos), (Self::Error, Pos)>
+        where Nl: NewLine,
     {
         use AtmaToken::*;
         match self.open.take() {
             Some(LineCommentOpen) => {
-                Ok(self.parse_line_comment_text(text))
+                Ok(self.parse_line_comment_text::<Nl>(text))
             },
 
             Some(RawStringText) => {
@@ -331,7 +333,7 @@ impl Scanner for AtmaScriptScanner {
                     self.raw_string_bracket_count = 0;
                     return Ok(parse);
                 }
-                if let Some(parse) = self.parse_raw_string_text(text) {
+                if let Some(parse) = self.parse_raw_string_text::<Nl>(text) {
                     Ok(parse)
                 } else {
                     Err((TokenError("Non-terminated raw string"), Pos::ZERO))
@@ -369,7 +371,7 @@ impl Scanner for AtmaScriptScanner {
                 if let Some(parse) = self.parse_command_terminator(text) {
                     return Ok(parse);
                 }
-                if let Some(parse) = self.parse_whitespace(text) {
+                if let Some(parse) = self.parse_whitespace::<Nl>(text) {
                     return Ok(parse);
                 }
                 if let Some(parse) = self.parse_line_comment_open(text) {
@@ -388,7 +390,7 @@ impl Scanner for AtmaScriptScanner {
                     self.open = Some(StringOpenDouble);
                     return Ok(parse);
                 }
-                if let Some(parse) = self.parse_command_chunk(text) {
+                if let Some(parse) = self.parse_command_chunk::<Nl>(text) {
                     return Ok(parse);
                 }
 
