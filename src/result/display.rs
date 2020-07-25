@@ -13,7 +13,7 @@ use crate::span::Span;
 use crate::span::NewLine;
 
 
-
+/// Writes the first line of an error span.
 pub fn write_error_line<M>(
     f: &mut std::fmt::Formatter<'_>,
     msg: M)
@@ -24,7 +24,7 @@ pub fn write_error_line<M>(
 }
 
 
-
+/// Writes an error span.
 pub fn write_source_span<M, Nl>(
     f: &mut std::fmt::Formatter<'_>,
     source_name: M,
@@ -50,6 +50,7 @@ pub fn write_source_span<M, Nl>(
     // for line in 
 }
 
+/// Writes the second (source info) line for an span.
 pub fn write_source_info_line<M, Nl>(
     f: &mut std::fmt::Formatter<'_>,
     gutter_width: usize,
@@ -67,6 +68,7 @@ pub fn write_source_info_line<M, Nl>(
         width=gutter_width)
 }
 
+/// Writes a line of source text.
 pub fn write_source_line<M>(
     f: &mut std::fmt::Formatter<'_>,
     gutter_width: usize,

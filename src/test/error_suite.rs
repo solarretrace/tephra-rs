@@ -23,7 +23,7 @@ use crate::test::atma_script::*;
 fn error_parse_one_from_empty() {
     let text = "";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::<'_, _, Lf>::new(as_tok, text);
+    let lexer = Lexer::new(as_tok, text, Lf);
 
     let res = one(AtmaToken::CommandChunk)(lexer.clone());
 
@@ -42,7 +42,7 @@ fn error_parse_one_from_empty() {
 fn error_empty_msg() {
     let text = "";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::<'_, _, Lf>::new(as_tok, text);
+    let lexer = Lexer::new(as_tok, text, Lf);
 
     let res = one(AtmaToken::CommandChunk)(lexer.clone());
 

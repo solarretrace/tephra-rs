@@ -45,19 +45,19 @@ pub trait Scanner: Debug + Clone + PartialEq {
 /// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Clone)]
 pub struct Lexer<'text, S, Nl> where S: Scanner {
-    newline: std::marker::PhantomData<Nl>,
+    newline: Nl,
     text: &'text str,
     pos: Pos,
     scanner: S,
     filter: Option<Arc<dyn Fn(&S::Token) -> bool>>,
-    // TODO: Push/lookahead buffer
+    // TODO: Push/lookahead buffer?
 }
 
 impl<'text, S, Nl> Lexer<'text, S, Nl> where S: Scanner {
     /// Constructs a new Lexer for the given text and span newlines.
-    pub fn new(scanner: S, text: &'text str) -> Self {
+    pub fn new(scanner: S, text: &'text str, newline: Nl) -> Self {
         Lexer {
-            newline: std::marker::PhantomData::<Nl>,
+            newline,
             text,
             pos: Pos::ZERO,
             scanner,
@@ -124,7 +124,7 @@ impl<'text, S, Nl> Iterator for Lexer<'text, S, Nl>
                 Ok((token, skip)) => {
                     let mut span = Span::new_from(self.pos, self.text);
                     span.extend_by(skip);
-                    self.pos = span.end_position();
+                    self.pos = span.end();
                     return Some(Ok(Lexeme { token, span }))
                 },
 
@@ -135,7 +135,7 @@ impl<'text, S, Nl> Iterator for Lexer<'text, S, Nl>
                         self.pos,
                         self.text);
                     span.extend_by(skip);
-                    self.pos = span.end_position();
+                    self.pos = span.end();
                     return Some(Err(error))
                 },
             }

@@ -82,7 +82,7 @@ impl Scanner for Test {
 #[test]
 fn lexer_empty() {
     let text = "";
-    let mut lexer: Lexer<'_, _, Lf> = Lexer::new(Test, text);
+    let mut lexer = Lexer::new(Test, text, Lf);
 
     assert_eq!(
         lexer.next(),
@@ -95,7 +95,7 @@ fn lexer_empty() {
 fn lexer_simple() {
     use TestToken::*;
     let text = "aa b";
-    let lexer: Lexer<'_, _, Lf> = Lexer::new(Test, text);
+    let lexer = Lexer::new(Test, text, Lf);
 
     assert_eq!(
         lexer
@@ -117,7 +117,7 @@ fn lexer_simple() {
 fn lexer_no_whitespace() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
-    let mut lexer: Lexer<'_, _, Lf> = Lexer::new(Test, text);
+    let mut lexer = Lexer::new(Test, text, Lf);
     lexer.set_filter(|tok| *tok != Ws);
 
 
