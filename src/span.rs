@@ -155,6 +155,15 @@ impl<'text> Span<'text> {
         }
     }
 
+    /// Constructs a new span covering given source text.
+    pub fn new_full<N>(source: &'text str, newline: N) -> Self
+        where N: AsRef<str>
+    {
+        let mut span = Span::new(source);
+        span.extend_by_bytes(source.len(), newline);
+        span
+    }
+
     /// Extends the span by the given span position.
     pub fn extend_by(&mut self, pos: Pos) {
         self.byte.end += pos.byte;
@@ -229,6 +238,18 @@ impl<'text> Span<'text> {
         self.byte.len()
     }
 
+    /// Returns an iterator over the lines of the span.
+    pub fn split_lines<N>(&self, newline: N) -> SplitLines<'text>
+        where N: AsRef<str>
+    {
+        SplitLines {
+            newline: newline.as_ref().to_owned().into_boxed_str(),
+            base: self.start_position(),
+            text: self.text(),
+            source: self.source,
+            max_line: self.page.end.line,
+        }
+    }
 
     /// Widens the span on the left and right to the nearest newline.
     pub fn widen_to_line<N>(&self, newline: N)
@@ -454,3 +475,61 @@ impl std::fmt::Display for Page {
         write!(f, "{}:{}", self.line, self.column)
     }
 }
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// SplitLines
+////////////////////////////////////////////////////////////////////////////////
+/// An iterator over the lines of a span. Returned by the `lines` method on
+/// `Span`.
+#[derive(Debug, Clone)]
+pub struct SplitLines<'text> {
+    newline: Box<str>,
+    base: Pos,
+    text: &'text str,
+    source: &'text str,
+    max_line: usize,
+}
+
+impl<'text> Iterator for SplitLines<'text> {
+    type Item = Span<'text>;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.base.page.line > self.max_line { return None; }
+        let nl = self.newline.as_ref();
+        if self.text.is_empty() {
+            let mut span = Span::new_from(self.base, self.source);
+            span.extend_by(Pos::new(0, 0, 0));
+            self.base.page.line += 1;
+            
+            return Some(span);
+        }
+
+        if let Some(next) = self.text.split(nl).next() {
+            
+            let mut span = Span::new_from(self.base, self.source);
+
+            self.base.page.line += 1;
+            self.base.byte += nl.len();
+            
+            let column = next.chars().count();
+            self.base.page.column = column;
+            self.base.byte += next.len();
+
+            span.extend_by(Pos::new(next.len(), 0, column));
+
+            self.text = &self.text[next.len() + nl.len()..];
+            self.base.page.column = 0;
+
+            Some(span)
+        } else {
+            self.text = "";
+            None
+        }
+    }
+}
+
+impl<'text> std::iter::FusedIterator for SplitLines<'text> {}
+
