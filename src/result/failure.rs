@@ -13,6 +13,7 @@ use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::span::Span;
 use crate::span::OwnedSpan;
+use crate::result::display::*;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -42,7 +43,15 @@ impl<'text, S> std::fmt::Debug for Failure<'text, S> where S: Scanner {
 
 impl<'text, S> std::fmt::Display for Failure<'text, S> where S: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "")
+        write_error_line(f, &self.reason)?;
+        write_source_info_line(f, "[text]", self.span)?;
+        write_gutter(f, 3, None)?;
+        writeln!(f, "")?;
+        write_gutter(f, 3, Some(1))?;
+        writeln!(f, "")?;
+        write_gutter(f, 3, None)?;
+        writeln!(f, "")
+
     }
 }
 
@@ -146,10 +155,22 @@ impl Reason {
     pub fn is_recoverable(&self) -> bool {
         use Reason::*;
         match self {
-            IncompleteParse { .. }     => true,
-            UnexpectedToken            => true,
-            UnexpectedEndOfText        => false,
-            LexerError                 => true,
+            IncompleteParse { .. } => true,
+            UnexpectedToken        => true,
+            UnexpectedEndOfText    => false,
+            LexerError             => true,
+        }
+    }
+}
+
+impl std::fmt::Display for Reason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Reason::*;
+        match self {
+            IncompleteParse { .. } => write!(f, "Incomplete parse"),
+            UnexpectedToken        => write!(f, "Unexpected token"),
+            UnexpectedEndOfText    => write!(f, "Unexpected end of text"),
+            LexerError             => write!(f, "Lexer error"),
         }
     }
 }

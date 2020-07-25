@@ -193,6 +193,16 @@ impl<'text> Span<'text> {
         }
     }
 
+    /// Returns true if the span is empty
+    pub fn is_empty(&self) -> bool {
+        self.byte.start == self.byte.end
+    }
+
+    /// Returns true if the span covers the entire source text.
+    pub fn is_full(&self) -> bool {
+        self.byte.start == 0 && self.byte.end == self.source.len()
+    }
+
     /// Returns the spanned text.
     pub fn text(&self) -> &'text str {
         &self.source[self.byte.start..self.byte.end]
@@ -217,6 +227,71 @@ impl<'text> Span<'text> {
     /// Returns the length of the span in bytes.
     pub fn len(&self) -> usize {
         self.byte.len()
+    }
+
+
+    /// Widens the span on the left and right to the nearest newline.
+    pub fn widen_to_line<N>(&self, newline: N)
+         -> Self
+        where N: AsRef<str>
+    {
+        if self.is_full() { return self.clone(); }
+        let nl = newline.as_ref();
+        
+        let mut start_byte = self.byte.start;
+        let mut end_byte = self.byte.end;
+        let mut end_column = self.page.end.column;
+
+        // Find the start byte.
+        if self.page.start.line == 0 {
+            start_byte = 0;
+        } else {
+            debug_assert!(start_byte > 0);
+            let left = self.source[..start_byte]
+                .rsplit_terminator(nl).next().unwrap();
+            start_byte -= left.len();
+        }
+        // Find the end byte and column.
+        let right = self.source[end_byte..]
+            .split_terminator(nl).next().unwrap();        
+        let right_pos = Pos::new_from_string(right, nl);
+        end_byte += right_pos.byte;
+        debug_assert_eq!(right_pos.page.line, 0); // Should not cross any lines.
+        end_column += right_pos.page.column; 
+
+        Span {
+            source: self.source,
+            byte: ByteSpan {
+                start: start_byte,
+                end: end_byte,
+            },
+            page: PageSpan {
+                start: Page { line: self.page.start.line, column: 0, },
+                end: Page { line: self.page.end.line, column: end_column, },
+            },
+        }
+    }
+
+    /// Trims the span on the left and right, removing any whitespace.
+    pub fn trim<N>(&self, newline: N)
+         -> Self
+        where N: AsRef<str>
+    {
+        let nl = newline.as_ref();
+        let text = self.text();
+        if text.is_empty() { return self.clone(); }
+        
+        let trimmed = text.trim_start();
+        let left_len = text.len() - trimmed.len();
+        let mut left_pos = self.start_position();
+        left_pos.step_with(Pos::new_from_string(&text[..left_len], nl));
+        let trimmed = trimmed.trim_end();
+        let right_pos = Pos::new_from_string(trimmed, nl);
+
+        let mut span = Span::new_from(left_pos, self.source);
+        span.extend_by(right_pos);
+
+        span
     }
 }
 

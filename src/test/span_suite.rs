@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::span::Span;
+use crate::span::Pos;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,4 +65,43 @@ fn span_extend_by_bytes_newline_split() {
     assert_eq!(
         format!("{}", span),
         "\"a\nb\" (0:0-1:1, bytes 0-3)");
+}
+
+
+/// Tests `Span::new_from`.
+#[test]
+fn span_new_from() {
+    let text = " \n  abcd  \n ";
+    let mut span = Span::new_from(Pos::new(4, 1, 2), text);
+    span.extend_by(Pos::new(4, 0, 4));
+
+    assert_eq!(
+        format!("{}", span),
+        "\"abcd\" (1:2-1:6, bytes 4-8)");
+}
+
+
+/// Tests `Span::widen_to_line`.
+#[test]
+fn span_widen_to_line() {
+    let text = " \n  abcd  \n ";
+    let mut span = Span::new_from(Pos::new(4, 1, 2), text);
+    span.extend_by(Pos::new(4, 0, 4));
+
+    assert_eq!(
+        format!("{}", span.widen_to_line("\n")),
+        "\"  abcd  \" (1:0-1:8, bytes 2-10)");
+}
+
+
+/// Tests `Span::trim`.
+#[test]
+fn span_trim() {
+    let text = " \n  abcd  \n ";
+    let mut span = Span::new_from(Pos::new(2, 1, 0), text);
+    span.extend_by(Pos::new(8, 0, 8));
+
+    assert_eq!(
+        format!("{}", span.trim("\n")),
+        "\"abcd\" (1:2-1:6, bytes 4-8)");
 }
