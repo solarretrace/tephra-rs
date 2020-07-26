@@ -49,11 +49,10 @@ fn error_empty_msg() {
     let actual = format!("{}", res.err().unwrap());
     let expected = "\
 error: Unexpected end of text
-  --> [text]:0:0 (byte 0)
-   |
-LN | [suround] [SPAN OF TOKEN] [suround]
-   |            ~~~~~~~~~~~~~~~
-... During parse of [CONTEXT].
+ --> [SOURCE TEXT]:0:0 (byte 0)
+  | 
+0 |  
+  | ^ text ends here
 \
 ".to_string();
 

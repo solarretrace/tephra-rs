@@ -72,6 +72,8 @@ impl<'text, 'msg, Nl> std::fmt::Display for SourceSpan<'text, 'msg, Nl>
             .count();
         let mut multi_split = MultiSplitLines::new(&self.highlights);
 
+        write_source_info_line(f, gutter_width, self.source_name, self.span)?;
+
         // Write starting spacer line.
         write_gutter(f, "", gutter_width)?;
         writeln!(f, "");
@@ -151,6 +153,22 @@ enum RiserSymbol {
     Bar,
     UpPoint,
     DnPoint,
+}
+pub fn write_source_info_line<M, Nl>(
+    f: &mut std::fmt::Formatter<'_>,
+    gutter_width: usize,
+    source_name: M,
+    span: Span<'_, Nl>)
+    -> std::fmt::Result
+    where M: std::fmt::Display
+{
+    writeln!(f, "{:width$}{} {}:{} (byte {})",
+        "",
+        "-->",
+        source_name,
+        span.start().page,
+        span.start().byte,
+        width=gutter_width)
 }
 
 fn write_source_ln<'text, Nl>(

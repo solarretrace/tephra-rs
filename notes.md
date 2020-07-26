@@ -91,13 +91,6 @@ Error constructing value
 
 a
 
-    error: Unexpected end of text.
-      --> {source_name?}:LN:COL (bytes N-M)
-       |
-    LN | [suround] [SPAN OF TOKEN] [suround]
-       |            ~~~~~~~~~~~~~~~
-    ... During parse of [CONTEXT].
-
     error[E0308]: mismatched types
       --> src/result/display.rs:60:17
        |

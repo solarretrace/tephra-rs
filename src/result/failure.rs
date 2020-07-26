@@ -55,10 +55,12 @@ impl<'text, S, Nl> std::fmt::Display for Failure<'text, S, Nl>
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = format!("{}", self.reason);
         let source_name = "[SOURCE TEXT]".to_string();
-        writeln!(f, "{}", 
+        write!(f, "{}", 
             SourceSpan::new(self.span, &message)
                 .with_source_name(&source_name)
-                .with_highlight(Highlight::new(self.span, &message)))
+                .with_highlight(Highlight::new(
+                    self.span,
+                    &self.reason.span_start_message())))
     }
 }
 
@@ -176,6 +178,18 @@ impl Reason {
             LexerError             => true,
         }
     }
+
+    /// Returns the start message for the associated span highlight.
+    pub fn span_start_message(&self) -> &str {
+        use Reason::*;
+        match self {
+            IncompleteParse { .. } => "the parse starts here",
+            UnexpectedToken        => "token 'blah' unexpected",
+            UnexpectedEndOfText    => "text ends here",
+            LexerError             => "lexer error here",
+        }
+    }
+
 }
 
 impl std::fmt::Display for Reason {
