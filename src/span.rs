@@ -79,24 +79,6 @@ impl Pos {
         self == Pos::ZERO
     }
 
-    /// Increments the Pos by the given number of bytes, lines, and
-    /// columns.
-    pub fn step(&mut self, bytes: usize, lines: usize, columns: usize) {
-        self.byte += bytes;
-        self.page.line += lines;
-        if lines == 0 {
-            self.page.column += columns;
-        } else {
-            self.page.column = columns;
-        }
-    }
-
-    /// Increments the Pos by the given position value.
-    pub fn step_with(&mut self, pos: Pos) {
-        self.step(pos.byte, pos.page.line, pos.page.column)
-    }
-
-
     /// Constructs the end position from the given string.
     pub fn new_from_string<S, Nl>(text: S) -> Self
         where
@@ -107,6 +89,37 @@ impl Pos {
         Pos {
             byte: text.len(),
             page: Page::ZERO.advance::<_, Nl>(text),
+        }
+    }
+}
+
+
+impl std::ops::Add for Pos {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Pos {
+            byte: self.byte + other.byte,
+            page: Page {
+                line: self.page.line + other.page.line,
+                column: if other.page.line == 0 { 
+                    self.page.column + other.page.column
+                } else {
+                    other.page.column
+                },
+            },
+        }
+    }
+}
+
+impl std::ops::AddAssign for Pos {
+    fn add_assign(&mut self, other: Self) {
+        self.byte += other.byte;
+        self.page.line += other.page.line;
+        if other.page.line == 0 {
+            self.page.column += other.page.column;
+        } else {
+            self.page.column = other.page.column;
         }
     }
 }
@@ -273,7 +286,7 @@ impl<'text, Nl> Span<'text, Nl> {
         Span::new_enclosing(start, end, self.source)
     }
 
-    /// Returns the result of removing a portion of the span.
+    /// Returns the smallest set of spans covering the given spans.
     pub fn union(&self, other: &Self) -> Few<Self> {
         if self.intersects(other) {
             Few::One(self.enclose(other))
@@ -282,21 +295,60 @@ impl<'text, Nl> Span<'text, Nl> {
         }
     }
 
-    /// Returns the result of removing a portion of the span.
-    pub fn intersect(&self, other: &Self) -> Self {
-        unimplemented!()
+    /// Returns the overlapping portion the spans.
+    pub fn intersect(&self, other: &Self) -> Option<Self> {
+        let a_start = self.start();
+        let b_start = other.start();
+        let a_end = self.end();
+        let b_end = other.end();
 
+        let start = match (self.contains(&b_start), other.contains(&a_start)) {
+            (true,  false) => b_start,
+            (false, true)  => a_start,
+            (false, false) => return None,
+            (true,  true)  => unreachable!()
+        };
+
+        let end = match (self.contains(&b_end), other.contains(&a_end)) {
+            (true,  false) => b_end,
+            (false, true)  => a_end,
+            (false, false) => return None,
+            (true,  true)  => unreachable!()
+        };
+
+        Some(Span::new_enclosing(start, end, self.source))
     }
 
     /// Returns the result of removing a portion of the span.
     pub fn minus(&self, other: &Self) -> Few<Self> {
-        unimplemented!()
+        let a_start = self.start();
+        let b_start = other.start();
+        let a_end = self.end();
+        let b_end = other.end();
+
+        let l = match (self.contains(&b_start), other.contains(&a_start)) {
+            (true,  false) => Some((b_start, a_start)),
+            (false, true)  => Some((a_start, b_start)),
+            (false, false) => None,
+            (true,  true)  => unreachable!(),
+        };
+
+        let r = match (self.contains(&b_end), other.contains(&a_end)) {
+            (true,  false) => Some((b_end, a_end)),
+            (false, true)  => Some((a_end, b_end)),
+            (false, false) => None,
+            (true,  true)  => unreachable!(),
+        };
+
+        let l = l.map(|(a, b)| Span::new_enclosing(a, b, self.source));
+        let r = r.map(|(a, b)| Span::new_enclosing(a, b, self.source));
+        Few::from((l, r))
     }
 }
 
 impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
     /// Constructs a new span covering given source text.
-    pub fn new_full(source: &'text str) -> Self
+    pub fn full(source: &'text str) -> Self
     {
         let mut span = Self::new(source);
         span.extend_by_bytes(source.len());
@@ -370,7 +422,7 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
         let trimmed = text.trim_start();
         let left_len = text.len() - trimmed.len();
         let mut left_pos = self.start();
-        left_pos.step_with(Pos::new_from_string::<_, Nl>(&text[..left_len]));
+        left_pos += Pos::new_from_string::<_, Nl>(&text[..left_len]);
         let trimmed = trimmed.trim_end();
         let right_pos = Pos::new_from_string::<_, Nl>(trimmed);
 

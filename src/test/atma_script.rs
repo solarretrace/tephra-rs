@@ -103,18 +103,18 @@ impl AtmaScriptScanner {
         let mut pos = Pos::ZERO;
         let mut chars = text.chars();
         match chars.next() {
-            Some('r') => pos.step(1, 0, 1),
+            Some('r') => pos += Pos::new(1, 0, 1),
             _         => return None,
         }
         while let Some(c) = chars.next() {
             match c {
                 '#' => {
-                    pos.step(1, 0, 1);
+                    pos += Pos::new(1, 0, 1);
                     self.raw_string_bracket_count += 1;
                     continue;
                 },
                 '"' => {
-                    pos.step(1, 0, 1);
+                    pos += Pos::new(1, 0, 1);
                     return Some((AtmaToken::RawStringOpen, pos));
                 },
                 _ => return None,
@@ -132,13 +132,13 @@ impl AtmaScriptScanner {
         let mut pos = Pos::ZERO;
         let mut chars = text.chars();
         match chars.next() {
-            Some('"') => pos.step(1, 0, 1),
+            Some('"') => pos += Pos::new(1, 0, 1),
             _         => return None,
         }
         while let Some(c) = chars.next() {
             match c {
                 '#' => {
-                    pos.step(1, 0, 1);
+                    pos += Pos::new(1, 0, 1);
                     raw_count += 1;
                     if raw_count >= self.raw_string_bracket_count {
                         break;
@@ -171,9 +171,9 @@ impl AtmaScriptScanner {
             }
 
             if c == '\n' {
-                pos.step(1, 1, 0);
+                pos += Pos::new(1, 1, 0);
             } else {
-                pos.step(c.len_utf8(), 0, 1);
+                pos += Pos::new(c.len_utf8(), 0, 1);
             }
         }
 
@@ -240,7 +240,7 @@ impl AtmaScriptScanner {
                     Some('\'') | 
                     Some('t')  | 
                     Some('r')  |
-                    Some('n')  => pos.step(2, 0, 2),
+                    Some('n')  => pos += Pos::new(2, 0, 2),
                     Some('u')  => unimplemented!("unicode escapes unsupported"),
                     Some(_)    |
                     None       => return None,
@@ -253,8 +253,8 @@ impl AtmaScriptScanner {
                 ('"', AtmaToken::StringOpenDouble)  => {
                     return Some((AtmaToken::StringText, pos));
                 },
-                ('\n', _) => pos.step(1, 1, 0),
-                _         => pos.step(c.len_utf8(), 0, 1),
+                ('\n', _) => pos += Pos::new(1, 1, 0),
+                _         => pos += Pos::new(c.len_utf8(), 0, 1),
             }
         }
 

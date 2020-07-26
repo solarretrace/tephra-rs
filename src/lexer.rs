@@ -118,7 +118,7 @@ impl<'text, S, Nl> Iterator for Lexer<'text, S, Nl>
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
                 {
-                    self.pos.step_with(skip);
+                    self.pos += skip;
                 },
 
                 Ok((token, skip)) => {
