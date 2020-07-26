@@ -625,6 +625,45 @@ impl std::fmt::Display for Page {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// NewLine
+////////////////////////////////////////////////////////////////////////////////
+/// A trait representing the requirements for a Span's line separator.
+pub trait NewLine: std::fmt::Debug + Clone + Copy + PartialEq + Eq 
+    + PartialOrd + Ord + Default
+{
+    /// THe NewLine separator string.
+    const STR: &'static str;
+
+    /// Returns the byte length of the newline.
+    fn len() -> usize {
+        Self::STR.len()
+    }
+}
+
+/// Carriage Return (`\r`) newline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct Cr;
+
+impl NewLine for Cr {
+    const STR: &'static str = "\r";
+}
+
+/// Carriage Return - Line Feed (`\r\n`) newline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct CrLf;
+
+impl NewLine for CrLf {
+    const STR: &'static str = "\r\n";
+}
+
+/// Line Feed (`\n`) newline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct Lf;
+
+impl NewLine for Lf {
+    const STR: &'static str = "\n";
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -682,45 +721,11 @@ impl<'text, Nl> std::iter::FusedIterator for SplitLines<'text, Nl>
     where Nl: NewLine,
 {}
 
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-// NewLine
-////////////////////////////////////////////////////////////////////////////////
-/// A trait representing the requirements for a Span's line separator.
-pub trait NewLine: std::fmt::Debug + Clone + Copy + PartialEq + Eq 
-    + PartialOrd + Ord + Default
+impl<'text, Nl> ExactSizeIterator for SplitLines<'text, Nl> 
+    where Nl: NewLine,
 {
-    /// THe NewLine separator string.
-    const STR: &'static str;
-
-    /// Returns the byte length of the newline.
-    fn len() -> usize {
-        Self::STR.len()
+    fn len(&self) -> usize {
+         self.max_line - self.base.page.line
     }
 }
 
-/// Carriage Return (`\r`) newline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Cr;
-
-impl NewLine for Cr {
-    const STR: &'static str = "\r";
-}
-
-/// Carriage Return - Line Feed (`\r\n`) newline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct CrLf;
-
-impl NewLine for CrLf {
-    const STR: &'static str = "\r\n";
-}
-
-/// Line Feed (`\n`) newline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Lf;
-
-impl NewLine for Lf {
-    const STR: &'static str = "\n";
-}

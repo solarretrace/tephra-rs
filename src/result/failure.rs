@@ -14,7 +14,7 @@ use crate::lexer::Scanner;
 use crate::span::Span;
 use crate::span::NewLine;
 use crate::span::OwnedSpan;
-use crate::result::display::*;
+use crate::result::display::SourceSpan;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -52,9 +52,11 @@ impl<'text, S, Nl> std::fmt::Display for Failure<'text, S, Nl>
         Nl: NewLine,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write_error_line(f, &self.reason)?;
-        write_source_span(f, "[text]", self.span)
-
+        let message = format!("{}", self.reason);
+        let source_name = "[SOURCE TEXT]".to_string();
+        writeln!(f, "{}", 
+            SourceSpan::new(self.span, &message)
+                .with_source_name(&source_name))
     }
 }
 
