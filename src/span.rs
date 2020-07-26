@@ -141,15 +141,17 @@ impl std::fmt::Display for Pos {
 // Span
 ////////////////////////////////////////////////////////////////////////////////
 /// A specific section of the source text.
+// NOTE: Span methods must maintain an invariant: span.start() < span.end().
 #[derive(Debug, Copy, Hash)]
 pub struct Span<'text, Nl> {
+    /// The newline type marker.
     newline: std::marker::PhantomData<Nl>,
     /// The source text.
-    pub source: &'text str,
+    source: &'text str,
     /// The byte range of the spanned section within the source.
-    pub byte: ByteSpan,
+    byte: ByteSpan,
     /// The page range of the spanned section within the source.
-    pub page: PageSpan,
+    page: PageSpan,
 }
 
 impl<'text, Nl> Span<'text, Nl> {

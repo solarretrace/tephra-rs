@@ -35,7 +35,7 @@ pub fn write_source_span<M, Nl>(
         Nl: NewLine,
 {
     let gutter_width: usize = std::cmp::max(
-        (span.page.end.line as f32).log10().ceil() as usize, 1);
+        (span.end().page.line as f32).log10().ceil() as usize, 1);
 
     write_source_info_line(f, gutter_width, source_name, span)?;
     write_source_line(f, gutter_width, None, "")?;
@@ -43,7 +43,7 @@ pub fn write_source_span<M, Nl>(
         write_source_line(
             f,
             gutter_width,
-            Some(line_span.page.start.line),
+            Some(line_span.start().page.line),
             span.widen_to_line().text())?;
     }
     write_source_line(f, gutter_width, None, "")
@@ -63,8 +63,8 @@ pub fn write_source_info_line<M, Nl>(
         "",
         "-->",
         source_name,
-        span.page.start,
-        span.byte.start,
+        span.start().page,
+        span.start().byte,
         width=gutter_width)
 }
 
