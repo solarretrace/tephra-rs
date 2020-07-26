@@ -169,3 +169,92 @@ fn span_split_lines() {
     }
     assert_eq!(actual, expected);
 }
+
+
+/// Tests `Span::enclose`.
+#[test]
+fn span_enclose() {
+    let text = "\n \n\n \nabcd\n def \nghi\n";
+    let span_a = Span::<'_, Lf>::new_enclosing(
+        Pos::new(3, 2, 0),
+        Pos::new(10, 4, 4),
+        text);
+    let span_b = Span::<'_, Lf>::new_enclosing(
+        Pos::new(5, 3, 1),
+        Pos::new(20, 6, 3),
+        text);
+
+    let actual = format!("{}", span_a.enclose(&span_b));
+    let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!();
+    assert_eq!(actual, expected);
+}
+
+/// Tests `Span::union`.
+#[test]
+fn span_union() {
+    let text = "\n \n\n \nabcd\n def \nghi\n";
+    let span_a = Span::<'_, Lf>::new_enclosing(
+        Pos::new(3, 2, 0),
+        Pos::new(10, 4, 4),
+        text);
+    let span_b = Span::<'_, Lf>::new_enclosing(
+        Pos::new(5, 3, 1),
+        Pos::new(20, 6, 3),
+        text);
+
+    let actual = format!("{}", span_a.union(&span_b).next().unwrap());
+    let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!();
+    assert_eq!(actual, expected);
+}
+
+/// Tests `Span::intersect`.
+#[test]
+fn span_intersect() {
+    let text = "\n \n\n \nabcd\n def \nghi\n";
+    let span_a = Span::<'_, Lf>::new_enclosing(
+        Pos::new(3, 2, 0),
+        Pos::new(10, 4, 4),
+        text);
+    let span_b = Span::<'_, Lf>::new_enclosing(
+        Pos::new(5, 3, 1),
+        Pos::new(20, 6, 3),
+        text);
+
+    let actual = format!("{}", span_a.intersect(&span_b).unwrap());
+    let expected = "\"\nabcd\" (3:1-4:4, bytes 5-10)".to_owned();
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!();
+    assert_eq!(actual, expected);
+}
+
+/// Tests `Span::minus`.
+#[test]
+fn span_minus() {
+    let text = "\n \n\n \nabcd\n def \nghi\n";
+    let span_a = Span::<'_, Lf>::new_enclosing(
+        Pos::new(3, 2, 0),
+        Pos::new(10, 4, 4),
+        text);
+    let span_b = Span::<'_, Lf>::new_enclosing(
+        Pos::new(5, 3, 1),
+        Pos::new(20, 6, 3),
+        text);
+
+    let actual = format!("{}", dbg!(span_a.minus(&span_b)).next().unwrap());
+    let expected = "\"\n \" (2:0-3:1, bytes 3-5)".to_owned();
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!();
+    assert_eq!(actual, expected);
+}

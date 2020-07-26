@@ -180,11 +180,12 @@ impl<'text, Nl> Span<'text, Nl> {
     /// Constructs a new span covering given source text.
     pub fn new_enclosing(a: Pos, b: Pos, source: &'text str) -> Self
     {
-        let (a, b) = if a < b { (a, b) } else { (b, a) };
-
-        let mut span = Self::new_from(a, source);
-        span.extend_by(b);
-        span
+        Span {
+            newline: std::marker::PhantomData::<Nl>,
+            source,
+            byte: ByteSpan { start: a.byte, end: b.byte },
+            page: PageSpan { start: a.page, end: b.page },
+        }
     }
 
     /// Extends the span by the given span position.
@@ -305,41 +306,37 @@ impl<'text, Nl> Span<'text, Nl> {
         let b_end = other.end();
 
         let start = match (self.contains(&b_start), other.contains(&a_start)) {
+            (true,  true)  => a_start, // Starts coincide.
             (true,  false) => b_start,
             (false, true)  => a_start,
             (false, false) => return None,
-            (true,  true)  => unreachable!()
         };
 
         let end = match (self.contains(&b_end), other.contains(&a_end)) {
+            (true,  true)  => a_end, // Ends coincide.
             (true,  false) => b_end,
             (false, true)  => a_end,
             (false, false) => return None,
-            (true,  true)  => unreachable!()
         };
 
         Some(Span::new_enclosing(start, end, self.source))
     }
 
     /// Returns the result of removing a portion of the span.
+    ///
+    /// Note that if an endpoint becomes an empty span, it is omitted. If the
+    /// right span is empty, it effectively splits the left span at that point.
     pub fn minus(&self, other: &Self) -> Few<Self> {
-        let a_start = self.start();
-        let b_start = other.start();
-        let a_end = self.end();
-        let b_end = other.end();
+        let a_0 = self.start();
+        let b_0 = other.start();
+        let a_1 = self.end();
+        let b_1 = other.end();
 
-        let l = match (self.contains(&b_start), other.contains(&a_start)) {
-            (true,  false) => Some((b_start, a_start)),
-            (false, true)  => Some((a_start, b_start)),
-            (false, false) => None,
-            (true,  true)  => unreachable!(),
-        };
-
-        let r = match (self.contains(&b_end), other.contains(&a_end)) {
-            (true,  false) => Some((b_end, a_end)),
-            (false, true)  => Some((a_end, b_end)),
-            (false, false) => None,
-            (true,  true)  => unreachable!(),
+        let (l, r) = match (a_0 < b_0, a_1 < b_1) {
+            (true, true) => (Some((a_0, b_0)), Some((b_1, a_1))),
+            (true, _)    => (Some((a_0, b_0)), None),
+            (_,    true) => (None,             Some((b_1, a_1))),
+            _            => (None,             None),
         };
 
         let l = l.map(|(a, b)| Span::new_enclosing(a, b, self.source));
