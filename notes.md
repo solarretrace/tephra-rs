@@ -149,3 +149,4 @@ a
        = note: `#[warn(unused_mut)]` implied by `#[warn(unused)]`
 
     warning: 1 warning emitted
+

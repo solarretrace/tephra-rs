@@ -66,22 +66,45 @@ impl<'text, 'msg, Nl> std::fmt::Display for SourceSpan<'text, 'msg, Nl>
 
         let gutter_width: usize = std::cmp::max(
             (self.span.end().page.line as f32).log10().ceil() as usize, 1);
-        let riser_width = 3;
+        let riser_width: usize = self.highlights
+            .iter()
+            .filter(|h| h.is_multiline())
+            .count();
+        let mut multi_split = MultiSplitLines::new(&self.highlights);
 
+        // Write starting spacer line.
         write_gutter(f, "", gutter_width)?;
         writeln!(f, "");
-        for line in self.span.split_lines() {
-            write_gutter(f,
-                line.start().page.line,
-                gutter_width)?;
+
+        let mut end_spacer_needed = true;
+        for (line_num, line_span) in self.span.split_lines()
+            .map(|span| (span.start().page.line, span))
+        {
+            write_gutter(f, line_num, gutter_width)?;
             write_riser(f,
-                vec![RiserSymbol::Bar, RiserSymbol::Bar].into_iter(),
+                multi_split.riser_data(line_num),
                 riser_width)?;
             write_source_ln(f,
-                line)?;
+                line_span)?;
+            end_spacer_needed = true;
+
+            for line_data in multi_split.line_data(line_num) {
+                write_gutter(f, "", gutter_width)?;
+                write_riser(f,
+                    multi_split.riser_data(line_num),
+                    riser_width)?;
+                write_highlight_ln(f,
+                    line_data.span,
+                    line_data.highlight_ul,
+                    line_data.message_a)?;
+                end_spacer_needed = false;
+            }
+
         }
-        write_gutter(f, "", gutter_width)?;
-        writeln!(f, "");
+        if end_spacer_needed {
+            write_gutter(f, "", gutter_width)?;
+            writeln!(f, "");
+        }
         Ok(())
     }
 }
@@ -109,9 +132,10 @@ fn write_riser<R>(
     let mut i = 0;
     for riser in risers {
         match riser {
-            RiserSymbol::Empty => write!(f, " ")?,
-            RiserSymbol::Bar   => write!(f, "|")?,
-            RiserSymbol::Point => write!(f, "/")?,
+            RiserSymbol::Empty   => write!(f, " ")?,
+            RiserSymbol::Bar     => write!(f, "|")?,
+            RiserSymbol::UpPoint => write!(f, "/")?,
+            RiserSymbol::DnPoint => write!(f, "\\")?,
         }
         i += 1;
     }
@@ -121,10 +145,12 @@ fn write_riser<R>(
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum RiserSymbol {
     Empty,
     Bar,
-    Point,
+    UpPoint,
+    DnPoint,
 }
 
 fn write_source_ln<'text, Nl>(
@@ -139,7 +165,7 @@ fn write_source_ln<'text, Nl>(
 fn write_highlight_ln<'text,'msg,  Nl>(
     f: &mut std::fmt::Formatter<'_>,
     span: Span<'text, Nl>,
-    highlight_sym: HighlightSymbol,
+    highlight_ul: HighlightUnderline,
     message: &'msg str)
     -> std::fmt::Result
 {
@@ -148,18 +174,23 @@ fn write_highlight_ln<'text,'msg,  Nl>(
         write!(f, "_")?;
     }
 
-    let underline_width = span.end().page.column - span.start().page.column;
-    match highlight_sym {
-        HighlightSymbol::Dash
-            => write!(f, "{:-width$}", "", width=underline_width)?,
-        HighlightSymbol::Hat
-            => write!(f, "{:^width$}", "", width=underline_width)?,
+    let underline_width = std::cmp::max(
+        span.end().page.column - span.start().page.column,
+        1);
+    match highlight_ul {
+        HighlightUnderline::Dash => for _ in 0..underline_width {
+            write!(f, "-")?;
+        },
+        HighlightUnderline::Hat => for _ in 0..underline_width {
+            write!(f, "^")?;
+        },
     }
 
-    writeln!(f, "{}", message)
+    writeln!(f, " {}", message)
 }
 
-enum HighlightSymbol {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum HighlightUnderline {
     Dash,
     Hat,
 }
@@ -170,12 +201,140 @@ enum HighlightSymbol {
 #[derive(Debug)]
 pub struct Highlight<'text, 'msg, Nl> {
     span: Span<'text, Nl>,
-    start_message: Option<&'msg str>,
-    end_message: Option<&'msg str>,
+    start_message: &'msg str,
+    end_message: &'msg str,
     color: (),
-    underline: (),
+    underline: HighlightUnderline,
 }
 
 impl<'text, 'msg, Nl> Highlight<'text, 'msg, Nl> {
+    pub fn new(span: Span<'text, Nl>, start_message: &'msg str)
+        -> Self
+    {
+        Highlight {
+            span,
+            start_message,
+            end_message: "",
+            color: (),
+            underline: HighlightUnderline::Hat,
+        }
+    }
 
+    pub fn with_end_message(mut self, end_message: &'msg str) -> Self {
+        self.end_message = end_message;
+        self
+    }
+
+    pub fn is_multiline(&self) -> bool {
+        self.span.start().page.line != self.span.end().page.line
+    }
+}
+
+
+#[derive(Debug)]
+struct MultiSplitLines<'text, 'msg, 'hl, Nl> {
+    highlights: &'hl [Highlight<'text, 'msg, Nl>],
+    current: Vec<Option<Span<'text, Nl>>>,
+    spans: Vec<SplitLines<'text, Nl>>,
+}
+
+impl<'text, 'msg, 'hl, Nl> MultiSplitLines<'text, 'msg, 'hl, Nl> 
+    where
+        'text: 'msg,
+        Nl: NewLine,
+{
+    fn new(highlights: &'hl [Highlight<'text, 'msg, Nl>]) -> Self {
+        let mut current = Vec::with_capacity(highlights.len());
+        let mut spans = Vec::with_capacity(highlights.len());
+        for span in highlights.iter().map(|hl| &hl.span) {
+            let mut split = span.split_lines();
+            current.push(split.next());
+            spans.push(split);
+        }
+        MultiSplitLines {
+            highlights,
+            current,
+            spans,
+        }
+    }
+}
+
+impl<'text, 'msg, 'hl, Nl> MultiSplitLines<'text, 'msg, 'hl, Nl> 
+    where 'text: 'msg,
+{
+    fn riser_data(&self, line: usize) -> impl Iterator<Item=RiserSymbol> {
+        let mut riser_data = Vec::with_capacity(self.current.len());
+        for hl in self.highlights
+            .iter()
+            .filter(|hl| hl.is_multiline()) 
+        {
+            let start_line = hl.span.start().page.line;
+            let end_line = hl.span.start().page.line;
+            
+            if start_line == end_line {
+                riser_data.push(RiserSymbol::Empty);
+            } else if line == start_line {
+                if hl.span.start().page.column == 0 {
+                    riser_data.push(RiserSymbol::UpPoint);
+                } else {
+                    riser_data.push(RiserSymbol::Empty);
+                }
+            } else if line == end_line {
+                if hl.span.end().page.column == 0 {
+                    riser_data.push(RiserSymbol::DnPoint);
+                } else {
+                    riser_data.push(RiserSymbol::Empty);
+
+                }
+            } else if line > start_line && line < end_line {
+                riser_data.push(RiserSymbol::Bar);
+            }
+        }
+        riser_data.into_iter()
+    }
+
+    fn line_data(&mut self, line: usize)
+        -> impl Iterator<Item=HighlighLineData<'text, 'msg, Nl>>
+        where Nl: NewLine,
+    {
+        let mut line_data = Vec::with_capacity(self.current.len());
+        for (i, (curr, spans)) in self.current
+            .iter_mut()
+            .zip(self.spans.iter_mut())
+            .enumerate()
+        {
+            match curr {
+                Some(c) if c.start().page.line == line => {
+                    let hl = &self.highlights[i];
+                    let message_a = if hl.span.start().page.line == line {
+                        hl.start_message
+                    } else {
+                        ""
+                    };
+                    let message_b = if hl.span.end().page.line == line {
+                        hl.end_message
+                    } else {
+                        ""
+                    };
+                    line_data.push(HighlighLineData {
+                        span: c.clone(),
+                        highlight_ul: hl.underline,
+                        message_a,
+                        message_b,
+                    });
+                    *curr = spans.next();
+                },
+                _ => (),
+            }
+        }
+        line_data.into_iter()
+    }
+}
+
+#[derive(Debug)]
+struct HighlighLineData<'text, 'msg, Nl> {
+    span: Span<'text, Nl>,
+    highlight_ul: HighlightUnderline,
+    message_a: &'msg str,
+    message_b: &'msg str,
 }

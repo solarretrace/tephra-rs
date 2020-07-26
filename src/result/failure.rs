@@ -13,6 +13,7 @@ use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::span::Span;
 use crate::span::NewLine;
+use crate::result::display::Highlight;
 use crate::span::OwnedSpan;
 use crate::result::display::SourceSpan;
 
@@ -56,7 +57,8 @@ impl<'text, S, Nl> std::fmt::Display for Failure<'text, S, Nl>
         let source_name = "[SOURCE TEXT]".to_string();
         writeln!(f, "{}", 
             SourceSpan::new(self.span, &message)
-                .with_source_name(&source_name))
+                .with_source_name(&source_name)
+                .with_highlight(Highlight::new(self.span, &message)))
     }
 }
 
