@@ -24,29 +24,44 @@ use crate::lexer::Scanner;
 // ParseResult
 ////////////////////////////////////////////////////////////////////////////////
 /// The result of a parse attempt.
-pub type ParseResult<'text, S, Nl, V> 
-        = Result<Success<'text, S, Nl, V>, Failure<'text, S, Nl>>;
+pub type ParseResult<'text, Sc, Nl, V> 
+        = Result<Success<'text, Sc, Nl, V>, Failure<'text, Sc, Nl>>;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseResultExt
 ////////////////////////////////////////////////////////////////////////////////
 /// Extension trait for `ParseResult`s.
-pub trait ParseResultExt<'text, S, V> 
-    where S: Scanner,
+pub trait ParseResultExt<'text, Sc, Nl, V> 
+    where Sc: Scanner,
 {
     /// Converts the ParseResult into a Result containing the parsed value,
     /// discarding any associated spans or lexer state.
     fn finish(self) -> Result<V, FailureOwned>;
+
+    /// Converts ParseResult<'_, _, _, V> into a ParseResult<'_, _, _, U> by
+    /// applying the given closure.
+    fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
+        where F: FnOnce(V) -> U;
 }
 
-impl<'text, S, Nl, V> ParseResultExt<'text, S, V> for ParseResult<'text, S, Nl, V>
-    where S: Scanner,
+impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
+        for ParseResult<'text, Sc, Nl, V>
+    where Sc: Scanner,
 {
     fn finish(self) -> Result<V, FailureOwned> {
         self
             .map(Success::into_value)
             .map_err(FailureOwned::from)
+    }
+
+    fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
+        where F: FnOnce(V) -> U,
+    {
+        match self {
+            Ok(succ)  => Ok(succ.map_value(f)),
+            Err(fail) => Err(fail),
+        }
     }
 }
 

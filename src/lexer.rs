@@ -44,22 +44,24 @@ pub trait Scanner: Debug + Clone + PartialEq {
 ////////////////////////////////////////////////////////////////////////////////
 /// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Clone)]
-pub struct Lexer<'text, S, Nl> where S: Scanner {
+pub struct Lexer<'text, Sc, Nl> where Sc: Scanner {
     newline: Nl,
-    text: &'text str,
-    pos: Pos,
-    scanner: S,
-    filter: Option<Arc<dyn Fn(&S::Token) -> bool>>,
+    source: &'text str,
+    consumed: Pos,
+    current: Pos,
+    scanner: Sc,
+    filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
     // TODO: Push/lookahead buffer?
 }
 
-impl<'text, S, Nl> Lexer<'text, S, Nl> where S: Scanner {
+impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
     /// Constructs a new Lexer for the given text and span newlines.
-    pub fn new(scanner: S, text: &'text str, newline: Nl) -> Self {
+    pub fn new(scanner: Sc, source: &'text str, newline: Nl) -> Self {
         Lexer {
             newline,
-            text,
-            pos: Pos::ZERO,
+            source,
+            consumed: Pos::ZERO,
+            current: Pos::ZERO,
             scanner,
             filter: None,
         }
@@ -67,7 +69,7 @@ impl<'text, S, Nl> Lexer<'text, S, Nl> where S: Scanner {
 
     /// Sets the token filter.
     pub fn set_filter<F>(&mut self, filter: F) 
-        where F: for<'a> Fn(&'a S::Token) -> bool + 'static
+        where F: for<'a> Fn(&'a Sc::Token) -> bool + 'static
     {
         self.filter = Some(Arc::new(filter));
     }
@@ -79,68 +81,77 @@ impl<'text, S, Nl> Lexer<'text, S, Nl> where S: Scanner {
 
     /// Returns the current lexer position.
     pub fn current_pos(&self) -> Pos {
-        self.pos
+        self.current
     }
 
-    /// Sets the current lexer position.
-    pub fn set_current_pos(&mut self, pos: Pos) {
-        self.pos = pos;
+    /// Returns the full underlying source text.
+    pub fn source(&self) -> &'text str {
+        self.source
+    }
+
+    /// Resets the lexer position to the start position of the uncomsumed text.
+    /// Note that this does not modify the scanner state or filters.
+    pub fn reset(&mut self) -> &'text str {
+        self.source
     }
 }
 
-impl<'text, S, Nl> Lexer<'text, S, Nl>
+impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
     where
-        S: Scanner,
+        Sc: Scanner,
         Nl: NewLine,
 {
-    /// Returns the empty span of the current lexer position.
+    /// Returns the unconsumed span up to the current position.
     pub fn current_span(&self) -> Span<'text, Nl> {
-        Span::new_from(self.pos, self.text)
+        Span::new_enclosing(self.consumed, self.current, self.source)
     }
 
-    /// Returns the span of all previously lexed text.
-    pub fn lexed_span(&self) -> Span<'text, Nl> {
-        let mut span = Span::new(self.text);
-        span.extend_by(self.pos);
+    /// Returns the span up to the current position and consumes it.
+    pub fn consume_span(&mut self) -> Span<'text, Nl> {
+        let span = Span::new_enclosing(
+            self.consumed,
+            self.current,
+            self.source);
+        self.consumed = self.current;
         span
     }
 }
 
-impl<'text, S, Nl> Iterator for Lexer<'text, S, Nl>
+impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
     where
-        S: Scanner,
+        Sc: Scanner,
         Nl: NewLine,
 {
-    type Item = Result<Lexeme<'text, S::Token, Nl>, S::Error>;
+    type Item = Result<Lexeme<'text, Sc::Token, Nl>, Sc::Error>;
     
     fn next(&mut self) -> Option<Self::Item> {
-        while self.pos.byte < self.text.len() {
+        while self.current.byte < self.source.len() {
 
             match self.scanner
-                .lex_prefix_token::<Nl>(&self.text[self.pos.byte..])
+                .lex_prefix_token::<Nl>(&self.source[self.current.byte..])
             {
                 Ok((token, skip)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
                 {
-                    self.pos += skip;
+                    self.current += skip;
                 },
 
                 Ok((token, skip)) => {
-                    let mut span = Span::new_from(self.pos, self.text);
+                    let mut span = Span::new_from(self.current, self.source);
                     span.extend_by(skip);
-                    self.pos = span.end();
+                    self.current = span.end();
                     return Some(Ok(Lexeme { token, span }))
                 },
 
                 Err((error, skip)) => {
-                    if skip.is_zero() { self.pos.byte = self.text.len() }
+                    if skip.is_zero() { self.current.byte = self.source.len() }
 
                     let mut span: Span<'_, Nl> = Span::new_from(
-                        self.pos,
-                        self.text);
+                        self.current,
+                        self.source);
                     span.extend_by(skip);
-                    self.pos = span.end();
+                    self.current = span.end();
                     return Some(Err(error))
                 },
             }
@@ -149,17 +160,17 @@ impl<'text, S, Nl> Iterator for Lexer<'text, S, Nl>
     }
 }
 
-impl<'text, S, Nl> Debug for Lexer<'text, S, Nl> where S: Scanner {
+impl<'text, Sc, Nl> Debug for Lexer<'text, Sc, Nl> where Sc: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "")
     }
 }
 
-impl<'text, S, Nl> PartialEq for Lexer<'text, S, Nl> where S: Scanner {
+impl<'text, Sc, Nl> PartialEq for Lexer<'text, Sc, Nl> where Sc: Scanner {
     fn eq(&self, other: &Self) -> bool {
-        self.text == other.text &&
-            self.pos == other.pos
-
+        self.source == other.source &&
+        self.consumed == other.consumed &&
+        self.current == other.current
     }
 }
 

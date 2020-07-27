@@ -1,4 +1,20 @@
 
+# Terminology
+
+## Parser
+## Combinator / Primitive
+## Lexer
+## Scanner
+## Token
+## NewLine
+## Span
+## Position / Pos
+## Source
+## ParseResult / Success / Failure
+## OwnedFailure / OwnedSpan
+## SourceSpan / Highlight
+
+
 # Parser design principles
 ## Use `&'t str`, not `&mut &'t str`.
 
@@ -13,9 +29,14 @@ Different parser designs may be able to accomodate different data formats. In or
 ## Use `std::error::Error` for failure source.
 ## Do not box/own all parse errors.
 ## Impl `PartialEq` on results for testing.
-## Return value, token, rest on success.
+## Return value, span, lexer on success.
 
-Implemented as value, span, lexer.
+Implemented as value, span, lexer. 
+
+## Join spans by default, explicitely separate them.
+
+Spans are joined extremely frequently, so it is much simpler to only specify when they should be separated. The lexer should track both its current position and the position of the last unconsumed text. This will enable lexer reuse without cloning, and allow spans to be joined implicitely.
+The Lexer::next method returns the span of the most recent token on success, and on error it returns the span of unconsumed text.
 
 ## Return context, expected, source, and rest on failure.
 

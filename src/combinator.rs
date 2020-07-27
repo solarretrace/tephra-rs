@@ -12,22 +12,23 @@
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::result::ParseResult;
+use crate::result::ParseResultExt as _;
 use crate::result::Success;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Parse result substitution combinators
+// Parse result substitution combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A combinator which discards a parsed value, replacing it with `()`.
-pub fn discard<'t, F, S, Nl, V>(mut parser: F)
-    -> impl FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, ()>
+pub fn discard<'t, Sc, Nl, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, ()>
     where
-        F: FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, V>,
-        S: Scanner,
+        Sc: Scanner,
+        F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
 {
-    move |lx| {
-        match (parser)(lx) {
+    move |lexer| {
+        match (parser)(lexer) {
             Ok(pass) => {
                 Ok(Success {
                     lexer: pass.lexer,
@@ -42,14 +43,14 @@ pub fn discard<'t, F, S, Nl, V>(mut parser: F)
 
 /// A combinator which replaces a parsed value with the source text of the
 /// parsed span.
-pub fn text<'t, F, S, Nl, V>(mut parser: F)
-    -> impl FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, &'t str>
+pub fn text<'t, Sc, Nl, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, &'t str>
     where
-        F: FnMut(Lexer<'t, S, Nl>) -> ParseResult<'t, S, Nl, V>,
-        S: Scanner,
+        Sc: Scanner,
+        F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
 {
-    move |lx| {
-        match (parser)(lx) {
+    move |lexer| {
+        match (parser)(lexer) {
             Ok(pass) => {
                 let value = pass.span.text();
                 Ok(Success {
@@ -60,5 +61,70 @@ pub fn text<'t, F, S, Nl, V>(mut parser: F)
             },
             Err(fail) => Err(fail),
         }
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Parse result selection combinators.
+////////////////////////////////////////////////////////////////////////////////
+/// Returns a parser which sequences two parsers wich must both succeed,
+/// returning the value of the first one.
+pub fn left<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>
+    where
+        Sc: Scanner,
+        L: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
+        R: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
+{
+    move |lexer| {
+        let (l, succ) = (left)
+            (lexer)?
+            .take_value();
+
+        (right)
+            (succ.lexer)
+            .map_value(|_| l)
+        // TODO: Join the spans together.
+    }
+}
+
+/// Returns a parser which sequences two parsers wich must both succeed,
+/// returning the value of the second one.
+pub fn right<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>
+    where
+        Sc: Scanner,
+        L: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
+        R: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
+{
+    move |lexer| {
+        let succ = (left)
+            (lexer)?;
+
+        (right)
+            (succ.lexer)
+        // TODO: Join the spans together.
+    }
+}
+
+/// Returns a parser which sequences two parsers wich must both succeed,
+/// returning their values in a tuple.
+pub fn both<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, (X, Y)>
+    where
+        Sc: Scanner,
+        L: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
+        R: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
+{
+    move |lexer| {
+        let (l, succ) = (left)
+            (lexer)?
+            .take_value();
+
+        (right)
+            (succ.lexer)
+            .map_value(|r| (l, r))
+        // TODO: Join the spans together.
     }
 }

@@ -20,18 +20,40 @@ use crate::span::Span;
 /// The result of a successful parse.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Success<'text, S, Nl, V> where S: Scanner {
+pub struct Success<'text, Sc, Nl, V> where Sc: Scanner {
     /// The lexer state for continuing after the parse.
-    pub lexer: Lexer<'text, S, Nl>,
+    pub lexer: Lexer<'text, Sc, Nl>,
     /// The span of the parse result.
     pub span: Span<'text, Nl>,
     /// The parsed value.
     pub value: V,
 }
 
-impl<'text, S, Nl, V> Success<'text, S, Nl, V> where S: Scanner {
+impl<'text, Sc, Nl, V> Success<'text, Sc, Nl, V> where Sc: Scanner {
     /// Consumes the Success and returns its parsed value.
     pub fn into_value(self) -> V {
         self.value
+    }
+
+    /// Converts Success<'_, _, _, V> into a Success<'_, _, _, U> by
+    /// applying the given closure.
+    pub fn map_value<F, U>(self, f: F) -> Success<'text, Sc, Nl, U> 
+        where F: FnOnce(V) -> U
+    {
+        Success {
+            lexer: self.lexer,
+            span: self.span,
+            value: (f)(self.value),
+        }
+    }
+
+    /// Splits the Success into a tuple containing its parsed value and its
+    /// other components.
+    pub fn take_value(self) -> (V, Success<'text, Sc, Nl, ()>) {
+        (self.value, Success {
+            lexer: self.lexer,
+            span: self.span,
+            value: (),
+        })
     }
 }

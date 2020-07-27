@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::lexer::Scanner;
+use crate::lexer::Lexer;
 use crate::span::Pos;
 use crate::span::NewLine;
 
@@ -108,6 +109,7 @@ impl AtmaExprScanner {
             raw_string_bracket_count: 0,
         }
     }
+
 
     /// Parses a Ident token.
     fn parse_ident(&mut self, text: &str)
@@ -731,3 +733,14 @@ pub enum Channel {
     Hsv,
     Hsl,
 }
+
+
+
+// fn parse_color(lexer: Lexer<'text, AtmaToken, Nl>)
+//     -> ParseResult<'text, Sc, AtmaToken, Color>
+//     where Nl: NewLine,
+// {
+//     let save = lexer.current_pos();
+
+//     lexer.
+// }

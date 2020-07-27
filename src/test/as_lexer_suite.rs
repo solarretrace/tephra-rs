@@ -32,9 +32,9 @@ fn empty() {
         None);
 }
 
-/// Tests `Lexer::set_current_pos` for the AtmaScriptScanner.
+/// Tests `Lexer::clone` for the AtmaScriptScanner in resetting the lexer state.
 #[test]
-fn set_current_pos() {
+fn clone_reset() {
     use AtmaToken::*;
     let text = "abc ;";
     let as_tok = AtmaScriptScanner::new();
@@ -42,7 +42,7 @@ fn set_current_pos() {
 
     let mut actual = Vec::new();
 
-    let save = lexer.current_pos();
+    let save = lexer.clone();
     actual.push(lexer
         .next()
         .map(|res| {
@@ -50,16 +50,7 @@ fn set_current_pos() {
             (*lex.token(), format!("{}", lex.span()))
         })
         .unwrap());
-    lexer.set_current_pos(save);
-    
-    actual.push(lexer
-        .next()
-        .map(|res| {
-            let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
-        })
-        .unwrap());
-    lexer.set_current_pos(save);
+    lexer = save.clone();
 
     actual.push(lexer
         .next()
@@ -68,7 +59,16 @@ fn set_current_pos() {
             (*lex.token(), format!("{}", lex.span()))
         })
         .unwrap());
-    lexer.set_current_pos(save);
+    lexer = save.clone();
+
+    actual.push(lexer
+        .next()
+        .map(|res| {
+            let lex = res.unwrap();
+            (*lex.token(), format!("{}", lex.span()))
+        })
+        .unwrap());
+    lexer = save;
 
 
     let expected = vec![

@@ -25,9 +25,10 @@ use std::borrow::Cow;
 // Failure
 ////////////////////////////////////////////////////////////////////////////////
 /// A struct representing a failed parse with borrowed data.
-pub struct Failure<'text, S, Nl> where S: Scanner {
+pub struct Failure<'text, Sc, Nl> where Sc: Scanner {
+    // TODO: Decide what lexer state to store on parse errors.
     /// The lexer state for continuing after the parse.
-    pub lexer: Lexer<'text, S, Nl>,
+    pub lexer: Lexer<'text, Sc, Nl>,
     /// The span of the failed parse.
     pub span: Span<'text, Nl>,
     /// The failure reason.
@@ -37,9 +38,9 @@ pub struct Failure<'text, S, Nl> where S: Scanner {
 }
 
 
-impl<'text, S, Nl> std::fmt::Debug for Failure<'text, S, Nl>
+impl<'text, Sc, Nl> std::fmt::Debug for Failure<'text, Sc, Nl>
     where
-        S: Scanner,
+        Sc: Scanner,
         Nl: NewLine,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -47,9 +48,9 @@ impl<'text, S, Nl> std::fmt::Debug for Failure<'text, S, Nl>
     }
 }
 
-impl<'text, S, Nl> std::fmt::Display for Failure<'text, S, Nl>
+impl<'text, Sc, Nl> std::fmt::Display for Failure<'text, Sc, Nl>
     where
-        S: Scanner,
+        Sc: Scanner,
         Nl: NewLine,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -64,9 +65,9 @@ impl<'text, S, Nl> std::fmt::Display for Failure<'text, S, Nl>
     }
 }
 
-impl<'text, S, Nl> std::error::Error for Failure<'text, S, Nl>
+impl<'text, Sc, Nl> std::error::Error for Failure<'text, Sc, Nl>
     where
-        S: Scanner,
+        Sc: Scanner,
         Nl: NewLine,
 {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
@@ -79,9 +80,9 @@ impl<'text, S, Nl> std::error::Error for Failure<'text, S, Nl>
 }
 
 #[cfg(test)]
-impl<'text, S, Nl> PartialEq for Failure<'text, S, Nl>
+impl<'text, Sc, Nl> PartialEq for Failure<'text, Sc, Nl>
     where
-        S: Scanner,
+        Sc: Scanner,
         Nl: NewLine,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -111,8 +112,8 @@ pub struct FailureOwned {
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-impl<'text, S, Nl> From<Failure<'text, S, Nl>> for FailureOwned where S: Scanner {
-    fn from(other: Failure<'text, S, Nl>) -> Self {
+impl<'text, Sc, Nl> From<Failure<'text, Sc, Nl>> for FailureOwned where Sc: Scanner {
+    fn from(other: Failure<'text, Sc, Nl>) -> Self {
         FailureOwned {
             span: other.span.into_owned(),
             reason: other.reason,
@@ -160,8 +161,8 @@ pub enum Reason {
 
 impl Reason {
     /// Constructs a Reason::IncompleteParse using the given string.
-    pub fn incomplete<S>(msg: S) -> Self
-        where S: Into<Cow<'static, str>>,
+    pub fn incomplete<Sc>(msg: Sc) -> Self
+        where Sc: Into<Cow<'static, str>>,
     {
         Reason::IncompleteParse {
             context: msg.into(),
