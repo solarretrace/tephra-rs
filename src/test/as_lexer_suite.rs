@@ -22,7 +22,7 @@ use crate::test::atma_script::*;
 
 /// Tests `Lexer::new` for the AtmaScriptScanner.
 #[test]
-fn as_lexer_empty() {
+fn empty() {
     let text = "";
     let as_tok = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(as_tok, text, Lf);
@@ -32,9 +32,62 @@ fn as_lexer_empty() {
         None);
 }
 
+/// Tests `Lexer::set_current_pos` for the AtmaScriptScanner.
+#[test]
+fn set_current_pos() {
+    use AtmaToken::*;
+    let text = "abc ;";
+    let as_tok = AtmaScriptScanner::new();
+    let mut lexer = Lexer::new(as_tok, text, Lf);
+
+    let mut actual = Vec::new();
+
+    let save = lexer.current_pos();
+    actual.push(lexer
+        .next()
+        .map(|res| {
+            let lex = res.unwrap();
+            (*lex.token(), format!("{}", lex.span()))
+        })
+        .unwrap());
+    lexer.set_current_pos(save);
+    
+    actual.push(lexer
+        .next()
+        .map(|res| {
+            let lex = res.unwrap();
+            (*lex.token(), format!("{}", lex.span()))
+        })
+        .unwrap());
+    lexer.set_current_pos(save);
+
+    actual.push(lexer
+        .next()
+        .map(|res| {
+            let lex = res.unwrap();
+            (*lex.token(), format!("{}", lex.span()))
+        })
+        .unwrap());
+    lexer.set_current_pos(save);
+
+
+    let expected = vec![
+        (CommandChunk, "\"abc\" (0:0-0:3, bytes 0-3)".to_owned()),
+        (CommandChunk, "\"abc\" (0:0-0:3, bytes 0-3)".to_owned()),
+        (CommandChunk, "\"abc\" (0:0-0:3, bytes 0-3)".to_owned()),
+    ];
+
+    for (i, act) in actual.iter().enumerate() {
+        println!("{:?}", act);
+        println!("{:?}", expected[i]);
+        println!("");
+    }
+    assert_eq!(actual, expected);
+}
+
 /// Tests AtmaScriptScanner with a line comment.
 #[test]
-fn as_lexer_line_comment() {
+fn line_comment() {
     use AtmaToken::*;
     let text = "#abc\n";
     let as_tok = AtmaScriptScanner::new();
@@ -62,7 +115,7 @@ fn as_lexer_line_comment() {
 
 /// Tests AtmaScriptScanner with a line comment surrounded by whitespace.
 #[test]
-fn as_lexer_line_comment_circumfix_whitespace() {
+fn line_comment_circumfix_whitespace() {
     use AtmaToken::*;
     let text = "\n\t \n#abc\n \t\n ";
     let as_tok = AtmaScriptScanner::new();
@@ -91,7 +144,7 @@ fn as_lexer_line_comment_circumfix_whitespace() {
 
 /// Tests AtmaScriptScanner with a line comment surrounded by whitespace.
 #[test]
-fn as_lexer_line_comments_remove_whitespace() {
+fn line_comments_remove_whitespace() {
     use AtmaToken::*;
     let text = "\n\t \n#abc\n \t#def\n ";
     let as_tok = AtmaScriptScanner::new();
@@ -115,7 +168,7 @@ fn as_lexer_line_comments_remove_whitespace() {
 
 /// Tests AtmaScriptScanner with an empty single-quoted string.
 #[test]
-fn as_lexer_string_single_empty() {
+fn string_single_empty() {
     use AtmaToken::*;
     let text = "''";
     let as_tok = AtmaScriptScanner::new();
@@ -143,7 +196,7 @@ fn as_lexer_string_single_empty() {
 /// Tests AtmaScriptScanner with an unclosed single-quoted string.
 #[test]
 #[should_panic]
-fn as_lexer_string_single_unclosed() {
+fn string_single_unclosed() {
     use AtmaToken::*;
     let text = "'abc";
     let as_tok = AtmaScriptScanner::new();
@@ -166,7 +219,7 @@ fn as_lexer_string_single_unclosed() {
 
 /// Tests AtmaScriptScanner with a non-empty single-quoted string.
 #[test]
-fn as_lexer_string_single_text() {
+fn string_single_text() {
     use AtmaToken::*;
     let text = "'abc \n xyz'";
     let as_tok = AtmaScriptScanner::new();
@@ -194,7 +247,7 @@ fn as_lexer_string_single_text() {
 
 /// Tests AtmaScriptScanner with a quote-containing single-quoted string.
 #[test]
-fn as_lexer_string_single_quotes() {
+fn string_single_quotes() {
     use AtmaToken::*;
     let text = "'abc\"\n\\'xyz'";
     let as_tok = AtmaScriptScanner::new();
@@ -223,7 +276,7 @@ fn as_lexer_string_single_quotes() {
 
 /// Tests AtmaScriptScanner with an empty double-quoted string.
 #[test]
-fn as_lexer_string_double_empty() {
+fn string_double_empty() {
     use AtmaToken::*;
     let text = "\"\"";
     let as_tok = AtmaScriptScanner::new();
@@ -252,7 +305,7 @@ fn as_lexer_string_double_empty() {
 /// Tests AtmaScriptScanner with an unclosed double-quoted string.
 #[test]
 #[should_panic]
-fn as_lexer_string_double_unclosed() {
+fn string_double_unclosed() {
     use AtmaToken::*;
     let text = "\"abc";
     let as_tok = AtmaScriptScanner::new();
@@ -276,7 +329,7 @@ fn as_lexer_string_double_unclosed() {
 
 /// Tests AtmaScriptScanner with a non-empty double-quoted string.
 #[test]
-fn as_lexer_string_double_text() {
+fn string_double_text() {
     use AtmaToken::*;
     let text = "\"abc \n xyz\"";
     let as_tok = AtmaScriptScanner::new();
@@ -304,7 +357,7 @@ fn as_lexer_string_double_text() {
 
 /// Tests AtmaScriptScanner with a quote-containing double-quoted string.
 #[test]
-fn as_lexer_string_double_quotes() {
+fn string_double_quotes() {
     use AtmaToken::*;
     let text = "\"abc\\\"\n'xyz\"";
     let as_tok = AtmaScriptScanner::new();
@@ -333,7 +386,7 @@ fn as_lexer_string_double_quotes() {
 
 /// Tests AtmaScriptScanner with an empty raw-quoted string.
 #[test]
-fn as_lexer_string_raw_empty() {
+fn string_raw_empty() {
     use AtmaToken::*;
     let text = "r\"\"";
     let as_tok = AtmaScriptScanner::new();
@@ -361,7 +414,7 @@ fn as_lexer_string_raw_empty() {
 
 /// Tests AtmaScriptScanner with an empty raw-quoted string using hashes.
 #[test]
-fn as_lexer_string_raw_empty_hashed() {
+fn string_raw_empty_hashed() {
     use AtmaToken::*;
     let text = "r##\"\"##";
     let as_tok = AtmaScriptScanner::new();
@@ -389,7 +442,7 @@ fn as_lexer_string_raw_empty_hashed() {
 /// Tests AtmaScriptScanner with an unclosed raw-quoted string.
 #[test]
 #[should_panic]
-fn as_lexer_string_raw_unclosed() {
+fn string_raw_unclosed() {
     use AtmaToken::*;
     let text = "r###\"abc";
     let as_tok = AtmaScriptScanner::new();
@@ -413,7 +466,7 @@ fn as_lexer_string_raw_unclosed() {
 /// Tests AtmaScriptScanner with an mismatched raw-quoted string.
 #[test]
 #[should_panic]
-fn as_lexer_string_raw_mismatched() {
+fn string_raw_mismatched() {
     use AtmaToken::*;
     let text = "r###\"abc\"#";
     let as_tok = AtmaScriptScanner::new();
@@ -436,7 +489,7 @@ fn as_lexer_string_raw_mismatched() {
 
 /// Tests AtmaScriptScanner with a non-empty raw-quoted string.
 #[test]
-fn as_lexer_string_raw_text() {
+fn string_raw_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
     let as_tok = AtmaScriptScanner::new();
@@ -465,7 +518,7 @@ fn as_lexer_string_raw_text() {
 /// Tests AtmaScriptScanner with a non-empty raw-quoted string with quotes
 /// inside.
 #[test]
-fn as_lexer_string_raw_quoted_text() {
+fn string_raw_quoted_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
     let as_tok = AtmaScriptScanner::new();
@@ -493,7 +546,7 @@ fn as_lexer_string_raw_quoted_text() {
 
 /// Tests AtmaScriptScanner with a CommandChunk.
 #[test]
-fn as_lexer_command_chunk() {
+fn command_chunk() {
     use AtmaToken::*;
     let text = "abc-def";
     let as_tok = AtmaScriptScanner::new();
@@ -520,7 +573,7 @@ fn as_lexer_command_chunk() {
 
 /// Tests AtmaScriptScanner with a combination of tokens.
 #[test]
-fn as_lexer_combined() {
+fn combined() {
     use AtmaToken::*;
     let text = "# \n\n \"abc\\\"\"'def' r##\"\t\"##\n\n\n--zyx--wvut";
     let as_tok = AtmaScriptScanner::new();
@@ -561,7 +614,7 @@ fn as_lexer_combined() {
 /// Tests AtmaScriptScanner with a combination of tokens separated by
 /// terminators.
 #[test]
-fn as_lexer_combined_terminated() {
+fn combined_terminated() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
     let as_tok = AtmaScriptScanner::new();
@@ -608,7 +661,7 @@ fn as_lexer_combined_terminated() {
 /// Tests AtmaScriptScanner with a combination of tokens separated by
 /// terminators with whitespace filtered out.
 #[test]
-fn as_lexer_combined_terminated_remove_whitespace() {
+fn combined_terminated_remove_whitespace() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
     let as_tok = AtmaScriptScanner::new();
@@ -652,7 +705,7 @@ fn as_lexer_combined_terminated_remove_whitespace() {
 /// Tests AtmaScriptScanner with a combination of tokens separated by
 /// terminators with multiple tokens filtered out.
 #[test]
-fn as_lexer_combined_terminated_filtered() {
+fn combined_terminated_filtered() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
     let as_tok = AtmaScriptScanner::new();

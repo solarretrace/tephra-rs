@@ -81,6 +81,11 @@ impl<'text, S, Nl> Lexer<'text, S, Nl> where S: Scanner {
     pub fn current_pos(&self) -> Pos {
         self.pos
     }
+
+    /// Sets the current lexer position.
+    pub fn set_current_pos(&mut self, pos: Pos) {
+        self.pos = pos;
+    }
 }
 
 impl<'text, S, Nl> Lexer<'text, S, Nl>
@@ -143,12 +148,6 @@ impl<'text, S, Nl> Iterator for Lexer<'text, S, Nl>
         None
     }
 }
-
-impl<'text, S, Nl> std::iter::FusedIterator for Lexer<'text, S, Nl>
-    where
-        S: Scanner,
-        Nl: NewLine,
-{}
 
 impl<'text, S, Nl> Debug for Lexer<'text, S, Nl> where S: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

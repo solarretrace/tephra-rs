@@ -20,7 +20,7 @@ use crate::span::Pos;
 
 /// Tests `Span::new`.
 #[test]
-fn span_empty() {
+fn empty() {
     let text = "abcd";
     let span = Span::<'_, Lf>::new(text);
 
@@ -34,7 +34,7 @@ fn span_empty() {
 
 /// Tests `Span::extend_by_bytes`.
 #[test]
-fn span_extend_by_bytes() {
+fn extend_by_bytes() {
     let text = "abcd";
     let mut span = Span::<'_, Lf>::new(text);
     span.extend_by_bytes(2);
@@ -46,7 +46,7 @@ fn span_extend_by_bytes() {
 
 /// Tests `Span::extend_by_bytes` with a newline.
 #[test]
-fn span_extend_by_bytes_newline() {
+fn extend_by_bytes_newline() {
     let text = "a\nbcd";
     let mut span = Span::<'_, Lf>::new(text);
     span.extend_by_bytes(2);
@@ -58,7 +58,7 @@ fn span_extend_by_bytes_newline() {
 
 /// Tests `Span::extend_by_bytes` with a newline.
 #[test]
-fn span_extend_by_bytes_newline_split() {
+fn extend_by_bytes_newline_split() {
     let text = "a\nbcd";
     let mut span = Span::<'_, Lf>::new(text);
     span.extend_by_bytes(3);
@@ -71,7 +71,7 @@ fn span_extend_by_bytes_newline_split() {
 
 /// Tests `Span::new_from`.
 #[test]
-fn span_new_from() {
+fn new_from() {
     let text = " \n  abcd  \n ";
     let mut span = Span::<'_, Lf>::new_from(Pos::new(4, 1, 2), text);
     span.extend_by(Pos::new(4, 0, 4));
@@ -83,7 +83,7 @@ fn span_new_from() {
 
 /// Tests `Span::full`.
 #[test]
-fn span_full() {
+fn full() {
     let text = " \n  abcd  \n ";
     let span = Span::<'_, Lf>::full(text);
 
@@ -94,7 +94,7 @@ fn span_full() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
-fn span_widen_to_line() {
+fn widen_to_line() {
     let text = " \n  abcd  \n ";
     let mut span = Span::<'_, Lf>::new_from(Pos::new(4, 1, 2), text);
     span.extend_by(Pos::new(4, 0, 4));
@@ -106,7 +106,7 @@ fn span_widen_to_line() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
-fn span_widen_empty_to_line() {
+fn widen_empty_to_line() {
     let text = " \n  abcd  \n ";
     let span = Span::<'_, Lf>::new_from(Pos::new(6, 1, 4), text);
 
@@ -118,7 +118,7 @@ fn span_widen_empty_to_line() {
 
 /// Tests `Span::widento_line`.
 #[test]
-fn span_widen_full_to_line() {
+fn widen_full_to_line() {
     let text = " \n  abcd  \n ";
     let mut span = Span::<'_, Lf>::new(text);
     span.extend_by(Pos::new_from_string::<_, Lf>(text));
@@ -131,7 +131,7 @@ fn span_widen_full_to_line() {
 
 /// Tests `Span::trim`.
 #[test]
-fn span_trim() {
+fn trim() {
     let text = " \n  abcd  \n ";
     let mut span = Span::<'_, Lf>::new_from(Pos::new(2, 1, 0), text);
     span.extend_by(Pos::new(8, 0, 8));
@@ -143,7 +143,7 @@ fn span_trim() {
 
 /// Tests `Span::split_lines`.
 #[test]
-fn span_split_lines() {
+fn split_lines() {
     let text = "\n \n\n \nabcd\n def \nghi\n";
     let span = Span::<'_, Lf>::full(text);
 
@@ -173,18 +173,18 @@ fn span_split_lines() {
 
 /// Tests `Span::enclose`.
 #[test]
-fn span_enclose() {
+fn enclose() {
     let text = "\n \n\n \nabcd\n def \nghi\n";
-    let span_a = Span::<'_, Lf>::new_enclosing(
+    let a = Span::<'_, Lf>::new_enclosing(
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4),
         text);
-    let span_b = Span::<'_, Lf>::new_enclosing(
+    let b = Span::<'_, Lf>::new_enclosing(
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", span_a.enclose(&span_b));
+    let actual = format!("{}", a.enclose(&b));
     let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
 
     println!("{:?}", actual);
@@ -195,18 +195,18 @@ fn span_enclose() {
 
 /// Tests `Span::union`.
 #[test]
-fn span_union() {
+fn union() {
     let text = "\n \n\n \nabcd\n def \nghi\n";
-    let span_a = Span::<'_, Lf>::new_enclosing(
+    let a = Span::<'_, Lf>::new_enclosing(
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4),
         text);
-    let span_b = Span::<'_, Lf>::new_enclosing(
+    let b = Span::<'_, Lf>::new_enclosing(
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", span_a.union(&span_b).next().unwrap());
+    let actual = format!("{}", a.union(&b).next().unwrap());
     let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
 
     println!("{:?}", actual);
@@ -217,18 +217,18 @@ fn span_union() {
 
 /// Tests `Span::intersect`.
 #[test]
-fn span_intersect() {
+fn intersect() {
     let text = "\n \n\n \nabcd\n def \nghi\n";
-    let span_a = Span::<'_, Lf>::new_enclosing(
+    let a = Span::<'_, Lf>::new_enclosing(
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4),
         text);
-    let span_b = Span::<'_, Lf>::new_enclosing(
+    let b = Span::<'_, Lf>::new_enclosing(
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", span_a.intersect(&span_b).unwrap());
+    let actual = format!("{}", a.intersect(&b).unwrap());
     let expected = "\"\nabcd\" (3:1-4:4, bytes 5-10)".to_owned();
 
     println!("{:?}", actual);
@@ -239,18 +239,18 @@ fn span_intersect() {
 
 /// Tests `Span::minus`.
 #[test]
-fn span_minus() {
+fn minus() {
     let text = "\n \n\n \nabcd\n def \nghi\n";
-    let span_a = Span::<'_, Lf>::new_enclosing(
+    let a = Span::<'_, Lf>::new_enclosing(
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4),
         text);
-    let span_b = Span::<'_, Lf>::new_enclosing(
+    let b = Span::<'_, Lf>::new_enclosing(
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", dbg!(span_a.minus(&span_b)).next().unwrap());
+    let actual = format!("{}", dbg!(a.minus(&b)).next().unwrap());
     let expected = "\"\n \" (2:0-3:1, bytes 3-5)".to_owned();
 
     println!("{:?}", actual);

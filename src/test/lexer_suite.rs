@@ -80,7 +80,7 @@ impl Scanner for Test {
 
 /// Tests `Lexer::new`.
 #[test]
-fn lexer_empty() {
+fn empty() {
     let text = "";
     let mut lexer = Lexer::new(Test, text, Lf);
 
@@ -92,7 +92,7 @@ fn lexer_empty() {
 
 /// Tests `Lexer::next`.
 #[test]
-fn lexer_simple() {
+fn simple() {
     use TestToken::*;
     let text = "aa b";
     let lexer = Lexer::new(Test, text, Lf);
@@ -114,7 +114,7 @@ fn lexer_simple() {
 
 /// Tests `Lexer` with whitespace filter.
 #[test]
-fn lexer_no_whitespace() {
+fn no_whitespace() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
     let mut lexer = Lexer::new(Test, text, Lf);

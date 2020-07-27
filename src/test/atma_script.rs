@@ -21,7 +21,7 @@ use std::convert::TryInto as _;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Scanner.
+// Scanner
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TokenError(&'static str);
@@ -334,7 +334,8 @@ impl Scanner for AtmaScriptScanner {
                 // Because it is necessary to recognize the RawStringClose to
                 // finish parsing RawStringText, we should never get here unless
                 // we know the next part of the text is the appropriately sized
-                // RawStringClose token.
+                // RawStringClose token. So instead of explicitely parsing it,
+                // we can just jump forward.
                 let byte: usize = (self.raw_string_bracket_count + 1)
                     .try_into()
                     .expect("Pos overflow");
@@ -346,10 +347,9 @@ impl Scanner for AtmaScriptScanner {
                     return Ok(parse);
                 }
                 if let Some(parse) = self.parse_raw_string_text::<Nl>(text) {
-                    Ok(parse)
-                } else {
-                    Err((TokenError("Non-terminated raw string"), Pos::ZERO))
+                    return Ok(parse);
                 }
+                Err((TokenError("Non-terminated raw string"), Pos::ZERO))
             },
 
             Some(StringOpenSingle) => {

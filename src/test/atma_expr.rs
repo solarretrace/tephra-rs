@@ -18,7 +18,7 @@ use std::convert::TryInto as _;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Scanner.
+// Scanner
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TokenError(&'static str);
@@ -33,37 +33,65 @@ impl std::fmt::Display for TokenError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum AtmaToken {
+    /// Any number of whitespace characters.
     Whitespace,
     
+    /// An open parenthesis character '('.
     OpenParen,
+    /// A close parenthesis character ')'.
     CloseParen,
 
+    /// A raw string open "r[#*]\"".
     RawStringOpen,
+    /// A raw string close "\"[#*]", which must match the corresponding open
+    /// text.
     RawStringClose,
+    /// A raw string, ignoring escape characters.
     RawStringText,
     
+    /// A single-quote string open character '''.
     StringOpenSingle,
+    /// A single-quote string close character '''.
     StringCloseSingle,
+    /// A double-quote string open character '"'.
     StringOpenDouble,
+    /// A double-quote string close character '"'.
     StringCloseDouble,
+    /// A string with potential escape characters.
     StringText,
 
+    /// A colon character ':'.
     Colon,
+    /// A comma character ','.
     Comma,
+    /// An octothorpe character '#'.
     Hash,
+    /// An asterisk character '*'.
     Mult,
+    /// A plus character '+'.
     Plus,
+    /// A minus or hyphen character '-'.
     Minus,
 
+    /// A floating point number.
     Float,
+    /// A decimal point character '.'.
     Decimal,
 
+    /// A binary integer prefix marker "0b".
     IntPrefixBin,
+    /// A octal integer prefix marker "0o".
     IntPrefixOct,
+    /// A hexidecimal integer prefix marker "0x".
     IntPrefixHex,
     
+    /// Any number of hexidecimal integer digits or underscore characters.
     IntDigits,
+    /// An identifier with the form "[_[alpha]][alphanumeric]+".
     Ident,
+
+    /// An underscore character '_'.
+    Underscore,
     
 }
 
@@ -310,6 +338,18 @@ impl AtmaExprScanner {
         }
     }
 
+
+    /// Parses a Underscore token.
+    fn parse_underscore(&mut self, text: &str)
+        -> Option<(AtmaToken, Pos)>
+    {
+        if text.starts_with('_') {
+            Some((AtmaToken::Underscore, Pos::new(1, 0, 1)))
+        } else {
+            None
+        }
+    }
+
     /// Parses a RawStringOpen token.
     fn parse_raw_string_open(&mut self, text: &str)
         -> Option<(AtmaToken, Pos)>
@@ -513,12 +553,13 @@ impl Scanner for AtmaExprScanner {
     {
         use AtmaToken::*;
         match self.open.take() {
-
+            
             Some(RawStringText) => {
                 // Because it is necessary to recognize the RawStringClose to
                 // finish parsing RawStringText, we should never get here unless
                 // we know the next part of the text is the appropriately sized
-                // RawStringClose token.
+                // RawStringClose token. So instead of explicitely parsing it,
+                // we can just jump forward.
                 let byte: usize = (self.raw_string_bracket_count + 1)
                     .try_into()
                     .expect("Pos overflow");
@@ -530,10 +571,9 @@ impl Scanner for AtmaExprScanner {
                     return Ok(parse);
                 }
                 if let Some(parse) = self.parse_raw_string_text::<Nl>(text) {
-                    Ok(parse)
-                } else {
-                    Err((TokenError("Non-terminated raw string"), Pos::ZERO))
+                    return Ok(parse);
                 }
+                Err((TokenError("Non-terminated raw string"), Pos::ZERO))
             },
 
             Some(StringOpenSingle) => {
@@ -634,10 +674,15 @@ impl Scanner for AtmaExprScanner {
                 if let Some(parse) = self.parse_int_digits(text) {
                     return Ok(parse);
                 }
+                // Ident must be parsed before Underscore.
                 if let Some(parse) = self.parse_ident(text) {
                     return Ok(parse);
                 }
 
+                if let Some(parse) = self.parse_underscore(text) {
+                    return Ok(parse);
+                }
+                
                 Err((TokenError("Unrecognized token"), Pos::new(1, 0, 1)))
             },
 
@@ -647,3 +692,42 @@ impl Scanner for AtmaExprScanner {
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Values
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct Color(pub u32);
+
+
+pub enum CellRef {
+    Index(u32),
+    Position(u16, u16, u16),
+    Group(String, usize),
+    Name(String),
+}
+pub enum CellSelector {
+    All,
+    Index(u32),
+    PositionSelector(Option<u16>, Option<u16>, Option<u16>),
+    Group(String, usize),
+    GroupAll(String),
+    Name(String),
+}
+pub struct Function {
+    name: String,
+    args: Vec<FunctionArg>,
+}
+
+pub enum FunctionArg {
+    CellRef(CellRef),
+    Color(Color),
+    Channel(Channel),
+    Function(Function),
+}
+
+pub enum Channel {
+    Rgb,
+    Hsv,
+    Hsl,
+}

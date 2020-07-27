@@ -20,7 +20,7 @@ use crate::test::atma_script::*;
 
 /// Tests `Failure` state for an unexpected empty parse.
 #[test]
-fn error_parse_one_from_empty() {
+fn parse_one_from_empty() {
     let text = "";
     let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text, Lf);
@@ -39,7 +39,7 @@ fn error_parse_one_from_empty() {
 
 /// Tests `Failure` message for an unexpected empty parse.
 #[test]
-fn error_empty_msg() {
+fn empty_msg() {
     let text = "";
     let as_tok = AtmaScriptScanner::new();
     let lexer = Lexer::new(as_tok, text, Lf);
