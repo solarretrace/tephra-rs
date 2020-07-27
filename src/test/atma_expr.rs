@@ -38,6 +38,16 @@ pub enum AtmaToken {
     OpenParen,
     CloseParen,
 
+    RawStringOpen,
+    RawStringClose,
+    RawStringText,
+    
+    StringOpenSingle,
+    StringCloseSingle,
+    StringOpenDouble,
+    StringCloseDouble,
+    StringText,
+
     Colon,
     Comma,
     Hash,
@@ -55,26 +65,17 @@ pub enum AtmaToken {
     IntDigits,
     Ident,
     
-    RawStringOpen,
-    RawStringClose,
-    RawStringText,
-    
-    StringOpenSingle,
-    StringCloseSingle,
-    StringOpenDouble,
-    StringCloseDouble,
-    StringText,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct AtmaScriptScanner {
+pub struct AtmaExprScanner {
     open: Option<AtmaToken>,
     raw_string_bracket_count: u64,
 }
 
-impl AtmaScriptScanner {
+impl AtmaExprScanner {
     pub fn new() -> Self {
-        AtmaScriptScanner {
+        AtmaExprScanner {
             open: None,
             raw_string_bracket_count: 0,
         }
@@ -502,7 +503,7 @@ impl AtmaScriptScanner {
     }
 }
 
-impl Scanner for AtmaScriptScanner {
+impl Scanner for AtmaExprScanner {
     type Token = AtmaToken;
     type Error = TokenError;
 
@@ -573,6 +574,21 @@ impl Scanner for AtmaScriptScanner {
                 if let Some(parse) = self.parse_close_paren(text) {
                     return Ok(parse);
                 }
+
+                // RawStringOpen must be parsed before Hash.
+                if let Some(parse) = self.parse_raw_string_open(text) {
+                    self.open = Some(RawStringOpen);
+                    return Ok(parse);
+                }
+                if let Some(parse) = self.parse_string_open_single(text) {
+                    self.open = Some(StringOpenSingle);
+                    return Ok(parse);
+                }
+                if let Some(parse) = self.parse_string_open_double(text) {
+                    self.open = Some(StringOpenDouble);
+                    return Ok(parse);
+                }
+
                 if let Some(parse) = self.parse_colon(text) {
                     return Ok(parse);
                 }
@@ -619,19 +635,6 @@ impl Scanner for AtmaScriptScanner {
                     return Ok(parse);
                 }
                 if let Some(parse) = self.parse_ident(text) {
-                    return Ok(parse);
-                }
-
-                if let Some(parse) = self.parse_raw_string_open(text) {
-                    self.open = Some(RawStringOpen);
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_string_open_single(text) {
-                    self.open = Some(StringOpenSingle);
-                    return Ok(parse);
-                }
-                if let Some(parse) = self.parse_string_open_double(text) {
-                    self.open = Some(StringOpenDouble);
                     return Ok(parse);
                 }
 

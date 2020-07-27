@@ -573,7 +573,7 @@ impl std::fmt::Display for PageSpan {
 /// A position with the source text identified by line and column numbers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Page {
-    // NOTE: Field order must be maintained for PartialOrd and Ord impls.
+    // NOTE: Field order must be (line, col) for PartialOrd and Ord impls.
     /// The line number.
     pub line: usize,
     /// The column number.
@@ -588,7 +588,6 @@ impl Page {
     pub fn advance<'t, Nl>(mut self, text: &'t str) -> Self
         where Nl: NewLine,
     {
-
         let mut chars = text.chars();
         loop {
             // Skip past newline chars.
