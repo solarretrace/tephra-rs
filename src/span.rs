@@ -88,7 +88,7 @@ impl Pos {
         let text = text.as_ref();
         Pos {
             byte: text.len(),
-            page: Page::ZERO.advance::<_, Nl>(text),
+            page: Page::ZERO.advance::<Nl>(text.as_ref()),
         }
     }
 }
@@ -549,7 +549,7 @@ impl PageSpan {
     {
         PageSpan {
             start,
-            end: start.advance::<_, Nl>(text),
+            end: start.advance::<Nl>(text),
         }
     }
 }
@@ -585,30 +585,25 @@ impl Page {
     pub const ZERO: Page = Page { line: 0, column: 0 };
 
     /// Advances the Page by the contents of the given text.
-    pub fn advance<S, Nl>(self, text: S) -> Self
-        where
-            S: AsRef<str>,
-            Nl: NewLine,
+    pub fn advance<'t, Nl>(mut self, text: &'t str) -> Self
+        where Nl: NewLine,
     {
-        let mut line = self.line;
-        let mut column = self.column;
-        let mut split = text.as_ref().split(Nl::STR);
 
+        let mut chars = text.chars();
+        loop {
+            // Skip past newline chars.
+            if chars.as_str().starts_with(Nl::STR) {
+                self.line += 1;
+                self.column = 0;
+                let _ = chars.nth(Nl::len() - 1);
+                continue;
+            }
 
-        match split.next() {
-            Some(substr) if !substr.is_empty()
-                // TODO: Avoid iterating over chars twice.
-                => column += substr.chars().count(),
-
-            _   => (),
+            if chars.next().is_none() { break; }
+            self.column += 1;
         }
 
-        for substr in split {
-            line += 1;
-            column = substr.chars().count();
-        }
-
-        Page { line, column }
+        self
     }
 }
 

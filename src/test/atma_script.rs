@@ -225,36 +225,48 @@ impl AtmaScriptScanner {
     }
 
     /// Parses a StringText token.
-    fn parse_string_text(&mut self, text: &str, open: AtmaToken)
+    fn parse_string_text<Nl>(&mut self, text: &str, open: AtmaToken)
         -> Option<(AtmaToken, Pos)>
+        where Nl: NewLine,
     {
         let mut pos = Pos::ZERO;
         let mut chars = text.chars();
-        while let Some(c) = chars.next() {
-            if c == '\\' {
-                match chars.next() {
-                    // NOTE: These should all step by column, because they're
-                    // escaped text.
-                    Some('\\') | 
-                    Some('"')  | 
-                    Some('\'') | 
-                    Some('t')  | 
-                    Some('r')  |
-                    Some('n')  => pos += Pos::new(2, 0, 2),
-                    Some('u')  => unimplemented!("unicode escapes unsupported"),
-                    Some(_)    |
-                    None       => return None,
-                }
+        
+        loop {
+            // Skip past newline chars.
+            if chars.as_str().starts_with(Nl::STR) {
+                pos += Pos::new(Nl::len(), 1, 0);
+                let _ = chars.nth(Nl::len() - 1);
                 continue;
             }
 
-            match (c, open) {
-                ('\'', AtmaToken::StringOpenSingle) |
-                ('"', AtmaToken::StringOpenDouble)  => {
-                    return Some((AtmaToken::StringText, pos));
-                },
-                ('\n', _) => pos += Pos::new(1, 1, 0),
-                _         => pos += Pos::new(c.len_utf8(), 0, 1),
+            if let Some(c) = chars.next() {
+                if c == '\\' {
+                    match chars.next() {
+                        // NOTE: These should all step by column, because
+                        // they're escaped text.
+                        Some('\\') | 
+                        Some('"')  | 
+                        Some('\'') | 
+                        Some('t')  | 
+                        Some('r')  |
+                        Some('n')  => pos += Pos::new(2, 0, 2),
+                        Some('u')  => unimplemented!("unicode escapes unsupported"),
+                        Some(_)    |
+                        None       => return None,
+                    }
+                    continue;
+                }
+
+                match (c, open) {
+                    ('\'', AtmaToken::StringOpenSingle) |
+                    ('"', AtmaToken::StringOpenDouble)  => {
+                        return Some((AtmaToken::StringText, pos));
+                    },
+                    _ => pos += Pos::new(c.len_utf8(), 0, 1),
+                }
+            } else {
+                break;
             }
         }
 
@@ -345,7 +357,7 @@ impl Scanner for AtmaScriptScanner {
                     return Ok(parse);
                 }
                 if let Some(parse) = self
-                    .parse_string_text(text, StringOpenSingle)
+                    .parse_string_text::<Nl>(text, StringOpenSingle)
                 {
                     self.open = Some(StringOpenSingle);
                     return Ok(parse);
@@ -358,7 +370,7 @@ impl Scanner for AtmaScriptScanner {
                     return Ok(parse);
                 }
                 if let Some(parse) = self
-                    .parse_string_text(text, StringOpenDouble)
+                    .parse_string_text::<Nl>(text, StringOpenDouble)
                 {
                     self.open = Some(StringOpenDouble);
                     return Ok(parse);
