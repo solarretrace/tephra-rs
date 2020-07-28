@@ -43,11 +43,15 @@ pub trait ParseResultExt<'text, Sc, Nl, V>
     /// applying the given closure.
     fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
         where F: FnOnce(V) -> U;
+
+    /// Consumes the current span on the Success's contained lexer.
+    fn consume_current_if_success(self) -> Self;
 }
 
 impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
         for ParseResult<'text, Sc, Nl, V>
-    where Sc: Scanner,
+    where
+        Sc: Scanner,
 {
     fn finish(self) -> Result<V, FailureOwned> {
         self
@@ -60,6 +64,13 @@ impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
     {
         match self {
             Ok(succ)  => Ok(succ.map_value(f)),
+            Err(fail) => Err(fail),
+        }
+    }
+
+    fn consume_current_if_success(self) -> Self {
+        match self {
+            Ok(succ)  => Ok(succ.consumed_current()),
             Err(fail) => Err(fail),
         }
     }

@@ -11,7 +11,6 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::span::Span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -23,8 +22,6 @@ use crate::span::Span;
 pub struct Success<'text, Sc, Nl, V> where Sc: Scanner {
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, Sc, Nl>,
-    /// The span of the parse result.
-    pub span: Span<'text, Nl>,
     /// The parsed value.
     pub value: V,
 }
@@ -42,7 +39,6 @@ impl<'text, Sc, Nl, V> Success<'text, Sc, Nl, V> where Sc: Scanner {
     {
         Success {
             lexer: self.lexer,
-            span: self.span,
             value: (f)(self.value),
         }
     }
@@ -52,8 +48,16 @@ impl<'text, Sc, Nl, V> Success<'text, Sc, Nl, V> where Sc: Scanner {
     pub fn take_value(self) -> (V, Success<'text, Sc, Nl, ()>) {
         (self.value, Success {
             lexer: self.lexer,
-            span: self.span,
             value: (),
         })
+    }
+
+    /// Consumes the current span on the Success's contained lexer.
+    pub fn consumed_current(mut self) -> Self {
+        let _ = self.lexer.consume_current_span();
+        Success {
+            lexer: self.lexer,
+            value: self.value,
+        }
     }
 }

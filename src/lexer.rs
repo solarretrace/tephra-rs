@@ -91,23 +91,17 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
 
     /// Resets the lexer position to the start position of the uncomsumed text.
     /// Note that this does not modify the scanner state or filters.
-    pub fn reset(&mut self) -> &'text str {
-        self.source
+    pub fn reset(&mut self) {
+        self.current = self.consumed
     }
-}
 
-impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
-    where
-        Sc: Scanner,
-        Nl: NewLine,
-{
     /// Returns the unconsumed span up to the current position.
     pub fn current_span(&self) -> Span<'text, Nl> {
         Span::new_enclosing(self.consumed, self.current, self.source)
     }
 
     /// Returns the span up to the current position and consumes it.
-    pub fn consume_span(&mut self) -> Span<'text, Nl> {
+    pub fn consume_current_span(&mut self) -> Span<'text, Nl> {
         let span = Span::new_enclosing(
             self.consumed,
             self.current,

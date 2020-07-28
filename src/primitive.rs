@@ -9,7 +9,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::span::Span;
 use crate::span::NewLine;
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
@@ -18,12 +17,37 @@ use crate::result::Success;
 use crate::result::Failure;
 use crate::result::Reason;
 
+////////////////////////////////////////////////////////////////////////////////
+// empty
+////////////////////////////////////////////////////////////////////////////////
+/// Parses the empty string.
+///
+/// # Combinator behavior
+///
+/// ## Success
+/// 
+/// The lexer is returned with no tokens requested or span consumed.
+///
+/// ## Failure
+///
+/// This parser cannot fail.
+pub fn empty<'t, Sc, Nl>(lexer: Lexer<'t, Sc, Nl>)
+    -> ParseResult<'t, Sc, Nl, ()>
+    where Sc: Scanner,
+{
+
+    Ok(Success {
+        lexer: lexer,
+        value: (),
+    })
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses the end of the text.
-pub fn end_of_text<'t, F, Sc, Nl, V>(mut lexer: Lexer<'t, Sc, Nl>)
+pub fn end_of_text<'t, Sc, Nl, F, V>(mut lexer: Lexer<'t, Sc, Nl>)
     -> ParseResult<'t, Sc, Nl, ()>
     where
         Sc: Scanner,
@@ -33,7 +57,6 @@ pub fn end_of_text<'t, F, Sc, Nl, V>(mut lexer: Lexer<'t, Sc, Nl>)
     match lexer.next() {
         // Lexer error.
         Some(Err(e)) => Err(Failure {
-            span: lexer.current_span(),
             lexer: saved,
             reason: Reason::LexerError,
             source: Some(Box::new(e)),
@@ -41,20 +64,19 @@ pub fn end_of_text<'t, F, Sc, Nl, V>(mut lexer: Lexer<'t, Sc, Nl>)
 
         // Expected End-of-text.
         None => Ok(Success {
-            span: lexer.current_span(),
             lexer: lexer,
             value: (),
         }),
 
         // Unexpected token.
-        Some(Ok(lex)) => Err(Failure {
-            span: *lex.span(),
+        Some(Ok(_)) => Err(Failure {
             lexer: saved,
             reason: Reason::UnexpectedToken,
             source: None,
         }),
     }
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 // one
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +93,6 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
         match lexer.next() {
             // Lexer error.
             Some(Err(e)) => Err(Failure {
-                span: lexer.current_span(),
                 lexer: saved,
                 reason: Reason::LexerError,
                 source: Some(Box::new(e)),
@@ -80,13 +101,11 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
             // Matching token.
             Some(Ok(lex)) if lex == token => Ok(Success {
                 lexer: lexer,
-                span: lex.into_span(),
                 value: (),
             }),
 
             // Incorrect token.
-            Some(Ok(lex)) => Err(Failure {
-                span: *lex.span(),
+            Some(Ok(_)) => Err(Failure {
                 lexer: saved,
                 reason: Reason::UnexpectedToken,
                 source: None,
@@ -94,7 +113,6 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
 
             // Unexpected End-of-text.
             None => Err(Failure {
-                span: lexer.current_span(),
                 lexer: saved,
                 reason: Reason::UnexpectedEndOfText,
                 source: None,
@@ -120,7 +138,6 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
             match lexer.next() {
                 // Lexer error.
                 Some(Err(e)) => return Err(Failure {
-                    span: lexer.current_span(),
                     lexer,
                     reason: Reason::LexerError,
                     source: Some(Box::new(e)),
@@ -129,7 +146,6 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
                 // Matching token.
                 Some(Ok(lex)) if lex == *token => return Ok(Success {
                     lexer,
-                    span: lex.into_span(),
                     value: (),
                 }),
 
@@ -141,7 +157,6 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
         }
 
         Err(Failure {
-            span: lexer.current_span(),
             lexer,
             reason: Reason::UnexpectedToken,
             source: None,
@@ -162,27 +177,21 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
 {
     let tokens = tokens.to_vec();
     move |mut lexer| {
-        let start = lexer.current_pos();
-        let mut end = lexer.current_pos();
 
         for token in &tokens {
             match lexer.next() {
                 // Lexer error.
                 Some(Err(e)) => return Err(Failure {
-                    span: lexer.current_span(),
                     lexer,
                     reason: Reason::LexerError,
                     source: Some(Box::new(e)),
                 }),
 
                 // Matching token.
-                Some(Ok(lex)) if lex == *token => {
-                    end = lex.span().end();
-                },
+                Some(Ok(lex)) if lex == *token => (),
 
                 // Incorrect token.
-                Some(Ok(lex)) => return Err(Failure {
-                    span: *lex.span(),
+                Some(Ok(_)) => return Err(Failure {
                     lexer,
                     reason: Reason::UnexpectedToken,
                     source: None,
@@ -190,7 +199,6 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
 
                 // Unexpected End-of-text.
                 None => return Err(Failure {
-                    span: lexer.current_span(),
                     lexer,
                     reason: Reason::UnexpectedEndOfText,
                     source: None,
@@ -199,7 +207,6 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
         }
 
         Ok(Success {
-            span: Span::new_enclosing(start, end, lexer.source()),
             lexer,
             value: (),
         })

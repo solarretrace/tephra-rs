@@ -2,8 +2,16 @@
 
 # Tephra Error Handling
 
-# Failure Modes
+If a parse succeeds, it is assumed that lexer it returns is consumed up to current. However, if the overall parse is not yet complete, then it should save its own lexer in which the child parse was not yet consumed. If there is any possibility of a parse failure, we want all of the unconsumed text to be available.
 
+`Success` always returns the value and the span it was derived from, and a lexer which is ready to consume more.
+
+`Failure` returns the lexer that is ready to try a different parse instead, and a span up to and over the exact token which failed.
+
+Each parser much satisfy these rules, usually by cloning the lexer. A combinator thus usually has two lexers, one which is cloned to start, and one which is passed to each subparser and extracted from its result. In the case of success, the passed along lexer should be returned after consuming all input. In the case of failure, the passed along lexer will contain the subparser's failure state, which can be packaged up with the cloned lexer as a broader failure context.
+
+
+# Failure Modes
 
 ## Unexpected end-of-text
 

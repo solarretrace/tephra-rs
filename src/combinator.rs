@@ -29,10 +29,9 @@ pub fn discard<'t, Sc, Nl, F, V>(mut parser: F)
 {
     move |lexer| {
         match (parser)(lexer) {
-            Ok(pass) => {
+            Ok(succ) => {
                 Ok(Success {
-                    lexer: pass.lexer,
-                    span: pass.span,
+                    lexer: succ.lexer,
                     value: (),
                 })
             },
@@ -50,12 +49,14 @@ pub fn text<'t, Sc, Nl, F, V>(mut parser: F)
         F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
 {
     move |lexer| {
+        let start = lexer.current_pos().byte;
         match (parser)(lexer) {
-            Ok(pass) => {
-                let value = pass.span.text();
+            Ok(succ) => {
+                let end = succ.lexer.current_pos().byte;
+
+                let value = &succ.lexer.source()[start..end];
                 Ok(Success {
-                    lexer: pass.lexer,
-                    span: pass.span,
+                    lexer: succ.lexer,
                     value,
                 })
             },
@@ -85,7 +86,7 @@ pub fn left<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
         (right)
             (succ.lexer)
             .map_value(|_| l)
-        // TODO: Join the spans together.
+            .consume_current_if_success()
     }
 }
 
@@ -104,7 +105,7 @@ pub fn right<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
 
         (right)
             (succ.lexer)
-        // TODO: Join the spans together.
+            .consume_current_if_success()
     }
 }
 
@@ -125,6 +126,60 @@ pub fn both<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
         (right)
             (succ.lexer)
             .map_value(|r| (l, r))
-        // TODO: Join the spans together.
+            .consume_current_if_success()
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Tolerance & inversion combinators.
+////////////////////////////////////////////////////////////////////////////////
+/// Returns a parser which converts any failure into an empty success.
+pub fn maybe<'t, Sc, Nl, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Option<V>>
+    where
+        Sc: Scanner,
+        Nl: Clone,
+        F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
+{
+    move |lexer| {
+        match (parser)(lexer.clone()) {
+            Ok(succ) => Ok(succ.map_value(Some)),
+            Err(_fail) => Ok(Success {
+                    lexer: lexer,
+                    value: None,
+            }),
+        }
+
+    }
+}
+
+// require_if
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Repetition combinators.
+////////////////////////////////////////////////////////////////////////////////
+
+// pub fn intersperse_collect<'t, Sc, Nl, F, G, V, U>(
+//     mut parser: F,
+//     mut inter_parser: G)
+//     -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Vec<V>>
+//     where
+//         Sc: Scanner,
+//         F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
+//         G: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, U>,
+// {
+//     move |lexer| {
+        
+//     }
+// }
+
+// intersperse_until
+// intersperse
+// repeat_collect
+// repeat_until
+// repeat
+
+// circumfix
+// bracket
+// bracket_with

@@ -11,11 +11,10 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::span::Span;
-use crate::span::NewLine;
 use crate::result::display::Highlight;
-use crate::span::OwnedSpan;
 use crate::result::display::SourceSpan;
+use crate::span::NewLine;
+use crate::span::OwnedSpan;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -29,8 +28,6 @@ pub struct Failure<'text, Sc, Nl> where Sc: Scanner {
     // TODO: Decide what lexer state to store on parse errors.
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, Sc, Nl>,
-    /// The span of the failed parse.
-    pub span: Span<'text, Nl>,
     /// The failure reason.
     pub reason: Reason,
     /// The source of the failure.
@@ -54,13 +51,14 @@ impl<'text, Sc, Nl> std::fmt::Display for Failure<'text, Sc, Nl>
         Nl: NewLine,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let span = self.lexer.current_span();
         let message = format!("{}", self.reason);
         let source_name = "[SOURCE TEXT]".to_string();
         write!(f, "{}", 
-            SourceSpan::new(self.span, &message)
+            SourceSpan::new(span, &message)
                 .with_source_name(&source_name)
                 .with_highlight(Highlight::new(
-                    self.span,
+                    span,
                     &self.reason.span_start_message())))
     }
 }
@@ -112,10 +110,12 @@ pub struct FailureOwned {
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-impl<'text, Sc, Nl> From<Failure<'text, Sc, Nl>> for FailureOwned where Sc: Scanner {
+impl<'text, Sc, Nl> From<Failure<'text, Sc, Nl>> for FailureOwned
+    where Sc: Scanner
+{
     fn from(other: Failure<'text, Sc, Nl>) -> Self {
         FailureOwned {
-            span: other.span.into_owned(),
+            span: other.lexer.current_span().into_owned(),
             reason: other.reason,
             source: other.source,
         }
