@@ -51,7 +51,7 @@ impl<'text, Sc, Nl> std::fmt::Display for Failure<'text, Sc, Nl>
         Nl: NewLine,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let span = self.lexer.current_span();
+        let span = self.lexer.span();
         let message = format!("{}", self.reason);
         let source_name = "[SOURCE TEXT]".to_string();
         write!(f, "{}", 
@@ -115,7 +115,7 @@ impl<'text, Sc, Nl> From<Failure<'text, Sc, Nl>> for FailureOwned
 {
     fn from(other: Failure<'text, Sc, Nl>) -> Self {
         FailureOwned {
-            span: other.lexer.current_span().into_owned(),
+            span: other.lexer.span().into_owned(),
             reason: other.reason,
             source: other.source,
         }

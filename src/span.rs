@@ -100,14 +100,7 @@ impl std::ops::Add for Pos {
     fn add(self, other: Self) -> Self {
         Pos {
             byte: self.byte + other.byte,
-            page: Page {
-                line: self.page.line + other.page.line,
-                column: if other.page.line == 0 { 
-                    self.page.column + other.page.column
-                } else {
-                    other.page.column
-                },
-            },
+            page: self.page + other.page,
         }
     }
 }
@@ -115,12 +108,7 @@ impl std::ops::Add for Pos {
 impl std::ops::AddAssign for Pos {
     fn add_assign(&mut self, other: Self) {
         self.byte += other.byte;
-        self.page.line += other.page.line;
-        if other.page.line == 0 {
-            self.page.column += other.page.column;
-        } else {
-            self.page.column = other.page.column;
-        }
+        self.page += other.page;
     }
 }
 
@@ -603,6 +591,32 @@ impl Page {
         }
 
         self
+    }
+}
+
+impl std::ops::Add for Page {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Page {
+            line: self.line + other.line,
+            column: if other.line == 0 { 
+                self.column + other.column
+            } else {
+                other.column
+            },
+        }
+    }
+}
+
+impl std::ops::AddAssign for Page {
+    fn add_assign(&mut self, other: Self) {
+        self.line += other.line;
+        if other.line == 0 {
+            self.column += other.column;
+        } else {
+            self.column = other.column;
+        }
     }
 }
 

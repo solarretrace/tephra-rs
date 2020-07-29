@@ -44,28 +44,31 @@ fn clone_reset() {
 
     let save = lexer.clone();
     actual.push(lexer
+        .iter_with_spans()
         .next()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .unwrap());
     lexer = save.clone();
 
     actual.push(lexer
+        .iter_with_spans()
         .next()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .unwrap());
     lexer = save.clone();
 
     actual.push(lexer
+        .iter_with_spans()
         .next()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .unwrap());
     lexer = save;
@@ -91,13 +94,14 @@ fn line_comment() {
     use AtmaToken::*;
     let text = "#abc\n";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -119,13 +123,14 @@ fn line_comment_circumfix_whitespace() {
     use AtmaToken::*;
     let text = "\n\t \n#abc\n \t\n ";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -153,9 +158,10 @@ fn line_comments_remove_whitespace() {
 
     assert_eq!(
         lexer
+            .iter_with_spans()
             .map(|res| {
                 let lex = res.unwrap();
-                (*lex.token(), format!("{}", lex.span()))
+                (lex.0, format!("{}", lex.1))
             })
             .collect::<Vec<_>>(),
         vec![
@@ -172,13 +178,14 @@ fn string_single_empty() {
     use AtmaToken::*;
     let text = "''";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -200,10 +207,11 @@ fn string_single_unclosed() {
     use AtmaToken::*;
     let text = "'abc";
     let as_tok = AtmaScriptScanner::new();
-    let mut lexer = Lexer::new(as_tok, text, Lf)
+    let mut lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = lexer.iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         });
 
     assert_eq!(
@@ -223,13 +231,14 @@ fn string_single_text() {
     use AtmaToken::*;
     let text = "'abc \n xyz'";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -251,13 +260,14 @@ fn string_single_quotes() {
     use AtmaToken::*;
     let text = "'abc\"\n\\'xyz'";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -280,13 +290,14 @@ fn string_double_empty() {
     use AtmaToken::*;
     let text = "\"\"";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -309,10 +320,11 @@ fn string_double_unclosed() {
     use AtmaToken::*;
     let text = "\"abc";
     let as_tok = AtmaScriptScanner::new();
-    let mut lexer = Lexer::new(as_tok, text, Lf)
+    let mut lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = lexer.iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         });
 
     assert_eq!(
@@ -333,13 +345,14 @@ fn string_double_text() {
     use AtmaToken::*;
     let text = "\"abc \n xyz\"";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -361,13 +374,14 @@ fn string_double_quotes() {
     use AtmaToken::*;
     let text = "\"abc\\\"\n'xyz\"";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -390,13 +404,14 @@ fn string_raw_empty() {
     use AtmaToken::*;
     let text = "r\"\"";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -418,13 +433,14 @@ fn string_raw_empty_hashed() {
     use AtmaToken::*;
     let text = "r##\"\"##";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -446,10 +462,11 @@ fn string_raw_unclosed() {
     use AtmaToken::*;
     let text = "r###\"abc";
     let as_tok = AtmaScriptScanner::new();
-    let mut lexer = Lexer::new(as_tok, text, Lf)
+    let mut lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = lexer.iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         });
 
     assert_eq!(
@@ -470,10 +487,11 @@ fn string_raw_mismatched() {
     use AtmaToken::*;
     let text = "r###\"abc\"#";
     let as_tok = AtmaScriptScanner::new();
-    let mut lexer = Lexer::new(as_tok, text, Lf)
+    let mut lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = lexer.iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         });
 
     assert_eq!(
@@ -493,13 +511,14 @@ fn string_raw_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -522,13 +541,14 @@ fn string_raw_quoted_text() {
     use AtmaToken::*;
     let text = "r########\"abc \n xyz\"########";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -550,13 +570,14 @@ fn command_chunk() {
     use AtmaToken::*;
     let text = "abc-def";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -577,13 +598,14 @@ fn combined() {
     use AtmaToken::*;
     let text = "# \n\n \"abc\\\"\"'def' r##\"\t\"##\n\n\n--zyx--wvut";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -618,12 +640,13 @@ fn combined_terminated() {
     use AtmaToken::*;
     let text = ";#; \n\n \"a;bc\\\"\";'d;ef' r##\"\t;\"##;\n\n;\n--zyx;--wvut";
     let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let mut lexer = Lexer::new(as_tok, text, Lf);
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -669,9 +692,10 @@ fn combined_terminated_remove_whitespace() {
     lexer.set_filter(|tok| *tok != Whitespace);
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![
@@ -717,9 +741,10 @@ fn combined_terminated_filtered() {
         *tok != CommandTerminator);
 
     let actual = lexer
+        .iter_with_spans()
         .map(|res| {
             let lex = res.unwrap();
-            (*lex.token(), format!("{}", lex.span()))
+            (lex.0, format!("{}", lex.1))
         })
         .collect::<Vec<_>>();
     let expected = vec![

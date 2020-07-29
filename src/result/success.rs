@@ -54,7 +54,7 @@ impl<'text, Sc, Nl, V> Success<'text, Sc, Nl, V> where Sc: Scanner {
 
     /// Consumes the current span on the Success's contained lexer.
     pub fn consumed_current(mut self) -> Self {
-        let _ = self.lexer.consume_current_span();
+        self.lexer.consume_current();
         Success {
             lexer: self.lexer,
             value: self.value,

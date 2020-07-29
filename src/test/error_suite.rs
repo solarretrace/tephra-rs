@@ -31,7 +31,6 @@ fn parse_one_from_empty() {
         res,
         Err(Failure {
             lexer: lexer,
-            span: Span::new(&text),
             reason: Reason::UnexpectedEndOfText,
             source: None,
         }));

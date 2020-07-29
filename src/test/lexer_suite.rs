@@ -95,13 +95,14 @@ fn empty() {
 fn simple() {
     use TestToken::*;
     let text = "aa b";
-    let lexer = Lexer::new(Test, text, Lf);
+    let mut lexer = Lexer::new(Test, text, Lf);
 
     assert_eq!(
         lexer
+            .iter_with_spans()
             .map(|res| {
                 let lex = res.unwrap();
-                (*lex.token(), format!("{}", lex.span()))
+                (lex.0, format!("{}", lex.1))
             })
             .collect::<Vec<_>>(),
         vec![
@@ -120,20 +121,28 @@ fn no_whitespace() {
     let mut lexer = Lexer::new(Test, text, Lf);
     lexer.set_filter(|tok| *tok != Ws);
 
+    let actual = lexer
+        .iter_with_spans()
+        .map(|res| {
+            let lex = res.unwrap();
+            (lex.0, format!("{}", lex.1))
+        })
+        .collect::<Vec<_>>();
 
-    assert_eq!(
-        lexer
-            .map(|res| {
-                let lex = res.unwrap();
-                (*lex.token(), format!("{}", lex.span()))
-            })
-            .collect::<Vec<_>>(),
-        vec![
+    let expected = vec![
             (Aa,  "\"aa\" (0:0-0:2, bytes 0-2)".to_string()),
             (B,   "\"b\" (0:3-0:4, bytes 3-4)".to_string()),
             (B,   "\"b\" (1:0-1:1, bytes 6-7)".to_string()),
             (Def, "\"def\" (1:1-1:4, bytes 7-10)".to_string()),
             (Aa,  "\"aa\" (2:1-2:3, bytes 12-14)".to_string()),
             (A,   "\"a\" (2:3-2:4, bytes 14-15)".to_string()),
-        ]);
+        ];
+
+    for (i, act) in actual.iter().enumerate() {
+        println!("{:?}", act);
+        println!("{:?}", expected[i]);
+        println!();
+    }
+
+    assert_eq!(actual, expected);
 }
