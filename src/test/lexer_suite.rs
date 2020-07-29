@@ -119,7 +119,7 @@ fn no_whitespace() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
     let mut lexer = Lexer::new(Test, text, Lf);
-    lexer.set_filter(|tok| *tok != Ws);
+    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = lexer
         .iter_with_spans()

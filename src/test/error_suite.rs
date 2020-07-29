@@ -13,7 +13,6 @@ use crate::lexer::Lexer;
 use crate::primitive::one;
 use crate::result::Failure;
 use crate::result::Reason;
-use crate::span::Span;
 use crate::span::Lf;
 use crate::test::atma_script::*;
 
@@ -22,8 +21,8 @@ use crate::test::atma_script::*;
 #[test]
 fn parse_one_from_empty() {
     let text = "";
-    let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let scanner = AtmaScriptScanner::new();
+    let lexer = Lexer::new(scanner, text, Lf);
 
     let res = one(AtmaToken::CommandChunk)(lexer.clone());
 
@@ -40,8 +39,8 @@ fn parse_one_from_empty() {
 #[test]
 fn empty_msg() {
     let text = "";
-    let as_tok = AtmaScriptScanner::new();
-    let lexer = Lexer::new(as_tok, text, Lf);
+    let scanner = AtmaScriptScanner::new();
+    let lexer = Lexer::new(scanner, text, Lf);
 
     let res = one(AtmaToken::CommandChunk)(lexer.clone());
 

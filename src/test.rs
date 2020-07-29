@@ -10,6 +10,7 @@
 
 // Internal modules.
 mod ae_lexer_suite;
+mod ae_parser_suite;
 mod as_lexer_suite;
 mod atma_expr;
 mod atma_script;

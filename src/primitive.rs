@@ -53,24 +53,23 @@ pub fn end_of_text<'t, Sc, Nl, F, V>(mut lexer: Lexer<'t, Sc, Nl>)
         Sc: Scanner,
         Nl: NewLine,
 {
-    let saved = lexer.clone();
     match lexer.next() {
         // Lexer error.
         Some(Err(e)) => Err(Failure {
-            lexer: saved,
+            lexer,
             reason: Reason::LexerError,
             source: Some(Box::new(e)),
         }),
 
         // Expected End-of-text.
         None => Ok(Success {
-            lexer: lexer,
+            lexer: lexer.into_consumed(),
             value: (),
         }),
 
         // Unexpected token.
         Some(Ok(_)) => Err(Failure {
-            lexer: saved,
+            lexer,
             reason: Reason::UnexpectedToken,
             source: None,
         }),
@@ -89,31 +88,30 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
         Nl: NewLine,
 {
     move |mut lexer| {
-        let saved = lexer.clone();
         match lexer.next() {
             // Lexer error.
             Some(Err(e)) => Err(Failure {
-                lexer: saved,
+                lexer,
                 reason: Reason::LexerError,
                 source: Some(Box::new(e)),
             }),
 
             // Matching token.
             Some(Ok(lex)) if lex == token => Ok(Success {
-                lexer: lexer,
+                lexer: lexer.into_consumed(),
                 value: (),
             }),
 
             // Incorrect token.
             Some(Ok(_)) => Err(Failure {
-                lexer: saved,
+                lexer,
                 reason: Reason::UnexpectedToken,
                 source: None,
             }),
 
             // Unexpected End-of-text.
             None => Err(Failure {
-                lexer: saved,
+                lexer,
                 reason: Reason::UnexpectedEndOfText,
                 source: None,
             }),
@@ -145,7 +143,7 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
 
                 // Matching token.
                 Some(Ok(lex)) if lex == *token => return Ok(Success {
-                    lexer,
+                    lexer: lexer.into_consumed(),
                     value: (),
                 }),
 
@@ -207,7 +205,7 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
         }
 
         Ok(Success {
-            lexer,
+            lexer: lexer.into_consumed(),
             value: (),
         })
     }

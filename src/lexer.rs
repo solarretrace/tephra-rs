@@ -83,16 +83,24 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
         IterWithSpans { lexer: self }
     }
 
-    /// Sets the token filter.
-    pub fn set_filter<F>(&mut self, filter: F) 
+    /// Sets the token filter to a given function.
+    pub fn set_filter_fn<F>(&mut self, filter: F) 
         where F: for<'a> Fn(&'a Sc::Token) -> bool + 'static
     {
         self.filter = Some(Arc::new(filter));
     }
 
-    /// Clears the token filter.
-    pub fn clear_filters(&mut self) {
-        self.filter = None;
+    /// Returns the token filter, removing it from the lexer.
+    pub fn take_filter(&mut self) -> Option<Arc<dyn Fn(&Sc::Token) -> bool>>
+    {
+        self.filter.take()
+    }
+
+    /// Sets the token filter.
+    pub fn set_filter(&mut self,
+        filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>)
+    {
+        self.filter = filter;
     }
 
     /// Returns the full underlying source text.
@@ -111,6 +119,14 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
         self.full = self.end;
         self.start = self.end;
     }
+
+
+    /// Constructs a new lexer which consumes the lexed spans of the given one.
+    pub fn into_consumed(mut self) -> Self {
+        self.consume_current();
+        self
+    }
+
 
     /// Resets any lexed text back to the last consumed position.
     pub fn reset(&mut self) {
@@ -190,20 +206,34 @@ impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
 
 impl<'text, Sc, Nl> Debug for Lexer<'text, Sc, Nl> where Sc: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        unimplemented!()
+        f.debug_struct("Lexer")
+            .field("source_len", &self.source.len())
+            .field("scanner", &self.scanner)
+            .field("filter_set", &self.filter.is_some())
+            .field("full", &self.full)
+            .field("start", &self.start)
+            .field("last_full", &self.last_full)
+            .field("last", &self.last)
+            .field("end", &self.end)
+            .field("start_fixed", &self.start_fixed)
+            .finish()
     }
 }
 
 impl<'text, Sc, Nl> PartialEq for Lexer<'text, Sc, Nl> where Sc: Scanner {
     fn eq(&self, other: &Self) -> bool {
         self.source == other.source &&
+        self.scanner == other.scanner &&
+        self.filter.is_some() == other.filter.is_some() &&
         self.full == other.full &&
         self.start == other.start &&
         self.last_full == other.last_full &&
         self.last == other.last &&
-        self.end == other.end
+        self.end == other.end && 
+        self.start_fixed == other.start_fixed
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // IterWithSpans

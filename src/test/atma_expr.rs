@@ -5,7 +5,7 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Span tests.
+//! AtmaExpr lexer and parser definitions.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
@@ -13,6 +13,10 @@ use crate::lexer::Scanner;
 use crate::lexer::Lexer;
 use crate::span::Pos;
 use crate::span::NewLine;
+use crate::result::ParseResult;
+use crate::primitive::one;
+use crate::combinator::right;
+use crate::combinator::text;
 
 // Standard library imports.
 use std::convert::TryInto as _;
@@ -178,10 +182,11 @@ impl AtmaExprScanner {
         // Can't start with '_'.
         if text.starts_with('_') { return None; }
 
-        if let Some(rest) = text
-            .strip_prefix(|c: char| c.is_digit(16) || c == '_')
-        {
-            let cols = text.len() - rest.len();
+        let rest = text
+            .trim_start_matches(|c: char| c.is_digit(16) || c == '_');
+        
+        let cols = text.len() - rest.len();
+        if cols > 0 {
             return Some((AtmaToken::IntDigits, Pos::new(cols, 0, cols)));
         } else {
             None
@@ -698,16 +703,17 @@ impl Scanner for AtmaExprScanner {
 ////////////////////////////////////////////////////////////////////////////////
 // Values
 ////////////////////////////////////////////////////////////////////////////////
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Color(pub u32);
 
-
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CellRef {
     Index(u32),
     Position(u16, u16, u16),
     Group(String, usize),
     Name(String),
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CellSelector {
     All,
     Index(u32),
@@ -716,18 +722,19 @@ pub enum CellSelector {
     GroupAll(String),
     Name(String),
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Function {
     name: String,
     args: Vec<FunctionArg>,
 }
-
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionArg {
     CellRef(CellRef),
     Color(Color),
     Channel(Channel),
     Function(Function),
 }
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Channel {
     Rgb,
     Hsv,
@@ -736,11 +743,27 @@ pub enum Channel {
 
 
 
-// fn parse_color(lexer: Lexer<'text, AtmaToken, Nl>)
-//     -> ParseResult<'text, Sc, AtmaToken, Color>
-//     where Nl: NewLine,
-// {
-//     let save = lexer.current_pos();
-
-//     lexer.
-// }
+pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
+    -> ParseResult<'text, AtmaExprScanner, Nl, Color>
+    where Nl: NewLine,
+{
+    let filter = lexer.take_filter();
+    match right(
+            one(AtmaToken::Hash),
+            text(one(AtmaToken::IntDigits)))
+        (lexer)
+    {
+        Ok(mut succ)  => {
+            use std::str::FromStr;
+            succ.lexer.set_filter(filter);
+            match u32::from_str(succ.value) {
+                Ok(val) => Ok(succ.map_value(|_| Color(val))),
+                Err(e) => unimplemented!(),
+            }
+        }
+        Err(mut fail) => {
+            fail.lexer.set_filter(filter);
+            Err(fail)
+        },
+    }
+}
