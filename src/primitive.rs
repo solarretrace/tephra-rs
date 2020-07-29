@@ -63,7 +63,7 @@ pub fn end_of_text<'t, Sc, Nl, F, V>(mut lexer: Lexer<'t, Sc, Nl>)
 
         // Expected End-of-text.
         None => Ok(Success {
-            lexer: lexer.into_consumed(),
+            lexer,
             value: (),
         }),
 
@@ -98,7 +98,7 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
 
             // Matching token.
             Some(Ok(lex)) if lex == token => Ok(Success {
-                lexer: lexer.into_consumed(),
+                lexer,
                 value: (),
             }),
 
@@ -143,7 +143,7 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
 
                 // Matching token.
                 Some(Ok(lex)) if lex == *token => return Ok(Success {
-                    lexer: lexer.into_consumed(),
+                    lexer,
                     value: (),
                 }),
 
@@ -205,7 +205,7 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
         }
 
         Ok(Success {
-            lexer: lexer.into_consumed(),
+            lexer,
             value: (),
         })
     }

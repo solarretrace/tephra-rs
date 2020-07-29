@@ -694,8 +694,7 @@ impl<'text, Nl> Iterator for SplitLines<'text, Nl> where Nl: NewLine {
     fn next(&mut self) -> Option<Self::Item> {
         if self.base.page.line > self.max_line { return None; }
         if self.text.is_empty() {
-            let mut span = Span::new_from(self.base, self.source);
-            span.extend_by(Pos::new(0, 0, 0));
+            let span = Span::new_from(self.base, self.source);
             self.base.page.line += 1;
 
             return Some(span);
@@ -714,7 +713,12 @@ impl<'text, Nl> Iterator for SplitLines<'text, Nl> where Nl: NewLine {
 
             span.extend_by(Pos::new(next.len(), 0, column));
 
-            self.text = &self.text[next.len() + Nl::len()..];
+            let next_start = next.len() + Nl::len();
+            if next_start < self.text.len() {
+                self.text = &self.text[next.len() + Nl::len()..];
+            } else {
+                self.text = "";
+            }
             self.base.page.column = 0;
 
             Some(span)

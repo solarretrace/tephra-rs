@@ -34,6 +34,14 @@ pub struct Failure<'text, Sc, Nl> where Sc: Scanner {
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
+impl<'text, Sc, Nl> Failure<'text, Sc, Nl> 
+    where Sc: Scanner,
+{
+    #[cfg(test)]
+    pub fn error_span_display(self) -> (Reason, String) {
+        (self.reason, format!("{}", self.lexer.span()))
+    }
+}
 
 impl<'text, Sc, Nl> std::fmt::Debug for Failure<'text, Sc, Nl>
     where
@@ -123,8 +131,8 @@ impl<'text, Sc, Nl> From<Failure<'text, Sc, Nl>> for FailureOwned
 }
 
 impl std::fmt::Display for FailureOwned {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "")
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        unimplemented!() // TODO: format error.
     }
 }
 

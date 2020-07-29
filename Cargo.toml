@@ -1,6 +1,6 @@
 [package]
 name = "tephra"
-version = "0.0.31"
+version = "0.0.32"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -31,7 +31,7 @@ few = { version = "0.1.4" }
 # The development profile, used for `cargo build`
 [profile.dev]
 opt-level = 0
-debug = false # Disabled to speed up compilation; not being used much.
+debug = true
 rpath = false
 lto = false
 debug-assertions = true

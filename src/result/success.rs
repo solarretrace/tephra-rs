@@ -60,4 +60,9 @@ impl<'text, Sc, Nl, V> Success<'text, Sc, Nl, V> where Sc: Scanner {
             value: self.value,
         }
     }
+
+    #[cfg(test)]
+    pub fn value_span_display(self) -> (V, String) {
+        (self.value, format!("{}", self.lexer.span()))
+    }
 }

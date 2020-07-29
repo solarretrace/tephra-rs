@@ -53,8 +53,8 @@ pub fn text<'t, Sc, Nl, F, V>(mut parser: F)
         match (parser)(lexer) {
             Ok(succ) => {
                 let end = succ.lexer.current_pos().byte;
-
                 let value = &succ.lexer.source()[start..end];
+
                 Ok(Success {
                     lexer: succ.lexer,
                     value,
@@ -86,7 +86,6 @@ pub fn left<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
         (right)
             (succ.lexer)
             .map_value(|_| l)
-            .consume_current_if_success()
     }
 }
 
@@ -105,7 +104,6 @@ pub fn right<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
 
         (right)
             (succ.lexer)
-            .consume_current_if_success()
     }
 }
 
@@ -126,7 +124,6 @@ pub fn both<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
         (right)
             (succ.lexer)
             .map_value(|r| (l, r))
-            .consume_current_if_success()
     }
 }
 
@@ -145,7 +142,7 @@ pub fn maybe<'t, Sc, Nl, F, V>(mut parser: F)
         match (parser)(lexer.clone()) {
             Ok(succ) => Ok(succ.map_value(Some)),
             Err(_fail) => Ok(Success {
-                    lexer: lexer,
+                    lexer,
                     value: None,
             }),
         }

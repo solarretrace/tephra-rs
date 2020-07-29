@@ -7,13 +7,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! AtmaExpr lexer and parser definitions.
 ////////////////////////////////////////////////////////////////////////////////
-
+// TODO: This module is currently under development.
+#![allow(unused)]
+#![allow(missing_docs)]
+    
 // Local imports.
 use crate::lexer::Scanner;
 use crate::lexer::Lexer;
 use crate::span::Pos;
 use crate::span::NewLine;
 use crate::result::ParseResult;
+use crate::result::Reason;
+use crate::result::Failure;
 use crate::primitive::one;
 use crate::combinator::right;
 use crate::combinator::text;
@@ -204,40 +209,40 @@ impl AtmaExprScanner {
             return Some((AtmaToken::Float, Pos::new(3, 0, 3)));
         }
 
-        let mut cols = 0;
-        if let Some(mut rest) = text.strip_prefix(|c: char| c.is_digit(10)) {
+        let mut rest = text.trim_start_matches(|c: char| c.is_digit(10));
+
+        if rest.len() != text.len() {
             if rest.starts_with('.') {
-                rest = &rest[1..]
+                rest = &rest[1..];
             } else {
                 return None;
             }
 
-            cols += text.len() - rest.len();
-            if let Some(mut rest) = rest.strip_prefix(|c: char| c.is_digit(10))
-            {
-                cols += text.len() - rest.len();
+            let next = text.trim_start_matches(|c: char| c.is_digit(10));
+            if next.len() != rest.len() {
+                rest = next;
 
                 // A single decimal is not a float.
-                if cols == 1 { return None; }
+                if rest.len() + 1 == text.len() { return None; }
 
                 // Parse exponent or return.
                 if rest.len() == 0 ||
                     !rest.starts_with(|c: char| c == 'e' || c == 'E')
                 { 
+                    let cols = text.len() - rest.len();
                     return Some((AtmaToken::Float, Pos::new(cols, 0, cols)));
                 }
-                cols += 1;
                 rest = &rest[1..];
 
                 if rest.starts_with('+') || rest.starts_with('-') { 
-                    cols += 1;
                     rest = &rest[1..];
                 }
                 if rest.len() == 0 { return None; }
-                if let Some(rest) = rest
-                    .strip_prefix(|c: char| c.is_digit(10))
-                {
-                    cols += text.len() - rest.len();
+
+                let next = text.trim_start_matches(|c: char| c.is_digit(10));
+                if next.len() != rest.len() {
+                    rest = next;
+                    let cols = text.len() - rest.len();
                     return Some((AtmaToken::Float, Pos::new(cols, 0, cols)));
                 }
             }
@@ -756,9 +761,24 @@ pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
         Ok(mut succ)  => {
             use std::str::FromStr;
             succ.lexer.set_filter(filter);
+            if succ.value.len() != 6 {
+                return Err(Failure {
+                    lexer: succ.lexer,
+                    reason: Reason::IncompleteParse { 
+                        context: "Color requires 6 hex digits".into(),
+                    },
+                    source: None,
+                })
+            }
             match u32::from_str(succ.value) {
                 Ok(val) => Ok(succ.map_value(|_| Color(val))),
-                Err(e) => unimplemented!(),
+                Err(e) => Err(Failure {
+                    lexer: succ.lexer,
+                    reason: Reason::IncompleteParse { 
+                        context: "Invalid color conversion".into(),
+                    },
+                    source: Some(Box::new(e)),
+                }),
             }
         }
         Err(mut fail) => {
