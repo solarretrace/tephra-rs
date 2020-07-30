@@ -17,7 +17,7 @@ use crate::lexer::Lexer;
 use crate::span::Pos;
 use crate::span::NewLine;
 use crate::result::ParseResult;
-use crate::result::Reason;
+use crate::result::ParseError;
 use crate::result::Failure;
 use crate::primitive::one;
 use crate::combinator::right;
@@ -764,9 +764,7 @@ pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
             if succ.value.len() != 6 {
                 return Err(Failure {
                     lexer: succ.lexer,
-                    reason: Reason::IncompleteParse { 
-                        context: "Color requires 6 hex digits".into(),
-                    },
+                    parse_error: ParseError::new("Color requires 6 hex digits"),
                     source: None,
                 })
             }
@@ -774,9 +772,7 @@ pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
                 Ok(val) => Ok(succ.map_value(|_| Color(val))),
                 Err(e) => Err(Failure {
                     lexer: succ.lexer,
-                    reason: Reason::IncompleteParse { 
-                        context: "Invalid color conversion".into(),
-                    },
+                    parse_error: ParseError::new("Invalid color conversion"),
                     source: Some(Box::new(e)),
                 }),
             }

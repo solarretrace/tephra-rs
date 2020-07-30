@@ -15,7 +15,7 @@ use crate::lexer::Scanner;
 use crate::result::ParseResult;
 use crate::result::Success;
 use crate::result::Failure;
-use crate::result::Reason;
+use crate::result::ParseError;
 
 ////////////////////////////////////////////////////////////////////////////////
 // empty
@@ -57,7 +57,7 @@ pub fn end_of_text<'t, Sc, Nl, F, V>(mut lexer: Lexer<'t, Sc, Nl>)
         // Lexer error.
         Some(Err(e)) => Err(Failure {
             lexer,
-            reason: Reason::LexerError,
+            parse_error: ParseError::new("Reason::LexerError,"),
             source: Some(Box::new(e)),
         }),
 
@@ -70,7 +70,7 @@ pub fn end_of_text<'t, Sc, Nl, F, V>(mut lexer: Lexer<'t, Sc, Nl>)
         // Unexpected token.
         Some(Ok(_)) => Err(Failure {
             lexer,
-            reason: Reason::UnexpectedToken,
+            parse_error: ParseError::new("unexpected token"),
             source: None,
         }),
     }
@@ -92,7 +92,7 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
             // Lexer error.
             Some(Err(e)) => Err(Failure {
                 lexer,
-                reason: Reason::LexerError,
+                parse_error: ParseError::new("Reason::LexerError,"),
                 source: Some(Box::new(e)),
             }),
 
@@ -105,14 +105,14 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
             // Incorrect token.
             Some(Ok(_)) => Err(Failure {
                 lexer,
-                reason: Reason::UnexpectedToken,
+                parse_error: ParseError::new("unexpected token"),
                 source: None,
             }),
 
             // Unexpected End-of-text.
             None => Err(Failure {
                 lexer,
-                reason: Reason::UnexpectedEndOfText,
+                parse_error: ParseError::new("unexpected end-of-text"),
                 source: None,
             }),
         }
@@ -137,7 +137,7 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
                 // Lexer error.
                 Some(Err(e)) => return Err(Failure {
                     lexer,
-                    reason: Reason::LexerError,
+                    parse_error: ParseError::new("Reason::LexerError,"),
                     source: Some(Box::new(e)),
                 }),
 
@@ -156,7 +156,7 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
 
         Err(Failure {
             lexer,
-            reason: Reason::UnexpectedToken,
+            parse_error: ParseError::new("unexpected token"),
             source: None,
         })
     }
@@ -181,7 +181,7 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
                 // Lexer error.
                 Some(Err(e)) => return Err(Failure {
                     lexer,
-                    reason: Reason::LexerError,
+                    parse_error: ParseError::new("Reason::LexerError,"),
                     source: Some(Box::new(e)),
                 }),
 
@@ -191,14 +191,14 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
                 // Incorrect token.
                 Some(Ok(_)) => return Err(Failure {
                     lexer,
-                    reason: Reason::UnexpectedToken,
+                    parse_error: ParseError::new("unexpected token"),
                     source: None,
                 }),
 
                 // Unexpected End-of-text.
                 None => return Err(Failure {
                     lexer,
-                    reason: Reason::UnexpectedEndOfText,
+                    parse_error: ParseError::new("unexpected end-of-text"),
                     source: None,
                 }),
             }

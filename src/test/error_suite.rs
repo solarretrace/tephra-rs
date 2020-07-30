@@ -12,7 +12,7 @@
 use crate::lexer::Lexer;
 use crate::primitive::one;
 use crate::result::Failure;
-use crate::result::Reason;
+use crate::result::ParseError;
 use crate::span::Lf;
 use crate::test::atma_script::*;
 
@@ -30,7 +30,7 @@ fn parse_one_from_empty() {
         res,
         Err(Failure {
             lexer: lexer,
-            reason: Reason::UnexpectedEndOfText,
+            parse_error: ParseError::new("unexpected end-of-text"),
             source: None,
         }));
 }

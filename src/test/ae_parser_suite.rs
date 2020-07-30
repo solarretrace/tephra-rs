@@ -11,7 +11,7 @@
 // Local imports.
 use crate::span::Lf;
 use crate::lexer::Lexer;
-use crate::result::Reason;
+use crate::result::ParseError;
 use crate::test::atma_expr::*;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,9 +48,7 @@ fn color_too_long() {
     println!("{}", failure);
 
     let actual = failure.error_span_display();
-    let expected = (Reason::IncompleteParse { 
-                        context: "Color requires 6 hex digits".into(),
-                    },
+    let expected = ("Color requires 6 hex digits",
                     "\"#1234567\" (0:0-0:8, bytes 0-8)".to_owned());
 
     println!("{:?}", actual);

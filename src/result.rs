@@ -12,11 +12,13 @@
 mod success;
 mod failure;
 mod display;
+mod error;
 
 // Exports.
 pub use self::success::*;
 pub use self::failure::*;
 pub use self::display::*;
+pub use self::error::*;
 
 use crate::lexer::Scanner;
 
@@ -44,8 +46,14 @@ pub trait ParseResultExt<'text, Sc, Nl, V>
     fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
         where F: FnOnce(V) -> U;
 
-    /// Consumes the current span on the Success's contained lexer.
-    fn consume_current_if_success(self) -> Self;
+    /// Converts ParseResult<'_, _, _, V> into a ParseResult<'_, _, _, U> by
+    /// applying the given closure. If the closure return an Err, the result
+    /// will become an error as well.
+    fn convert_value<F, U, E>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
+        where
+            F: FnOnce(V) -> Result<U, E>,
+            E: std::error::Error + Send + Sync + 'static;
+
 }
 
 impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
@@ -68,9 +76,19 @@ impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
         }
     }
 
-    fn consume_current_if_success(self) -> Self {
+    fn convert_value<F, U, E>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
+        where
+            F: FnOnce(V) -> Result<U, E>,
+            E: std::error::Error + Send + Sync + 'static,
+    {
         match self {
-            Ok(succ)  => Ok(succ.consumed_current()),
+            Ok(succ) => {
+                let (v, succ) = succ.take_value();
+                match (f)(v) {
+                    Ok(value) => Ok(succ.map_value(|_| value)),
+                    Err(_err) => unimplemented!(),
+                }
+            },
             Err(fail) => Err(fail),
         }
     }

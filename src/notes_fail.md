@@ -48,3 +48,34 @@ Unmatched brackets are a parser error.
 Data conversion errors occur after a portion of a parse has succeeded and the spanned text fails to convert into the parse value.
 
 If the conversion fails, it is helpful to know exactly what text was used in the conversion, so parse conversions should usually happen as early as possible.
+
+
+
+# Failure data requirements
+
+All errors that occur during a parse must have assigned spans and descriptions.
+
+## Description
+
+A general description of the type of error that occurred.
+
+## Source
+
+Another error which is the cause of the error.
+
+## Span / Lexer
+
+The lexical extent to which the error applies.
+
+## Span message
+
+A description to apply to the start or end of the span to show how the general desciption applies in this specific case
+
+## Notes
+
+Additional information which might make the error clearer.
+
+## Help
+
+Information which might help in fixing the error.
+
