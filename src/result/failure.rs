@@ -16,7 +16,6 @@ use crate::result::ParseError;
 use crate::result::ParseErrorOwned;
 use crate::result::SourceSpan;
 use crate::span::NewLine;
-use crate::span::SpanOwned;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -61,7 +60,7 @@ impl<'text, Sc, Nl> std::fmt::Display for Failure<'text, Sc, Nl>
         Nl: NewLine,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.parse_error.write_display(f, self.lexer.span())
+        write!(f, "{}", self.parse_error)
     }
 }
 
@@ -111,20 +110,21 @@ pub struct FailureOwned {
 }
 
 impl<'text, Sc, Nl> From<Failure<'text, Sc, Nl>> for FailureOwned
-    where Sc: Scanner
+    where
+        Sc: Scanner,
+        Nl: NewLine,
 {
     fn from(other: Failure<'text, Sc, Nl>) -> Self {
-        let span = other.lexer.span();
         FailureOwned {
-            parse_error: other.parse_error.into_owned(span),
+            parse_error: other.parse_error.into_owned(),
             source: other.source,
         }
     }
 }
 
 impl std::fmt::Display for FailureOwned {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        unimplemented!() // TODO: format error.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.parse_error)
     }
 }
 

@@ -167,7 +167,6 @@ impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
     
     fn next(&mut self) -> Option<Self::Item> {
         while self.end.byte < self.source.len() {
-
             match self.scanner
                 .lex_prefix_token::<Nl>(&self.source[self.end.byte..])
             {

@@ -21,6 +21,7 @@ pub use self::display::*;
 pub use self::error::*;
 
 use crate::lexer::Scanner;
+use crate::span::NewLine;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseResult
@@ -49,9 +50,10 @@ pub trait ParseResultExt<'text, Sc, Nl, V>
     /// Converts ParseResult<'_, _, _, V> into a ParseResult<'_, _, _, U> by
     /// applying the given closure. If the closure return an Err, the result
     /// will become an error as well.
-    fn convert_value<F, U, E>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
+    fn convert_value<F, U, P, E>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
         where
-            F: FnOnce(V) -> Result<U, E>,
+            F: FnOnce(V) -> Result<U, (P, E)>,
+            P: Into<ParseError<'text, Nl>>,
             E: std::error::Error + Send + Sync + 'static;
 
 }
@@ -60,6 +62,7 @@ impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
         for ParseResult<'text, Sc, Nl, V>
     where
         Sc: Scanner,
+        Nl: NewLine,
 {
     fn finish(self) -> Result<V, FailureOwned> {
         self
@@ -76,9 +79,10 @@ impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
         }
     }
 
-    fn convert_value<F, U, E>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
+    fn convert_value<F, U, P, E>(self, f: F) -> ParseResult<'text, Sc, Nl, U> 
         where
-            F: FnOnce(V) -> Result<U, E>,
+            F: FnOnce(V) -> Result<U, (P, E)>,
+            P: Into<ParseError<'text, Nl>>,
             E: std::error::Error + Send + Sync + 'static,
     {
         match self {
@@ -86,7 +90,15 @@ impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
                 let (v, succ) = succ.take_value();
                 match (f)(v) {
                     Ok(value) => Ok(succ.map_value(|_| value)),
-                    Err(_err) => unimplemented!(),
+                    Err((parse_error, e)) => {
+                        let mut parse_error = parse_error.into()
+                            .with_span(succ.lexer.span());
+                        Err(Failure {
+                            lexer: succ.lexer,
+                            parse_error,
+                            source: Some(Box::new(e)),
+                        })
+                    },
                 }
             },
             Err(fail) => Err(fail),

@@ -12,42 +12,6 @@
 use few::Few;
 
 
-////////////////////////////////////////////////////////////////////////////////
-// SpanOwned
-////////////////////////////////////////////////////////////////////////////////
-/// A owned section of source text.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SpanOwned {
-    /// The spanned text, detached from the source.
-    pub text: Box<str>,
-    /// The byte range of the spanned text within the source.
-    pub byte: ByteSpan,
-    /// The page range of the spanned text within the source.
-    pub page: PageSpan,
-}
-
-impl<'text, Nl> From<Span<'text, Nl>> for SpanOwned {
-    fn from(other: Span<'text, Nl>) -> Self {
-        SpanOwned {
-            text: other.source.to_owned().into(),
-            byte: other.byte,
-            page: other.page,
-        }
-    }
-}
-
-impl PartialOrd for SpanOwned {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.byte.partial_cmp(&other.byte)
-    }
-}
-
-impl std::fmt::Display for SpanOwned {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\"{}\" ({}, bytes {})", self.text, self.page, self.byte)
-    }
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pos
@@ -191,16 +155,6 @@ impl<'text, Nl> Span<'text, Nl> {
             };
         }
     }
-
-    /// Converts the span into and SpanOwned.
-    pub fn into_owned(self) -> SpanOwned {
-        SpanOwned {
-            text: self.source.to_owned().into(),
-            byte: self.byte,
-            page: self.page,
-        }
-    }
-
 
     /// Returns true if the span is empty
     pub fn is_empty(&self) -> bool {
@@ -349,7 +303,6 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
         self.byte = ByteSpan::from_text_starting(self.byte.end, substr);
         self.page = PageSpan::from_text_starting::<Nl>(self.page.start, substr);
     }
-
 
     /// Returns an iterator over the lines of the span.
     pub fn split_lines(&self) -> SplitLines<'text, Nl> {

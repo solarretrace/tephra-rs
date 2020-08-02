@@ -56,8 +56,9 @@ pub fn end_of_text<'t, Sc, Nl, F, V>(mut lexer: Lexer<'t, Sc, Nl>)
     match lexer.next() {
         // Lexer error.
         Some(Err(e)) => Err(Failure {
+            parse_error: ParseError::new("Reason::LexerError,")
+                .with_span(lexer.span()),
             lexer,
-            parse_error: ParseError::new("Reason::LexerError,"),
             source: Some(Box::new(e)),
         }),
 
@@ -69,8 +70,9 @@ pub fn end_of_text<'t, Sc, Nl, F, V>(mut lexer: Lexer<'t, Sc, Nl>)
 
         // Unexpected token.
         Some(Ok(_)) => Err(Failure {
+            parse_error: ParseError::new("unexpected token")
+                .with_span(lexer.span()),
             lexer,
-            parse_error: ParseError::new("unexpected token"),
             source: None,
         }),
     }
@@ -91,8 +93,9 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
         match lexer.next() {
             // Lexer error.
             Some(Err(e)) => Err(Failure {
+                parse_error: ParseError::new("Reason::LexerError,")
+                    .with_span(lexer.span()),
                 lexer,
-                parse_error: ParseError::new("Reason::LexerError,"),
                 source: Some(Box::new(e)),
             }),
 
@@ -104,15 +107,17 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
 
             // Incorrect token.
             Some(Ok(_)) => Err(Failure {
+                parse_error: ParseError::new("unexpected token")
+                    .with_span(lexer.span()),
                 lexer,
-                parse_error: ParseError::new("unexpected token"),
                 source: None,
             }),
 
             // Unexpected End-of-text.
             None => Err(Failure {
+                parse_error: ParseError::new("unexpected end-of-text")
+                    .with_span(lexer.span()),
                 lexer,
-                parse_error: ParseError::new("unexpected end-of-text"),
                 source: None,
             }),
         }
@@ -136,8 +141,9 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
             match lexer.next() {
                 // Lexer error.
                 Some(Err(e)) => return Err(Failure {
+                    parse_error: ParseError::new("Reason::LexerError,")
+                        .with_span(lexer.span()),
                     lexer,
-                    parse_error: ParseError::new("Reason::LexerError,"),
                     source: Some(Box::new(e)),
                 }),
 
@@ -155,8 +161,9 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
         }
 
         Err(Failure {
+            parse_error: ParseError::new("unexpected token")
+                .with_span(lexer.span()),
             lexer,
-            parse_error: ParseError::new("unexpected token"),
             source: None,
         })
     }
@@ -180,8 +187,9 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
             match lexer.next() {
                 // Lexer error.
                 Some(Err(e)) => return Err(Failure {
+                    parse_error: ParseError::new("Reason::LexerError,")
+                        .with_span(lexer.span()),
                     lexer,
-                    parse_error: ParseError::new("Reason::LexerError,"),
                     source: Some(Box::new(e)),
                 }),
 
@@ -190,15 +198,17 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
 
                 // Incorrect token.
                 Some(Ok(_)) => return Err(Failure {
+                    parse_error: ParseError::new("unexpected token")
+                        .with_span(lexer.span()),
                     lexer,
-                    parse_error: ParseError::new("unexpected token"),
                     source: None,
                 }),
 
                 // Unexpected End-of-text.
                 None => return Err(Failure {
+                    parse_error: ParseError::new("unexpected end-of-text")
+                        .with_span(lexer.span()),
                     lexer,
-                    parse_error: ParseError::new("unexpected end-of-text"),
                     source: None,
                 }),
             }

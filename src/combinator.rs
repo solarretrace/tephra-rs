@@ -11,6 +11,7 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
+use crate::span::NewLine;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::Success;
@@ -25,6 +26,7 @@ pub fn discard<'t, Sc, Nl, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, ()>
     where
         Sc: Scanner,
+        Nl: NewLine,
         F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
 {
     move |lexer| {
@@ -46,6 +48,7 @@ pub fn text<'t, Sc, Nl, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, &'t str>
     where
         Sc: Scanner,
+        Nl: NewLine,
         F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
 {
     move |lexer| {
@@ -75,6 +78,7 @@ pub fn left<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
     -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>
     where
         Sc: Scanner,
+        Nl: NewLine,
         L: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
         R: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
 {
@@ -95,6 +99,7 @@ pub fn right<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
     -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>
     where
         Sc: Scanner,
+        Nl: NewLine,
         L: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
         R: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
 {
@@ -113,6 +118,7 @@ pub fn both<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
     -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, (X, Y)>
     where
         Sc: Scanner,
+        Nl: NewLine,
         L: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
         R: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
 {
@@ -135,7 +141,7 @@ pub fn maybe<'t, Sc, Nl, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Option<V>>
     where
         Sc: Scanner,
-        Nl: Clone,
+        Nl: NewLine,
         F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
 {
     move |lexer| {

@@ -13,57 +13,90 @@
 
 // Local imports.
 use crate::span::Span;
-use crate::span::SpanOwned;
 use crate::span::NewLine;
 use crate::result::SourceSpan;
 use crate::result::Highlight;
 
 
+////////////////////////////////////////////////////////////////////////////////
+// ParseError
+////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub struct ParseError<'text, Nl> {
     description: &'static str,
-    _span: Option<Span<'text, Nl>>,
+    span: Option<Span<'text, Nl>>,
+
 }
 
 impl<'text, Nl> ParseError<'text, Nl> {
     pub fn new(description: &'static str) -> Self {
         ParseError {
             description,
-            _span: None,
+            span: None,
         }
+    }
+
+    pub fn with_span(mut self, span: Span<'text, Nl>) -> Self {
+        self.span = Some(span);
+        self
     }
 
     pub fn description(&self) -> &'static str {
         self.description
     }
+}
 
-    pub fn into_owned(self, span: Span<'text, Nl>) -> ParseErrorOwned {
+impl<'text, Nl> ParseError<'text, Nl> 
+    where Nl: NewLine,
+{
+    pub fn into_owned(self) -> ParseErrorOwned 
+    {
         ParseErrorOwned {
-            span: span.into_owned(),
+            display: format!("{}", self),
         }
     }
+}
 
-    pub fn write_display(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        span: Span<'text, Nl>)
-        -> std::fmt::Result
-        where Nl: NewLine,
-    {
-        let source_name = "[SOURCE TEXT]".to_string();
-        write!(f, "{}", 
-            SourceSpan::new(span, &self.description)
-                .with_source_name(&source_name)
-                .with_highlight(Highlight::new(
-                    span,
-                    &"span start message")))
+
+impl<'text, Nl> std::fmt::Display for ParseError<'text, Nl>
+    where Nl: NewLine,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(span) = self.span {
+            let source_name = "[SOURCE TEXT]".to_string();
+            write!(f, "{}", 
+                SourceSpan::new(span, &self.description)
+                    .with_source_name(&source_name)
+                    .with_highlight(Highlight::new(
+                        span,
+                        &"span start message")))
+        } else {
+            write!(f, "{} NO SPAN", self.description)
+        }
+
     }
 }
 
-
-
-#[derive(Debug)]
-pub struct ParseErrorOwned {
-    span: SpanOwned,
+impl<'text, Nl> From<&'static str> for ParseError<'text, Nl> {
+    fn from(description: &'static str) -> Self {
+        ParseError {
+            description,
+            span: None,
+        }
+    }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// ParseErrorOwned
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug)]
+pub struct ParseErrorOwned {
+    display: String,
+}
+
+
+impl std::fmt::Display for ParseErrorOwned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.display)
+    }
+}
