@@ -91,8 +91,8 @@ impl<'text, Sc, Nl, V> ParseResultExt<'text, Sc, Nl, V>
                 match (f)(v) {
                     Ok(value) => Ok(succ.map_value(|_| value)),
                     Err((parse_error, e)) => {
-                        let mut parse_error = parse_error.into()
-                            .with_span(succ.lexer.span());
+                        let parse_error = parse_error.into()
+                            .with_span("error occurs here", succ.lexer.span());
                         Err(Failure {
                             lexer: succ.lexer,
                             parse_error,

@@ -24,7 +24,7 @@ use crate::result::Highlight;
 #[derive(Debug)]
 pub struct ParseError<'text, Nl> {
     description: &'static str,
-    span: Option<Span<'text, Nl>>,
+    span: Option<(Span<'text, Nl>, String)>,
 
 }
 
@@ -36,8 +36,25 @@ impl<'text, Nl> ParseError<'text, Nl> {
         }
     }
 
-    pub fn with_span(mut self, span: Span<'text, Nl>) -> Self {
-        self.span = Some(span);
+    pub fn unrecognized_token(span: Span<'text, Nl>) -> Self {
+        ParseError::new("unrecognized token")
+            .with_span("token not expected", span)
+    }
+
+    pub fn unexpected_token(span: Span<'text, Nl>) -> Self {
+        ParseError::new("unexpected token")
+            .with_span("token not expected", span)
+    }
+
+    pub fn unexpected_end_of_text(span: Span<'text, Nl>) -> Self {
+        ParseError::new("unexpected end of text")
+            .with_span("text ends here", span)
+    }
+
+    pub fn with_span<S>(mut self, message: S, span: Span<'text, Nl>) -> Self 
+        where S: Into<String>,
+    {
+        self.span = Some((span, message.into()));
         self
     }
 
@@ -62,14 +79,14 @@ impl<'text, Nl> std::fmt::Display for ParseError<'text, Nl>
     where Nl: NewLine,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(span) = self.span {
+        if let Some((span, msg)) = &self.span {
+            let span = *span;
+            let msg = &*msg;
             let source_name = "[SOURCE TEXT]".to_string();
             write!(f, "{}", 
                 SourceSpan::new(span, &self.description)
                     .with_source_name(&source_name)
-                    .with_highlight(Highlight::new(
-                        span,
-                        &"span start message")))
+                    .with_highlight(Highlight::new(span, msg)))
         } else {
             write!(f, "{} NO SPAN", self.description)
         }

@@ -14,6 +14,7 @@ use crate::primitive::one;
 use crate::result::Failure;
 use crate::result::ParseError;
 use crate::span::Lf;
+use crate::span::Span;
 use crate::test::atma_script::*;
 
 
@@ -30,7 +31,7 @@ fn parse_one_from_empty() {
         res,
         Err(Failure {
             lexer: lexer,
-            parse_error: ParseError::new("unexpected end-of-text"),
+            parse_error: ParseError::unexpected_end_of_text(Span::new(text)),
             source: None,
         }));
 }
@@ -46,7 +47,7 @@ fn empty_msg() {
 
     let actual = format!("{}", res.err().unwrap());
     let expected = "\
-error: Unexpected end of text
+error: unexpected end of text
  --> [SOURCE TEXT]:0:0 (byte 0)
   | 
 0 |  
