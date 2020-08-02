@@ -21,6 +21,7 @@ use crate::result::ParseError;
 use crate::result::Failure;
 use crate::primitive::one;
 use crate::combinator::right;
+use crate::combinator::exact;
 use crate::combinator::text;
 
 // Standard library imports.
@@ -752,34 +753,34 @@ pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
     -> ParseResult<'text, AtmaExprScanner, Nl, Color>
     where Nl: NewLine,
 {
-    let filter = lexer.take_filter();
-    match right(
+    match exact(
+        right(
             one(AtmaToken::Hash),
-            text(one(AtmaToken::IntDigits)))
+            text(one(AtmaToken::IntDigits))))
         (lexer)
     {
         Ok(mut succ)  => {
             use std::str::FromStr;
-            succ.lexer.set_filter(filter);
             if succ.value.len() != 6 {
                 return Err(Failure {
+                    parse_error: ParseError::new("invalid color")
+                        .with_span("color requires 6 hex digits",
+                            succ.lexer.span()),
                     lexer: succ.lexer,
-                    parse_error: ParseError::new("Color requires 6 hex digits"),
                     source: None,
                 })
             }
             match u32::from_str(succ.value) {
                 Ok(val) => Ok(succ.map_value(|_| Color(val))),
                 Err(e) => Err(Failure {
+                    parse_error: ParseError::new("invalid color")
+                        .with_span("color conversion failed",
+                            succ.lexer.span()),
                     lexer: succ.lexer,
-                    parse_error: ParseError::new("Invalid color conversion"),
                     source: Some(Box::new(e)),
                 }),
             }
         }
-        Err(mut fail) => {
-            fail.lexer.set_filter(filter);
-            Err(fail)
-        },
+        Err(fail) => Err(fail),
     }
 }

@@ -98,6 +98,7 @@ impl<'text, 'msg, Nl> std::fmt::Display for SourceSpan<'text, 'msg, Nl>
                 write_highlight_ln(f,
                     line_data.span,
                     line_data.highlight_ul,
+                    line_data.leader_line,
                     line_data.message_a)?;
                 end_spacer_needed = false;
             }
@@ -177,25 +178,31 @@ fn write_source_ln<'text, Nl>(
     -> std::fmt::Result
     where Nl: NewLine,
 {
-    writeln!(f, " {}", span.widen_to_line().text())
+    writeln!(f, "{}", span.widen_to_line().text())
 }
 
 fn write_highlight_ln<'text,'msg,  Nl>(
     f: &mut std::fmt::Formatter<'_>,
     span: Span<'text, Nl>,
     highlight_ul: HighlightUnderline,
+    leader_line: bool,
     message: &'msg str)
     -> std::fmt::Result
 {
     let leader_width = span.start().page.column;
     for _ in 0..leader_width {
-        write!(f, "_")?;
+        if leader_line {
+            write!(f, "_")?;
+        } else {
+            write!(f, " ")?;
+        }
     }
 
     let underline_width = std::cmp::max(
         span.end().page.column - span.start().page.column,
         1);
     match highlight_ul {
+        // TODO: Fix underlining of tab/multi-width characters.
         HighlightUnderline::Dash => for _ in 0..underline_width {
             write!(f, "-")?;
         },
@@ -334,11 +341,13 @@ impl<'text, 'msg, 'hl, Nl> MultiSplitLines<'text, 'msg, 'hl, Nl>
                     } else {
                         ""
                     };
+                    let leader_line = hl.span.start().page.line != hl.span.end().page.line;
                     line_data.push(HighlighLineData {
                         span: c.clone(),
                         highlight_ul: hl.underline,
                         message_a,
                         message_b,
+                        leader_line,
                     });
                     *curr = spans.next();
                 },
@@ -355,4 +364,5 @@ struct HighlighLineData<'text, 'msg, Nl> {
     highlight_ul: HighlightUnderline,
     message_a: &'msg str,
     message_b: &'msg str,
+    leader_line: bool,
 }

@@ -50,7 +50,7 @@ fn empty_msg() {
 error: unexpected end of text
  --> [SOURCE TEXT]:0:0 (byte 0)
   | 
-0 |  
+0 | 
   | ^ text ends here
 \
 ".to_string();

@@ -18,6 +18,33 @@ use crate::result::Success;
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Control combinators.
+////////////////////////////////////////////////////////////////////////////////
+/// A combinator which disables all token filters during exectution of the given
+/// parser.
+pub fn exact<'t, Sc, Nl, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+        F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
+{
+    move |mut lexer| {
+        let filter = lexer.take_filter();
+        match (parser)(lexer) {
+            Ok(mut succ)  => {
+                succ.lexer.set_filter(filter);
+                Ok(succ)
+            },
+            Err(mut fail) => {
+                fail.lexer.set_filter(filter);
+                Err(fail)
+            },
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Parse result substitution combinators.
 ////////////////////////////////////////////////////////////////////////////////
 

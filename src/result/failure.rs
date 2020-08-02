@@ -11,14 +11,10 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::result::Highlight;
 use crate::result::ParseError;
 use crate::result::ParseErrorOwned;
-use crate::result::SourceSpan;
 use crate::span::NewLine;
 
-// Standard library imports.
-use std::borrow::Cow;
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -146,12 +146,12 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
         Span::new_enclosing(self.start, self.end, self.source)
     }
 
-    /// Returns the span (excluding filtered text) of the last lexed token.
+    /// Returns the span (including filtered text) of the last lexed token.
     pub fn last_full_span(&self) -> Span<'text, Nl> {
         Span::new_enclosing(self.last_full, self.end, self.source)
     }
 
-    /// Returns the span (including filtered text) of the last lexed token.
+    /// Returns the span (excluding filtered text) of the last lexed token.
     pub fn last_span(&self) -> Span<'text, Nl> {
         Span::new_enclosing(self.last, self.end, self.source)
     }
