@@ -43,34 +43,33 @@ struct Test;
 
 impl Scanner for Test {
     type Token = TestToken;
-    type Error = TokenError;
 
-    fn lex_prefix_token<'text, Nl>(&mut self, text: &'text str)
-        -> Result<(Self::Token, Pos), (Self::Error, Pos)>
+    fn scan<'text, Nl>(&mut self, text: &'text str)
+        -> Option<(Self::Token, Pos)>
         where Nl: NewLine,
     {
         // println!("{:?}", text);
         // println!("{:?}", text.split("\n").collect::<Vec<_>>());
         if text.starts_with("aa") {
-            return Ok((TestToken::Aa, Pos::new(2, 0, 2)));
+            return Some((TestToken::Aa, Pos::new(2, 0, 2)));
         }
         if text.starts_with('a') {
-            return Ok((TestToken::A, Pos::new(1, 0, 1)));
+            return Some((TestToken::A, Pos::new(1, 0, 1)));
         }
         if text.starts_with('b') {
-            return Ok((TestToken::B, Pos::new(1, 0, 1)));
+            return Some((TestToken::B, Pos::new(1, 0, 1)));
         }
         if text.starts_with("def") {
-            return Ok((TestToken::Def, Pos::new(3, 0, 3)));
+            return Some((TestToken::Def, Pos::new(3, 0, 3)));
         }
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
             let substr = &text[0..substr_len];
             let span = Pos::new_from_string::<_, Nl>(substr);
-            return Ok((TestToken::Ws, span));
+            return Some((TestToken::Ws, span));
         }
-        Err((TokenError("Unrecognized token"), Pos::new(1, 0, 1)))
+        None
     }
 }
 
@@ -100,10 +99,7 @@ fn simple() {
     assert_eq!(
         lexer
             .iter_with_spans()
-            .map(|res| {
-                let lex = res.unwrap();
-                (lex.0, format!("{}", lex.1))
-            })
+            .map(|lex| (lex.0, format!("{}", lex.1)))
             .collect::<Vec<_>>(),
         vec![
             (Aa, "\"aa\" (0:0-0:2, bytes 0-2)".to_string()),
@@ -123,10 +119,7 @@ fn no_whitespace() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
 
     let expected = vec![

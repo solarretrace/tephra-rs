@@ -51,6 +51,11 @@ impl<'text, Nl> ParseError<'text, Nl> {
             .with_span("text ends here", span)
     }
 
+    pub fn unexpected_text(span: Span<'text, Nl>) -> Self {
+        ParseError::new("expected end of text")
+            .with_span("text should end here", span)
+    }
+
     pub fn with_span<S>(mut self, message: S, span: Span<'text, Nl>) -> Self 
         where S: Into<String>,
     {

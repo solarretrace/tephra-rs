@@ -46,30 +46,21 @@ fn clone_reset() {
     actual.push(lexer
         .iter_with_spans()
         .next()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .unwrap());
     lexer = save.clone();
 
     actual.push(lexer
         .iter_with_spans()
         .next()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .unwrap());
     lexer = save.clone();
 
     actual.push(lexer
         .iter_with_spans()
         .next()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .unwrap());
 
     let expected = vec![
@@ -97,10 +88,7 @@ fn line_comment() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (LineCommentOpen, "\"#\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -126,10 +114,7 @@ fn line_comment_circumfix_whitespace() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (Whitespace,      "\"\n\t \n\" (0:0-2:0, bytes 0-4)".to_owned()),
@@ -157,10 +142,7 @@ fn line_comments_remove_whitespace() {
     assert_eq!(
         lexer
             .iter_with_spans()
-            .map(|res| {
-                let lex = res.unwrap();
-                (lex.0, format!("{}", lex.1))
-            })
+            .map(|lex| (lex.0, format!("{}", lex.1)))
             .collect::<Vec<_>>(),
         vec![
             (LineCommentOpen, "\"#\" (2:0-2:1, bytes 4-5)".to_owned()),
@@ -181,10 +163,7 @@ fn string_single_empty() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (StringOpenSingle,  "\"'\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -207,10 +186,7 @@ fn string_single_unclosed() {
     let scanner = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
     let mut lexer = lexer.iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        });
+        .map(|lex| (lex.0, format!("{}", lex.1)));
 
     assert_eq!(
         lexer.next(), 
@@ -234,10 +210,7 @@ fn string_single_text() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (StringOpenSingle,  "\"'\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -263,10 +236,7 @@ fn string_single_quotes() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (StringOpenSingle,  "\"'\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -293,10 +263,7 @@ fn string_double_empty() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (StringOpenDouble,  "\"\"\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -320,10 +287,7 @@ fn string_double_unclosed() {
     let scanner = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
     let mut lexer = lexer.iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        });
+        .map(|lex| (lex.0, format!("{}", lex.1)));
 
     assert_eq!(
         lexer.next(), 
@@ -348,10 +312,7 @@ fn string_double_text() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (StringOpenDouble,  "\"\"\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -377,10 +338,7 @@ fn string_double_quotes() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (StringOpenDouble,  "\"\"\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -407,10 +365,7 @@ fn string_raw_empty() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (RawStringOpen,  "\"r\"\" (0:0-0:2, bytes 0-2)".to_owned()),
@@ -436,10 +391,7 @@ fn string_raw_empty_hashed() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (RawStringOpen,  "\"r##\"\" (0:0-0:4, bytes 0-4)".to_owned()),
@@ -462,10 +414,7 @@ fn string_raw_unclosed() {
     let scanner = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
     let mut lexer = lexer.iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        });
+        .map(|lex| (lex.0, format!("{}", lex.1)));
 
     assert_eq!(
         lexer.next(), 
@@ -487,10 +436,7 @@ fn string_raw_mismatched() {
     let scanner = AtmaScriptScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
     let mut lexer = lexer.iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        });
+        .map(|lex| (lex.0, format!("{}", lex.1)));
 
     assert_eq!(
         lexer.next(), 
@@ -514,10 +460,7 @@ fn string_raw_text() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (RawStringOpen,  "\"r########\"\" (0:0-0:10, bytes 0-10)".to_owned()),
@@ -544,10 +487,7 @@ fn string_raw_quoted_text() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (RawStringOpen,  "\"r########\"\" (0:0-0:10, bytes 0-10)".to_owned()),
@@ -573,10 +513,7 @@ fn command_chunk() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (CommandChunk,  "\"abc-def\" (0:0-0:7, bytes 0-7)".to_owned()),
@@ -601,10 +538,7 @@ fn combined() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (LineCommentOpen,   "\"#\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -642,10 +576,7 @@ fn combined_terminated() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (CommandTerminator, "\";\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -691,10 +622,7 @@ fn combined_terminated_remove_whitespace() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (CommandTerminator, "\";\" (0:0-0:1, bytes 0-1)".to_owned()),
@@ -740,10 +668,7 @@ fn combined_terminated_filtered() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|res| {
-            let lex = res.unwrap();
-            (lex.0, format!("{}", lex.1))
-        })
+        .map(|lex| (lex.0, format!("{}", lex.1)))
         .collect::<Vec<_>>();
     let expected = vec![
         (StringOpenDouble,  "\"\"\" (2:1-2:2, bytes 7-8)".to_owned()),

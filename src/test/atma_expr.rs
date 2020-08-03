@@ -31,15 +31,6 @@ use std::convert::TryInto as _;
 ////////////////////////////////////////////////////////////////////////////////
 // Scanner
 ////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TokenError(&'static str);
-impl std::error::Error for TokenError {}
-
-impl std::fmt::Display for TokenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -102,14 +93,14 @@ pub enum AtmaToken {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AtmaExprScanner {
     open: Option<AtmaToken>,
-    raw_string_bracket_count: u64,
+    depth: u64,
 }
 
 impl AtmaExprScanner {
     pub fn new() -> Self {
         AtmaExprScanner {
             open: None,
-            raw_string_bracket_count: 0,
+            depth: 0,
         }
     }
 
@@ -351,7 +342,7 @@ impl AtmaExprScanner {
             match c {
                 '#' => {
                     pos += Pos::new(1, 0, 1);
-                    self.raw_string_bracket_count += 1;
+                    self.depth += 1;
                     continue;
                 },
                 '"' => {
@@ -381,7 +372,7 @@ impl AtmaExprScanner {
                 '#' => {
                     pos += Pos::new(1, 0, 1);
                     raw_count += 1;
-                    if raw_count >= self.raw_string_bracket_count {
+                    if raw_count >= self.depth {
                         break;
                     }
                 },
@@ -389,7 +380,7 @@ impl AtmaExprScanner {
             }
         }
 
-        if self.raw_string_bracket_count == raw_count {
+        if self.depth == raw_count {
             Some((AtmaToken::RawStringClose, pos))
         } else {
             None
@@ -532,10 +523,9 @@ impl AtmaExprScanner {
 
 impl Scanner for AtmaExprScanner {
     type Token = AtmaToken;
-    type Error = TokenError;
 
-    fn lex_prefix_token<'text, Nl>(&mut self, text: &'text str)
-        -> Result<(Self::Token, Pos), (Self::Error, Pos)>
+    fn scan<'text, Nl>(&mut self, text: &'text str)
+        -> Option<(Self::Token, Pos)>
         where Nl: NewLine,
     {
         use AtmaToken::*;
@@ -547,117 +537,115 @@ impl Scanner for AtmaExprScanner {
                 // we know the next part of the text is the appropriately sized
                 // RawStringClose token. So instead of explicitely parsing it,
                 // we can just jump forward.
-                let byte: usize = (self.raw_string_bracket_count + 1)
+                let byte: usize = (self.depth + 1)
                     .try_into()
                     .expect("Pos overflow");
-                Ok((RawStringClose, Pos::new(byte, 0, byte)))
+                Some((RawStringClose, Pos::new(byte, 0, byte)))
             },
             Some(RawStringOpen) => {
                 if let Some(parse) = self.parse_raw_string_close(text) {
-                    self.raw_string_bracket_count = 0;
-                    return Ok(parse);
+                    self.depth = 0;
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_raw_string_text::<Nl>(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
-                Err((TokenError("Non-terminated raw string"), Pos::ZERO))
+                None
             },
 
             Some(StringOpenSingle) => {
                 if let Some(parse) = self.parse_string_close_single(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self
                     .parse_string_text::<Nl>(text, StringOpenSingle)
                 {
                     self.open = Some(StringOpenSingle);
-                    return Ok(parse);
+                    return Some(parse);
                 }
-                Err((TokenError("Unrecognized string escape"),
-                    Pos::new(1, 0, 1)))
+                None
             },
             Some(StringOpenDouble) => {
                 if let Some(parse) = self.parse_string_close_double(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self
                     .parse_string_text::<Nl>(text, StringOpenDouble)
                 {
                     self.open = Some(StringOpenDouble);
-                    return Ok(parse);
+                    return Some(parse);
                 }
-                Err((TokenError("Unrecognized string escape"),
-                    Pos::new(1, 0, 1)))
+                None
             },
 
             None => {
                 if let Some(parse) = self.parse_whitespace::<Nl>(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
 
                 if let Some(parse) = self.parse_open_paren(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_close_paren(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
 
                 // RawStringOpen must be parsed before Hash.
                 if let Some(parse) = self.parse_raw_string_open(text) {
                     self.open = Some(RawStringOpen);
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_string_open_single(text) {
                     self.open = Some(StringOpenSingle);
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_string_open_double(text) {
                     self.open = Some(StringOpenDouble);
-                    return Ok(parse);
+                    return Some(parse);
                 }
 
                 if let Some(parse) = self.parse_colon(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_comma(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_hash(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_mult(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_plus(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 if let Some(parse) = self.parse_minus(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 
                 // Float must be parsed before Uint and Decimal.
                 if let Some(parse) = self.parse_float(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
 
                 if let Some(parse) = self.parse_decimal(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
 
 
                 if let Some(parse) = self.parse_uint(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 // Ident must be parsed before Underscore.
                 if let Some(parse) = self.parse_ident(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
 
                 if let Some(parse) = self.parse_underscore(text) {
-                    return Ok(parse);
+                    return Some(parse);
                 }
                 
-                Err((TokenError("Unrecognized token"), Pos::new(1, 0, 1)))
+                None
             },
 
             Some(_) => panic!("invalid lexer state"),

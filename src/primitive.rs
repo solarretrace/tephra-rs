@@ -48,33 +48,25 @@ pub fn empty<'t, Sc, Nl>(lexer: Lexer<'t, Sc, Nl>)
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses the end of the text.
-pub fn end_of_text<'t, Sc, Nl, F, V>(mut lexer: Lexer<'t, Sc, Nl>)
+pub fn end_of_text<'t, Sc, Nl, F, V>(lexer: Lexer<'t, Sc, Nl>)
     -> ParseResult<'t, Sc, Nl, ()>
     where
         Sc: Scanner,
         Nl: NewLine,
 {
-    match lexer.next() {
-        // Lexer error.
-        Some(Err(e)) => Err(Failure {
-            parse_error: ParseError::unrecognized_token(lexer.last_span()),
-            lexer,
-            source: Some(Box::new(e)),
-        }),
-
-        // Expected End-of-text.
-        None => Ok(Success {
+    if lexer.is_empty() {
+        Ok(Success {
             lexer,
             value: (),
-        }),
-
-        // Unexpected token.
-        Some(Ok(_)) => Err(Failure {
-            parse_error: ParseError::unexpected_token(lexer.last_span()),
+        })
+    } else {
+        Err(Failure {
+            parse_error: ParseError::unexpected_text(lexer.end_span()),
             lexer,
             source: None,
-        }),
+        })
     }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,30 +81,32 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
         Nl: NewLine,
 {
     move |mut lexer| {
+        if lexer.is_empty() {
+            // Unexpected End-of-text.
+            return Err(Failure {
+                parse_error: ParseError::unexpected_end_of_text(lexer.end_span()),
+                lexer,
+                source: None,
+            });
+        }
+
         match lexer.next() {
             // Lexer error.
-            Some(Err(e)) => Err(Failure {
+            None => Err(Failure {
                 parse_error: ParseError::unrecognized_token(lexer.last_span()),
                 lexer,
-                source: Some(Box::new(e)),
+                source: None,
             }),
 
             // Matching token.
-            Some(Ok(lex)) if lex == token => Ok(Success {
+            Some(lex) if lex == token => Ok(Success {
                 lexer,
                 value: (),
             }),
 
             // Incorrect token.
-            Some(Ok(_)) => Err(Failure {
+            Some(_) => Err(Failure {
                 parse_error: ParseError::unexpected_token(lexer.last_span()),
-                lexer,
-                source: None,
-            }),
-
-            // Unexpected End-of-text.
-            None => Err(Failure {
-                parse_error: ParseError::unexpected_end_of_text(lexer.span()),
                 lexer,
                 source: None,
             }),
@@ -136,14 +130,14 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
         for token in &tokens {
             match lexer.next() {
                 // Lexer error.
-                Some(Err(e)) => return Err(Failure {
+                None => return Err(Failure {
                     parse_error: ParseError::unrecognized_token(lexer.last_span()),
                     lexer,
-                    source: Some(Box::new(e)),
+                    source: None,
                 }),
 
                 // Matching token.
-                Some(Ok(lex)) if lex == *token => return Ok(Success {
+                Some(lex) if lex == *token => return Ok(Success {
                     lexer,
                     value: (),
                 }),
@@ -176,29 +170,30 @@ pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
 {
     let tokens = tokens.to_vec();
     move |mut lexer| {
-
         for token in &tokens {
+            if lexer.is_empty() {
+                // Unexpected End-of-text.
+                return Err(Failure {
+                    parse_error: ParseError::unexpected_end_of_text(lexer.end_span()),
+                    lexer,
+                    source: None,
+                });
+            }
+
             match lexer.next() {
                 // Lexer error.
-                Some(Err(e)) => return Err(Failure {
+                None => return Err(Failure {
                     parse_error: ParseError::unrecognized_token(lexer.last_span()),
-                    lexer,
-                    source: Some(Box::new(e)),
-                }),
-
-                // Matching token.
-                Some(Ok(lex)) if lex == *token => (),
-
-                // Incorrect token.
-                Some(Ok(_)) => return Err(Failure {
-                    parse_error: ParseError::unexpected_token(lexer.last_span()),
                     lexer,
                     source: None,
                 }),
 
-                // Unexpected End-of-text.
-                None => return Err(Failure {
-                    parse_error: ParseError::unexpected_end_of_text(lexer.span()),
+                // Matching token.
+                Some(lex) if lex == *token => (),
+
+                // Incorrect token.
+                Some(_) => return Err(Failure {
+                    parse_error: ParseError::unexpected_token(lexer.last_span()),
                     lexer,
                     source: None,
                 }),

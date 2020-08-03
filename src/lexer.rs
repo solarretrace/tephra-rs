@@ -26,15 +26,13 @@ use std::sync::Arc;
 pub trait Scanner: Debug + Clone + PartialEq {
     /// The parse token type.
     type Token: Debug + Clone + PartialEq + Send + Sync + 'static;
-    /// The parse error type.
-    type Error: std::error::Error + Send + Sync + 'static;
 
     /// Parses a token from the given string. When the parse success, the
     /// length of the consumed text should be returned. When the parse fails,
     /// the length of the text to skip before resuming should be returned. If no
     /// further progress is possible, 0 should be returned instead.
-    fn lex_prefix_token<'text, Nl>(&mut self, text: &'text str)
-        -> Result<(Self::Token, Pos), (Self::Error, Pos)>
+    fn scan<'text, Nl>(&mut self, text: &'text str)
+        -> Option<(Self::Token, Pos)>
         where Nl: NewLine;
 }
 
@@ -73,6 +71,11 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
             end: Pos::ZERO,
             start_fixed: false,
         }
+    }
+
+    /// Returns true if the lexed text is empty.
+    pub fn is_empty(&self) -> bool {
+        self.end.byte >= self.source.len()
     }
 
     /// Returns an iterator over the lexer tokens together with their spans.
@@ -156,6 +159,11 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
         Span::new_enclosing(self.last, self.end, self.source)
     }
 
+    /// Returns the span of the end of the lexed text.
+    pub fn end_span(&self) -> Span<'text, Nl> {
+        Span::new_from(self.end, self.source)
+    }
+
 }
 
 impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
@@ -163,14 +171,12 @@ impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
         Sc: Scanner,
         Nl: NewLine,
 {
-    type Item = Result<Sc::Token, Sc::Error>;
+    type Item = Sc::Token;
     
     fn next(&mut self) -> Option<Self::Item> {
         while self.end.byte < self.source.len() {
-            match self.scanner
-                .lex_prefix_token::<Nl>(&self.source[self.end.byte..])
-            {
-                Ok((token, adv)) if self.filter
+            match self.scanner.scan::<Nl>(&self.source[self.end.byte..]) {
+                Some((token, adv)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
                 {
@@ -179,7 +185,7 @@ impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
                     self.last = self.end;
                 },
 
-                Ok((token, adv)) => {
+                Some((token, adv)) => {
                     if !self.start_fixed {
                         self.start = self.end;
                         self.start_fixed = true;
@@ -187,15 +193,15 @@ impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
                     self.last_full = self.end;
                     self.last = self.end;
                     self.end += adv;
-                    return Some(Ok(token))
+                    return Some(token);
                 },
 
-                Err((error, adv)) => {
+                None => {
                     self.last_full = self.end;
-                    self.end += adv;
-                    if adv.is_zero() { self.end.byte = self.source.len() }
+                    // self.end += adv;
+                    // if adv.is_zero() { self.end.byte = self.source.len() }
                     
-                    return Some(Err(error))
+                    return None;
                 },
             }
         }
@@ -251,11 +257,11 @@ impl<'text, 'l, Sc, Nl> Iterator for IterWithSpans<'text, 'l, Sc, Nl>
         Sc: Scanner,
         Nl: NewLine,
 {
-    type Item = Result<(Sc::Token, Span<'text, Nl>), Sc::Error>;
+    type Item = (Sc::Token, Span<'text, Nl>);
     
     fn next(&mut self) -> Option<Self::Item> {
-        self.lexer.next().map(|res| res.map(|t| {
+        self.lexer.next().map(|t| {
              (t, self.lexer.last_span())
-        }))
+        })
     }
 }
