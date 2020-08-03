@@ -18,9 +18,10 @@
 # Parser design principles
 ## Use `&'t str`, not `&mut &'t str`.
 
-This makes it easier to back up in case of a failure. 
+This makes it easier to back up in case of a failure. This only applies to a combined lexer/parser.
 
 Different parser designs may be able to accomodate different data formats. In order to build a streaming parser, the lexer won't be able to return slices into the source, as the lexeme borrows from the lexer's internal buffer, rather than the external source text buffer.
+
 
 ## Use `std::Result`.
 ## If a function takes extra args, return a parser.
@@ -58,15 +59,32 @@ Without a dedicated lexer, all intermediate syntactical structure must be filter
         list
         string
 
+## Scanner holds state
+
+The scanner must hold state to allow processing escaped tokens. Nested comments, matching quotes, etc., can be lexed as escaped text or as language tokens, and the scanner needs to know what the open/escape is. So whenever a scanner produces an escape token, it records that state until the corresponding close is produced.
+
+## Scanner outputs Option
+
+If the scanned text is empty, it is obvious that there is no token to scan, and if the scanner returns None, then there is no token to match the text. The main problem with this is in detecting *why* there is no match if text remains, which could be a function of the scanner state.
+
+In practice, this is probably not a problem, because a parser should know whether the scanner is entering such a state, and if the parse fails, we should be able to determine why. This probably means that you can't use simple combinators for e.g., both strings and bracketed tokens, but you would usually want escaped tokens to be processed in their own parsers anyway.
+
+This also means the scanner doesn't need a dedicated error type, and that parse errors arising from the scanner won't need to be boxed, which is simple and more efficient.
+
+## Scan for any token or a specific token?
+
+Scanning for specific tokens would probably be more efficient and will make scanners easier to write. Token patterns can overlap, and the same text can be matched by multiple tokens, depending on what the parser requested.
+
+On the other hand, those ambiguities don't seem relevant in practice. Scanning for any token allows for cleaner iteration, and most importantly, efficiently scanning ahead to a sentinal token. It also allows for more complex filtering capabilities.
+
+
 # Lexer filtering and span construction
 
 The lexer output should be filterable and contain full-constructed spans before any parser code works on it.
 
-## 1. Lexer trait.
+## Lexer trait or lexer struct?
 
 The Lexer could be a trait requiring Iterator over the lexemes. This would allow iterator combinators to do filtering and transformation of the lexer output, as well as allow arbitrary parsers to transform the lexer on demand. On the other hand, it is likely that combinator errors would get difficult to analyze, as the lexer would have many type variables. This also makes it almost impossible to interact with the lexer state during parsing. At a minumum every iterator would need to be clonable so allow backtracking in case of a failed parse.
-
-## 2. Lexer struct.
 
 The lexer could present a struct interface. This is problematic in that it strongly constrains what the lexer is allowed to do. It doesn't allow parsers to transform the lexer without including stateful operations on the lexer. Fortunately, there is not a whole lot that the typical lexer will need to do: filter whitespace, backtrack, push tokens into the stream, ... Most other options can be handled in the parser code.
 

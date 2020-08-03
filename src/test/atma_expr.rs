@@ -17,15 +17,19 @@ use crate::lexer::Lexer;
 use crate::span::Pos;
 use crate::span::NewLine;
 use crate::result::ParseResult;
+use crate::result::ParseResultExt as _;
 use crate::result::ParseError;
 use crate::result::Failure;
 use crate::primitive::one;
+use crate::combinator::both;
 use crate::combinator::right;
+use crate::combinator::center;
 use crate::combinator::exact;
 use crate::combinator::text;
 
 // Standard library imports.
 use std::convert::TryInto as _;
+use std::borrow::Cow;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -734,30 +738,184 @@ pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
     }
 }
 
+
+pub fn parse_index<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
+    -> ParseResult<'text, AtmaExprScanner, Nl, CellRef>
+    where Nl: NewLine,
+{
+    exact(
+        right(one(AtmaToken::Colon),
+            parse_uint::<_, u32>))
+        (lexer)
+        .map_value(CellRef::Index)
+}
+
+
+pub fn parse_position<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
+    -> ParseResult<'text, AtmaExprScanner, Nl, CellRef>
+    where Nl: NewLine,
+{
+    exact(
+        right(one(AtmaToken::Colon),
+            both(
+                parse_uint::<_, u16>,
+                both(
+                    right(one(AtmaToken::Decimal), parse_uint::<_, u16>),
+                    right(one(AtmaToken::Decimal), parse_uint::<_, u16>)))))
+        (lexer)
+        .map_value(|(p, (l, c))| CellRef::Position(p, l, c))
+}
+
 pub fn parse_channel<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
     -> ParseResult<'text, AtmaExprScanner, Nl, Channel>
     where Nl: NewLine,
 {
-    match text(one(AtmaToken::Ident))
-        (lexer)
-    {
-        Ok(succ) => {
-            if succ.value.eq_ignore_ascii_case("rgb") {
-                Ok(succ.map_value(|_| Channel::Rgb))
-            } else if succ.value.eq_ignore_ascii_case("hsv") {
-                Ok(succ.map_value(|_| Channel::Hsv))
-            } else if succ.value.eq_ignore_ascii_case("hsl") {
-                Ok(succ.map_value(|_| Channel::Hsl))
-            } else {
-                Err(Failure {
-                    parse_error: ParseError::new("invalid channel")
-                        .with_span("expected one of 'rgb', 'hsl', or 'hsv'",
-                            succ.lexer.span()),
-                    lexer: succ.lexer,
-                    source: None,
-                })
-            }
-        },
-        Err(fail) => Err(fail),
+    let (val, succ) = text(one(AtmaToken::Ident))
+        (lexer)?
+        .take_value();
+
+    if val.eq_ignore_ascii_case("rgb") {
+        Ok(succ.map_value(|_| Channel::Rgb))
+    } else if val.eq_ignore_ascii_case("hsv") {
+        Ok(succ.map_value(|_| Channel::Hsv))
+    } else if val.eq_ignore_ascii_case("hsl") {
+        Ok(succ.map_value(|_| Channel::Hsl))
+    } else {
+        Err(Failure {
+            parse_error: ParseError::new("invalid channel")
+                .with_span("expected one of 'rgb', 'hsl', or 'hsv'",
+                    succ.lexer.span()),
+            lexer: succ.lexer,
+            source: None,
+        })
     }
+}
+
+
+pub fn parse_uint<'text, Nl, T>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
+    -> ParseResult<'text, AtmaExprScanner, Nl, T>
+    where
+        Nl: NewLine,
+        T: FromStrRadix,
+{
+    let (mut val, succ) = text(one(AtmaToken::Uint))
+        (lexer)?
+        .take_value();
+
+    let radix = if val.starts_with("0b") {
+        val = &val[2..];
+        2
+    } else if val.starts_with("0o") {
+        val = &val[2..];
+        8
+    } else if val.starts_with("0x") {
+        val = &val[2..];
+        16
+    } else {
+        10
+    };
+
+    // Remove underscores.
+    let mut val = String::from(val);
+    val.retain(|c| c != '_');
+
+    match T::from_str_radix(&*val, radix) {
+        Ok(val) => Ok(succ.map_value(|_| val)),
+        Err(e) => Err(Failure {
+            parse_error: ParseError::new("invalid integer value")
+                .with_span(format!("base {} integer", radix),
+                    succ.lexer.span()),
+            lexer: succ.lexer,
+            source: Some(Box::new(e)),
+        })
+    }
+}
+
+
+pub trait FromStrRadix: Sized {
+    fn from_str_radix(src: &str, radix: u32)
+        -> Result<Self, std::num::ParseIntError>;
+}
+
+macro_rules! from_str_radix_impl {
+    ($t:ty) => {
+        impl FromStrRadix for $t {
+            fn from_str_radix(src: &str, radix: u32)
+                -> Result<$t, std::num::ParseIntError>
+            {
+                <$t>::from_str_radix(src, radix)
+            }
+        }
+    }
+}
+
+from_str_radix_impl!(isize);
+from_str_radix_impl!(i8);
+from_str_radix_impl!(i16);
+from_str_radix_impl!(i32);
+from_str_radix_impl!(i64);
+from_str_radix_impl!(i128);
+from_str_radix_impl!(usize);
+from_str_radix_impl!(u8);
+from_str_radix_impl!(u16);
+from_str_radix_impl!(u32);
+from_str_radix_impl!(u64);
+from_str_radix_impl!(u128);
+
+
+
+pub fn parse_string_single<'text, Nl>(
+    mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
+    -> ParseResult<'text, AtmaExprScanner, Nl, Cow<'text, str>>
+    where Nl: NewLine,
+{
+    center(
+        one(AtmaToken::StringOpenSingle),
+        text(one(AtmaToken::StringText)),
+        one(AtmaToken::StringCloseSingle))
+        (lexer)
+        .map_value(unescape_string_text)
+}
+
+fn unescape_string_text<'text>(input: &'text str) -> Cow<'text, str> {
+    const ESCAPES: [char; 6] = ['\\', '"', '\'', 't', 'r', 'n'];
+    let mut owned: Option<String> = None;
+
+    let mut chars = input.char_indices();
+    while let Some((i, c)) = chars.next() {
+        if c == '\\' {
+            match chars.next() {
+                // NOTE: These should all step by column, because
+                // they're escaped text.
+                Some((_, e)) if ESCAPES.contains(&e) => {
+                    if owned.is_none() {
+                        owned = Some(String::with_capacity(input.len()));
+                        owned.as_mut().unwrap().push_str(&input[0..i]);
+                    }
+
+                    owned.as_mut().unwrap().push(match e {
+                        '\\' => '\\',
+                        '"'  => '"',
+                        '\'' => '\'',
+                        't'  => '\t',
+                        'r'  => '\r',
+                        'n'  => '\n',
+                        _    => unreachable!(),
+                    });
+                },
+                Some((_, 'u'))  => unimplemented!("unicode escapes unsupported"),
+                // TODO: Make this an error instead.
+                Some(_)    |
+                None       => panic!("invalid escape character"),
+            }
+        } else if let Some(owned) = owned.as_mut() {
+            owned.push(c);
+        }
+    }
+
+    match owned {
+        Some(s) => s.into(),
+        None    => input.into(),
+    }
+
 }

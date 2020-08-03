@@ -160,6 +160,36 @@ pub fn both<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
     }
 }
 
+
+/// Returns a parser which sequences two parsers wich must both succeed,
+/// returning their values in a tuple.
+pub fn center<'t, Sc, Nl, L, C, R, X, Y, Z>(
+    mut left: L,
+    mut center: C,
+    mut right: R)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+        L: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
+        C: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
+        R: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Z>,
+{
+    move |lexer| {
+        let succ = (left)
+            (lexer)?;
+
+        let (c, succ) = (center)
+            (succ.lexer)?
+            .take_value();
+
+        (right)
+            (succ.lexer)
+            .map_value(|_| c)
+    }
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Tolerance & inversion combinators.
 ////////////////////////////////////////////////////////////////////////////////
