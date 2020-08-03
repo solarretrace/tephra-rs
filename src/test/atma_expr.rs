@@ -88,16 +88,9 @@ pub enum AtmaToken {
     Float,
     /// A decimal point character '.'.
     Decimal,
-
-    /// A binary integer prefix marker "0b".
-    IntPrefixBin,
-    /// A octal integer prefix marker "0o".
-    IntPrefixOct,
-    /// A hexidecimal integer prefix marker "0x".
-    IntPrefixHex,
     
-    /// Any number of hexidecimal integer digits or underscore characters.
-    IntDigits,
+    /// Any number of uint digits or underscore characters.
+    Uint,
     /// An identifier with the form "[_[alpha]][alphanumeric]+".
     Ident,
 
@@ -148,52 +141,33 @@ impl AtmaExprScanner {
         Some((AtmaToken::Ident, Pos::new(bytes, 0, cols)))
     }
 
-    /// Parses a IntPrefixBin token.
-    fn parse_int_prefix_bin(&mut self, text: &str)
+    /// Parses an Uint token.
+    fn parse_uint(&mut self, mut text: &str)
         -> Option<(AtmaToken, Pos)>
     {
-        if text.starts_with("0b") {
-            Some((AtmaToken::IntPrefixBin, Pos::new(2, 0, 2)))
+        let radix = if text.starts_with("0b") {
+            text = &text[2..];
+            2
+        } else if text.starts_with("0o") {
+            text = &text[2..];
+            8
+        } else if text.starts_with("0x") {
+            text = &text[2..];
+            16
         } else {
-            None
-        }
-    }
+            // Unprefixed uints can't start with '_'.
+            if text.starts_with('_') { return None; }
+            10
+        };
 
-    /// Parses a IntPrefixOct token.
-    fn parse_int_prefix_oct(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("0o") {
-            Some((AtmaToken::IntPrefixOct, Pos::new(2, 0, 2)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a IntPrefixHex token.
-    fn parse_int_prefix_hex(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("0x") {
-            Some((AtmaToken::IntPrefixHex, Pos::new(2, 0, 2)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a IntDigits token.
-    fn parse_int_digits(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        // Can't start with '_'.
-        if text.starts_with('_') { return None; }
 
         let rest = text
-            .trim_start_matches(|c: char| c.is_digit(16) || c == '_');
+            .trim_start_matches(|c: char| c.is_digit(radix) || c == '_');
         
-        let cols = text.len() - rest.len();
+        let mut cols = text.len() - rest.len();
+        if radix != 10 { cols += 2 }
         if cols > 0 {
-            return Some((AtmaToken::IntDigits, Pos::new(cols, 0, cols)));
+            return Some((AtmaToken::Uint, Pos::new(cols, 0, cols)));
         } else {
             None
         }
@@ -661,7 +635,7 @@ impl Scanner for AtmaExprScanner {
                     return Ok(parse);
                 }
                 
-                // Float must be parsed before IntDigits and Decimal.
+                // Float must be parsed before Uint and Decimal.
                 if let Some(parse) = self.parse_float(text) {
                     return Ok(parse);
                 }
@@ -670,21 +644,8 @@ impl Scanner for AtmaExprScanner {
                     return Ok(parse);
                 }
 
-                // Int prefixes must be parsed before IntDigits.
-                if let Some(parse) = self.parse_int_prefix_bin(text) {
-                    return Ok(parse);
-                }
 
-                if let Some(parse) = self.parse_int_prefix_oct(text) {
-                    return Ok(parse);
-                }
-
-                if let Some(parse) = self.parse_int_prefix_hex(text) {
-                    return Ok(parse);
-                }
-
-
-                if let Some(parse) = self.parse_int_digits(text) {
+                if let Some(parse) = self.parse_uint(text) {
                     return Ok(parse);
                 }
                 // Ident must be parsed before Underscore.
@@ -756,7 +717,7 @@ pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
     match exact(
         right(
             one(AtmaToken::Hash),
-            text(one(AtmaToken::IntDigits))))
+            text(one(AtmaToken::Uint))))
         (lexer)
     {
         Ok(mut succ)  => {
@@ -781,6 +742,34 @@ pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
                 }),
             }
         }
+        Err(fail) => Err(fail),
+    }
+}
+
+pub fn parse_channel<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
+    -> ParseResult<'text, AtmaExprScanner, Nl, Channel>
+    where Nl: NewLine,
+{
+    match text(one(AtmaToken::Ident))
+        (lexer)
+    {
+        Ok(succ) => {
+            if succ.value.eq_ignore_ascii_case("rgb") {
+                Ok(succ.map_value(|_| Channel::Rgb))
+            } else if succ.value.eq_ignore_ascii_case("hsv") {
+                Ok(succ.map_value(|_| Channel::Hsv))
+            } else if succ.value.eq_ignore_ascii_case("hsl") {
+                Ok(succ.map_value(|_| Channel::Hsl))
+            } else {
+                Err(Failure {
+                    parse_error: ParseError::new("invalid channel")
+                        .with_span("expected one of 'rgb', 'hsl', or 'hsv'",
+                            succ.lexer.span()),
+                    lexer: succ.lexer,
+                    source: None,
+                })
+            }
+        },
         Err(fail) => Err(fail),
     }
 }

@@ -78,3 +78,27 @@ fn color_whitespace() {
 
     assert_eq!(actual, expected);
 }
+
+
+/// Tests `Channel` parsing with an invalid value.
+#[test]
+fn channel_invalid() {
+    let text = "bad";
+    let scanner = AtmaExprScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let failure = parse_channel(lexer).err().unwrap();
+    println!("{}", failure);
+
+    let actual = failure.error_span_display();
+    let expected = ("invalid channel",
+                    "\"bad\" (0:0-0:3, bytes 0-3)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!();
+
+    assert_eq!(actual, expected);
+}
+
