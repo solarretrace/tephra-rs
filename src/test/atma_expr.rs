@@ -23,7 +23,7 @@ use crate::result::Failure;
 use crate::primitive::one;
 use crate::combinator::both;
 use crate::combinator::right;
-use crate::combinator::center;
+use crate::combinator::bracket;
 use crate::combinator::exact;
 use crate::combinator::text;
 
@@ -869,7 +869,7 @@ pub fn parse_string_single<'text, Nl>(
     -> ParseResult<'text, AtmaExprScanner, Nl, Cow<'text, str>>
     where Nl: NewLine,
 {
-    center(
+    bracket(
         one(AtmaToken::StringOpenSingle),
         text(one(AtmaToken::StringText)),
         one(AtmaToken::StringCloseSingle))
