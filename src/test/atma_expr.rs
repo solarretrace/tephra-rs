@@ -23,6 +23,8 @@ use crate::result::Failure;
 use crate::primitive::one;
 use crate::combinator::both;
 use crate::combinator::right;
+use crate::primitive::any;
+use crate::combinator::bracket_dynamic;
 use crate::combinator::bracket;
 use crate::combinator::exact;
 use crate::combinator::text;
@@ -863,16 +865,47 @@ from_str_radix_impl!(u64);
 from_str_radix_impl!(u128);
 
 
-
-pub fn parse_string_single<'text, Nl>(
+pub fn parse_string<'text, Nl>(
     mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
     -> ParseResult<'text, AtmaExprScanner, Nl, Cow<'text, str>>
     where Nl: NewLine,
 {
+    if let Ok(succ) = parse_raw_string(lexer.clone()) {
+        return Ok(succ.map_value(Cow::from))
+    }
+
+    parse_escaped_string(lexer)
+}
+
+pub fn parse_raw_string<'text, Nl>(
+    mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
+    -> ParseResult<'text, AtmaExprScanner, Nl, &'text str>
+    where Nl: NewLine,
+{
+    use AtmaToken::*;
     bracket(
-        one(AtmaToken::StringOpenSingle),
-        text(one(AtmaToken::StringText)),
-        one(AtmaToken::StringCloseSingle))
+        one(RawStringOpen),
+        text(one(RawStringText)),
+        one(RawStringClose))
+        (lexer)
+}
+
+pub fn parse_escaped_string<'text, Nl>(
+    mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
+    -> ParseResult<'text, AtmaExprScanner, Nl, Cow<'text, str>>
+    where Nl: NewLine,
+{
+    use AtmaToken::*;
+    let corresponding = move |lexer, tok| match tok {
+        StringOpenSingle => one(StringCloseSingle)(lexer),
+        StringOpenDouble => one(StringCloseDouble)(lexer),
+        _ => unreachable!(),
+    };
+
+    bracket_dynamic(
+        any(&[StringOpenSingle, StringOpenDouble]),
+        text(one(StringText)),
+        corresponding)
         (lexer)
         .map_value(unescape_string_text)
 }

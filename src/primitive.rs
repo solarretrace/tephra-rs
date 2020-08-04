@@ -75,7 +75,7 @@ pub fn end_of_text<'t, Sc, Nl, F, V>(lexer: Lexer<'t, Sc, Nl>)
 /// Returns a parser which consumes a single token if it matches the given
 /// token.
 pub fn one<'t, Sc, Nl>(token: Sc::Token)
-    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, ()>
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Sc::Token>
     where
         Sc: Scanner,
         Nl: NewLine,
@@ -101,7 +101,7 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
             // Matching token.
             Some(lex) if lex == token => Ok(Success {
                 lexer,
-                value: (),
+                value: token.clone(),
             }),
 
             // Incorrect token.
@@ -120,7 +120,7 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
 /// Returns a parser attempts each of the given tokens in sequence, returning
 /// the first which succeeds.
 pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
-    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, ()>
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Sc::Token>
     where
         Sc: Scanner,
         Nl: NewLine,
@@ -139,7 +139,7 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
                 // Matching token.
                 Some(lex) if lex == *token => return Ok(Success {
                     lexer,
-                    value: (),
+                    value: token.clone(),
                 }),
 
                 // Incorrect token.

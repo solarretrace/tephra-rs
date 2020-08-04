@@ -168,7 +168,7 @@ fn string_single() {
     let scanner = AtmaExprScanner::new();
     let lexer = Lexer::new(scanner, text, Lf);
 
-    let actual =  parse_string_single(lexer).unwrap().value_span_display();
+    let actual =  parse_string(lexer).unwrap().value_span_display();
     let expected = (
         "abc\tdef".into(),
         "\"'abc\tdef'\" (0:0-0:9, bytes 0-9)".to_owned());
@@ -187,7 +187,7 @@ fn string_single_escaped() {
     let scanner = AtmaExprScanner::new();
     let lexer = Lexer::new(scanner, text, Lf);
 
-    let actual =  parse_string_single(lexer).unwrap().value_span_display();
+    let actual =  parse_string(lexer).unwrap().value_span_display();
     let expected = (
         "abc\tdef".into(),
         "\"'abc\\tdef'\" (0:0-0:10, bytes 0-10)".to_owned());

@@ -161,9 +161,8 @@ pub fn both<'t, Sc, Nl, L, R, X, Y>(mut left: L, mut right: R)
     }
 }
 
-
-/// Returns a parser which sequences two parsers wich must both succeed,
-/// returning their values in a tuple.
+/// Returns a parser which sequences three parsers which must all succeed,
+/// returning the value of the center parser.
 pub fn bracket<'t, Sc, Nl, L, C, R, X, Y, Z>(
     mut left: L,
     mut center: C,
@@ -190,12 +189,67 @@ pub fn bracket<'t, Sc, Nl, L, C, R, X, Y, Z>(
     }
 }
 
-// bracket_with
-// circumfix
+/// Returns a parser which calls a bracketting parser before and after a center
+/// parser.
+pub fn bracket_symmetric<'t, Sc, Nl, C, B, X, Y>(
+    mut bracket: B,
+    mut center: C)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+        B: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
+        C: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
+{
+    move |lexer| {
+        let succ = (&mut bracket)
+            (lexer)?;
+
+        let (c, succ) = (center)
+            (succ.lexer)?
+            .take_value();
+
+        (&mut bracket)
+            (succ.lexer)
+            .map_value(|_| c)
+    }
+}
+
+/// Returns a parser which sequences three parsers which must all succeed,
+/// returning the value of the center parser. The right parser will receive the
+/// output of the left parser as an argument.
+pub fn bracket_dynamic<'t, Sc, Nl, L, C, R, X, Y, Z>(
+    mut left: L,
+    mut center: C,
+    mut right: R)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+        L: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, X>,
+        C: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Y>,
+        R: FnMut(Lexer<'t, Sc, Nl>, X) -> ParseResult<'t, Sc, Nl, Z>,
+{
+    move |lexer| {
+        let (l, succ) = (left)
+            (lexer)?
+            .take_value();
+
+        let (c, succ) = (center)
+            (succ.lexer)?
+            .take_value();
+
+        (right)
+            (succ.lexer, l)
+            .map_value(|_| c)
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Tolerance & inversion combinators.
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Returns a parser which converts any failure into an empty success.
 pub fn maybe<'t, Sc, Nl, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Option<V>>
@@ -212,11 +266,32 @@ pub fn maybe<'t, Sc, Nl, F, V>(mut parser: F)
                     value: None,
             }),
         }
-
     }
 }
 
-// require_if
+/// Returns a parser which requires a parse to succeed if the given
+/// predicate is true.
+///
+/// This acts like a `maybe` combinator that can be conditionally disabled:
+/// `require_if(|| false, p)` is identical to `maybe(p)` and 
+/// `require_if(|| true, p)` is identical to `p`.
+pub fn require_if<'t, Sc, Nl, P, F, V>(mut pred: P, mut parser: F)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Option<V>>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+        P: FnMut() -> bool,
+        F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
+{
+    move |lexer| {
+        if (pred)() {
+            (parser)(lexer)
+                .map_value(Some)
+        } else {
+            maybe(&mut parser)(lexer)
+        }
+    }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
