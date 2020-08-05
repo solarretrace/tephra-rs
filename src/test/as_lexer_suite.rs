@@ -11,7 +11,7 @@
 // Local imports.
 use crate::span::Lf;
 use crate::lexer::Lexer;
-use crate::test::atma_script::*;
+use crate::atma_script::*;
 
 
 

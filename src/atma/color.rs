@@ -13,16 +13,17 @@
 
 
 // Local imports.
-use crate::test::atma::AtmaToken;
-use crate::test::atma::AtmaScanner;
+use crate::atma::AtmaToken;
+use crate::atma::AtmaScanner;
 use crate::lexer::Lexer;
+use crate::lexer::Scanner;
 use crate::span::NewLine;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::ParseError;
 use crate::result::Failure;
-use crate::primitive::one;
-use crate::primitive::any;
+use crate::combinator::one;
+use crate::combinator::any;
 use crate::combinator::bracket_dynamic;
 use crate::combinator::bracket;
 use crate::combinator::text;
@@ -32,6 +33,18 @@ use crate::combinator::right;
 // External library imports.
 use ::color::Color;
 
+
+/// Returns a parser which parses a hex code with the given number of digits.
+pub fn hex_code<'t, Sc, Nl>(digits: u32)
+    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, u32>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+{
+    move |mut lexer| {
+        unimplemented!()
+    }
+}
 
 // pub fn color<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
 //     -> ParseResult<'text, AtmaScanner, Nl, Color>

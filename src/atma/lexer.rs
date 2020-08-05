@@ -21,10 +21,10 @@ use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::ParseError;
 use crate::result::Failure;
-use crate::primitive::one;
+use crate::combinator::one;
 use crate::combinator::both;
 use crate::combinator::right;
-use crate::primitive::any;
+use crate::combinator::any;
 use crate::combinator::bracket_dynamic;
 use crate::combinator::bracket;
 use crate::combinator::exact;
@@ -33,6 +33,15 @@ use crate::combinator::text;
 // Standard library imports.
 use std::convert::TryInto as _;
 use std::borrow::Cow;
+
+
+macro_rules! return_if_some {
+    ($p:expr) => {
+        if let Some(parse) = $p {
+            return Some(parse);
+        }
+    }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -540,7 +549,6 @@ impl Scanner for AtmaScanner {
     {
         use AtmaToken::*;
         match self.open.take() {
-            
             Some(RawStringText) => {
                 // Because it is necessary to recognize the RawStringClose to
                 // finish parsing RawStringText, we should never get here unless
@@ -557,16 +565,12 @@ impl Scanner for AtmaScanner {
                     self.depth = 0;
                     return Some(parse);
                 }
-                if let Some(parse) = self.parse_raw_string_text::<Nl>(text) {
-                    return Some(parse);
-                }
+                return_if_some!(self.parse_raw_string_text::<Nl>(text));
                 None
             },
 
             Some(StringOpenSingle) => {
-                if let Some(parse) = self.parse_string_close_single(text) {
-                    return Some(parse);
-                }
+                return_if_some!(self.parse_string_close_single(text));
                 if let Some(parse) = self
                     .parse_string_text::<Nl>(text, StringOpenSingle)
                 {
@@ -576,9 +580,7 @@ impl Scanner for AtmaScanner {
                 None
             },
             Some(StringOpenDouble) => {
-                if let Some(parse) = self.parse_string_close_double(text) {
-                    return Some(parse);
-                }
+                return_if_some!(self.parse_string_close_double(text));
                 if let Some(parse) = self
                     .parse_string_text::<Nl>(text, StringOpenDouble)
                 {
@@ -589,16 +591,9 @@ impl Scanner for AtmaScanner {
             },
 
             None => {
-                if let Some(parse) = self.parse_whitespace::<Nl>(text) {
-                    return Some(parse);
-                }
-
-                if let Some(parse) = self.parse_open_paren(text) {
-                    return Some(parse);
-                }
-                if let Some(parse) = self.parse_close_paren(text) {
-                    return Some(parse);
-                }
+                return_if_some!(self.parse_whitespace::<Nl>(text));
+                return_if_some!(self.parse_open_paren(text));
+                return_if_some!(self.parse_close_paren(text));
 
                 // RawStringOpen must be parsed before Hash.
                 if let Some(parse) = self.parse_raw_string_open(text) {
@@ -614,46 +609,21 @@ impl Scanner for AtmaScanner {
                     return Some(parse);
                 }
 
-                if let Some(parse) = self.parse_colon(text) {
-                    return Some(parse);
-                }
-                if let Some(parse) = self.parse_comma(text) {
-                    return Some(parse);
-                }
-                if let Some(parse) = self.parse_hash(text) {
-                    return Some(parse);
-                }
-                if let Some(parse) = self.parse_mult(text) {
-                    return Some(parse);
-                }
-                if let Some(parse) = self.parse_plus(text) {
-                    return Some(parse);
-                }
-                if let Some(parse) = self.parse_minus(text) {
-                    return Some(parse);
-                }
+                return_if_some!(self.parse_colon(text));
+                return_if_some!(self.parse_comma(text));
+                return_if_some!(self.parse_hash(text));
+                return_if_some!(self.parse_mult(text));
+                return_if_some!(self.parse_plus(text));
+                return_if_some!(self.parse_minus(text));
                 
                 // Float must be parsed before Uint and Decimal.
-                if let Some(parse) = self.parse_float(text) {
-                    return Some(parse);
-                }
+                return_if_some!(self.parse_float(text));
+                return_if_some!(self.parse_decimal(text));
+                return_if_some!(self.parse_uint(text));
 
-                if let Some(parse) = self.parse_decimal(text) {
-                    return Some(parse);
-                }
-
-
-                if let Some(parse) = self.parse_uint(text) {
-                    return Some(parse);
-                }
                 // Ident must be parsed before Underscore.
-                if let Some(parse) = self.parse_ident(text) {
-                    return Some(parse);
-                }
-
-                if let Some(parse) = self.parse_underscore(text) {
-                    return Some(parse);
-                }
+                return_if_some!(self.parse_ident(text));
+                return_if_some!(self.parse_underscore(text));
                 
                 None
             },
@@ -662,3 +632,4 @@ impl Scanner for AtmaScanner {
         }
     }
 }
+

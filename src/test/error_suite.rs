@@ -10,12 +10,12 @@
 
 // Local imports.
 use crate::lexer::Lexer;
-use crate::primitive::one;
+use crate::combinator::one;
 use crate::result::Failure;
 use crate::result::ParseError;
 use crate::span::Lf;
 use crate::span::Span;
-use crate::test::atma_script::*;
+use crate::atma_script::*;
 
 
 /// Tests `Failure` state for an unexpected empty parse.
