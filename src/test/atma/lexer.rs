@@ -5,12 +5,13 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! AtmaExpr lexer and parser definitions.
+//! Lexer definition for Atma commands.
 ////////////////////////////////////////////////////////////////////////////////
 // TODO: This module is currently under development.
 #![allow(unused)]
 #![allow(missing_docs)]
-    
+
+
 // Local imports.
 use crate::lexer::Scanner;
 use crate::lexer::Lexer;
@@ -35,7 +36,7 @@ use std::borrow::Cow;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Scanner
+// AtmaToken
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,15 +97,18 @@ pub enum AtmaToken {
     
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// AtmaScanner
+////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, PartialEq)]
-pub struct AtmaExprScanner {
+pub struct AtmaScanner {
     open: Option<AtmaToken>,
     depth: u64,
 }
 
-impl AtmaExprScanner {
+impl AtmaScanner {
     pub fn new() -> Self {
-        AtmaExprScanner {
+        AtmaScanner {
             open: None,
             depth: 0,
         }
@@ -527,7 +531,7 @@ impl AtmaExprScanner {
     }
 }
 
-impl Scanner for AtmaExprScanner {
+impl Scanner for AtmaScanner {
     type Token = AtmaToken;
 
     fn scan<'text, Nl>(&mut self, text: &'text str)
@@ -657,324 +661,4 @@ impl Scanner for AtmaExprScanner {
             Some(_) => panic!("invalid lexer state"),
         }
     }
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Values
-////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Color(pub u32);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CellRef {
-    Index(u32),
-    Position(u16, u16, u16),
-    Group(String, u32),
-    Name(String),
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CellSelector {
-    All,
-    Index(u32),
-    PositionSelector(Option<u16>, Option<u16>, Option<u16>),
-    Group(String, u32),
-    GroupAll(String),
-    Name(String),
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Function {
-    name: String,
-    args: Vec<FunctionArg>,
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FunctionArg {
-    CellRef(CellRef),
-    Color(Color),
-    Channel(Channel),
-    Function(Function),
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Channel {
-    Rgb,
-    Hsv,
-    Hsl,
-}
-
-
-
-pub fn parse_color<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, Color>
-    where Nl: NewLine,
-{
-    match exact(
-        right(
-            one(AtmaToken::Hash),
-            text(one(AtmaToken::Uint))))
-        (lexer)
-    {
-        Ok(mut succ)  => {
-            use std::str::FromStr;
-            if succ.value.len() != 6 {
-                return Err(Failure {
-                    parse_error: ParseError::new("invalid color")
-                        .with_span("color requires 6 hex digits",
-                            succ.lexer.span()),
-                    lexer: succ.lexer,
-                    source: None,
-                })
-            }
-            match u32::from_str(succ.value) {
-                Ok(val) => Ok(succ.map_value(|_| Color(val))),
-                Err(e) => Err(Failure {
-                    parse_error: ParseError::new("invalid color")
-                        .with_span("color conversion failed",
-                            succ.lexer.span()),
-                    lexer: succ.lexer,
-                    source: Some(Box::new(e)),
-                }),
-            }
-        }
-        Err(fail) => Err(fail),
-    }
-}
-
-
-pub fn parse_index<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, CellRef>
-    where Nl: NewLine,
-{
-    exact(
-        right(one(AtmaToken::Colon),
-            parse_uint::<_, u32>))
-        (lexer)
-        .map_value(CellRef::Index)
-}
-
-
-pub fn parse_position<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, CellRef>
-    where Nl: NewLine,
-{
-    exact(
-        right(one(AtmaToken::Colon),
-            both(
-                parse_uint::<_, u16>,
-                both(
-                    right(one(AtmaToken::Decimal), parse_uint::<_, u16>),
-                    right(one(AtmaToken::Decimal), parse_uint::<_, u16>)))))
-        (lexer)
-        .map_value(|(p, (l, c))| CellRef::Position(p, l, c))
-}
-
-
-pub fn parse_group<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, CellRef>
-    where Nl: NewLine,
-{
-    exact(
-        both(
-            parse_string,
-            right(one(AtmaToken::Colon),
-                parse_uint::<_, u32>)))
-        (lexer)
-        .map_value(|(name, idx)| CellRef::Group(name.to_string(), idx))
-}
-
-pub fn parse_name<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, CellRef>
-    where Nl: NewLine,
-{
-    parse_string
-        (lexer)
-        .map_value(|name| CellRef::Name(name.to_string()))
-}
-
-
-
-
-pub fn parse_channel<'text, Nl>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, Channel>
-    where Nl: NewLine,
-{
-    let (val, succ) = text(one(AtmaToken::Ident))
-        (lexer)?
-        .take_value();
-
-    if val.eq_ignore_ascii_case("rgb") {
-        Ok(succ.map_value(|_| Channel::Rgb))
-    } else if val.eq_ignore_ascii_case("hsv") {
-        Ok(succ.map_value(|_| Channel::Hsv))
-    } else if val.eq_ignore_ascii_case("hsl") {
-        Ok(succ.map_value(|_| Channel::Hsl))
-    } else {
-        Err(Failure {
-            parse_error: ParseError::new("invalid channel")
-                .with_span("expected one of 'rgb', 'hsl', or 'hsv'",
-                    succ.lexer.span()),
-            lexer: succ.lexer,
-            source: None,
-        })
-    }
-}
-
-
-pub fn parse_uint<'text, Nl, T>(mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, T>
-    where
-        Nl: NewLine,
-        T: FromStrRadix,
-{
-    let (mut val, succ) = text(one(AtmaToken::Uint))
-        (lexer)?
-        .take_value();
-
-    let radix = if val.starts_with("0b") {
-        val = &val[2..];
-        2
-    } else if val.starts_with("0o") {
-        val = &val[2..];
-        8
-    } else if val.starts_with("0x") {
-        val = &val[2..];
-        16
-    } else {
-        10
-    };
-
-    // Remove underscores.
-    let mut val = String::from(val);
-    val.retain(|c| c != '_');
-
-    match T::from_str_radix(&*val, radix) {
-        Ok(val) => Ok(succ.map_value(|_| val)),
-        Err(e) => Err(Failure {
-            parse_error: ParseError::new("invalid integer value")
-                .with_span(format!("base {} integer", radix),
-                    succ.lexer.span()),
-            lexer: succ.lexer,
-            source: Some(Box::new(e)),
-        })
-    }
-}
-
-
-pub trait FromStrRadix: Sized {
-    fn from_str_radix(src: &str, radix: u32)
-        -> Result<Self, std::num::ParseIntError>;
-}
-
-macro_rules! from_str_radix_impl {
-    ($t:ty) => {
-        impl FromStrRadix for $t {
-            fn from_str_radix(src: &str, radix: u32)
-                -> Result<$t, std::num::ParseIntError>
-            {
-                <$t>::from_str_radix(src, radix)
-            }
-        }
-    }
-}
-
-from_str_radix_impl!(isize);
-from_str_radix_impl!(i8);
-from_str_radix_impl!(i16);
-from_str_radix_impl!(i32);
-from_str_radix_impl!(i64);
-from_str_radix_impl!(i128);
-from_str_radix_impl!(usize);
-from_str_radix_impl!(u8);
-from_str_radix_impl!(u16);
-from_str_radix_impl!(u32);
-from_str_radix_impl!(u64);
-from_str_radix_impl!(u128);
-
-
-pub fn parse_string<'text, Nl>(
-    mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, Cow<'text, str>>
-    where Nl: NewLine,
-{
-    if let Ok(succ) = parse_raw_string(lexer.clone()) {
-        return Ok(succ.map_value(Cow::from))
-    }
-
-    parse_escaped_string(lexer)
-}
-
-pub fn parse_raw_string<'text, Nl>(
-    mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, &'text str>
-    where Nl: NewLine,
-{
-    use AtmaToken::*;
-    bracket(
-        one(RawStringOpen),
-        text(one(RawStringText)),
-        one(RawStringClose))
-        (lexer)
-}
-
-pub fn parse_escaped_string<'text, Nl>(
-    mut lexer: Lexer<'text, AtmaExprScanner, Nl>)
-    -> ParseResult<'text, AtmaExprScanner, Nl, Cow<'text, str>>
-    where Nl: NewLine,
-{
-    use AtmaToken::*;
-    let corresponding = move |lexer, tok| match tok {
-        StringOpenSingle => one(StringCloseSingle)(lexer),
-        StringOpenDouble => one(StringCloseDouble)(lexer),
-        _ => unreachable!(),
-    };
-
-    bracket_dynamic(
-        any(&[StringOpenSingle, StringOpenDouble]),
-        text(one(StringText)),
-        corresponding)
-        (lexer)
-        .map_value(unescape_string_text)
-}
-
-fn unescape_string_text<'text>(input: &'text str) -> Cow<'text, str> {
-    const ESCAPES: [char; 6] = ['\\', '"', '\'', 't', 'r', 'n'];
-    let mut owned: Option<String> = None;
-
-    let mut chars = input.char_indices();
-    while let Some((i, c)) = chars.next() {
-        if c == '\\' {
-            match chars.next() {
-                // NOTE: These should all step by column, because
-                // they're escaped text.
-                Some((_, e)) if ESCAPES.contains(&e) => {
-                    if owned.is_none() {
-                        owned = Some(String::with_capacity(input.len()));
-                        owned.as_mut().unwrap().push_str(&input[0..i]);
-                    }
-
-                    owned.as_mut().unwrap().push(match e {
-                        '\\' => '\\',
-                        '"'  => '"',
-                        '\'' => '\'',
-                        't'  => '\t',
-                        'r'  => '\r',
-                        'n'  => '\n',
-                        _    => unreachable!(),
-                    });
-                },
-                Some((_, 'u'))  => unimplemented!("unicode escapes unsupported"),
-                // TODO: Make this an error instead.
-                Some(_)    |
-                None       => panic!("invalid escape character"),
-            }
-        } else if let Some(owned) = owned.as_mut() {
-            owned.push(c);
-        }
-    }
-
-    match owned {
-        Some(s) => s.into(),
-        None    => input.into(),
-    }
-
 }

@@ -123,13 +123,11 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
         self.start = self.end;
     }
 
-
     /// Constructs a new lexer which consumes the lexed spans of the given one.
     pub fn into_consumed(mut self) -> Self {
         self.consume_current();
         self
     }
-
 
     /// Resets any lexed text back to the last consumed position.
     pub fn reset(&mut self) {
@@ -163,7 +161,6 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
     pub fn end_span(&self) -> Span<'text, Nl> {
         Span::new_from(self.end, self.source)
     }
-
 }
 
 impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
