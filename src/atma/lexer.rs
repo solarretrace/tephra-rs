@@ -98,7 +98,8 @@ pub enum AtmaToken {
     
     /// Any number of uint digits or underscore characters.
     Uint,
-    /// Any number of hex digits.
+    /// Any number of hex digits. Can only be parsed imediately following a
+    /// Hash token.
     HexDigits,
     /// An identifier with the form "[_[alpha]][alphanumeric]+".
     Ident,
@@ -610,7 +611,7 @@ impl Scanner for AtmaScanner {
             Some(Hash) => {
                 return_if_some!(self.parse_hex_digits(text));
                 self.scan::<Nl>(text)
-            }
+            },
 
             None => {
                 return_if_some!(self.parse_whitespace::<Nl>(text));

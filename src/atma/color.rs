@@ -63,8 +63,10 @@ pub fn hex_code<'t, Nl>(digits: usize)
             }
         } else {
             Err(Failure {
-                parse_error: ParseError::new("wrong number of digits")
-                    .with_span(format!("{} digits required", digits),
+                parse_error: ParseError::new("invalid color code")
+                    .with_span(
+                        format!("{} digits required, {} provided",
+                            digits, val.len()),
                         succ.lexer.span()),
                 lexer: succ.lexer,
                 source: None,
