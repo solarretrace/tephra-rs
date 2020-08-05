@@ -9,15 +9,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
-mod expr;
-mod lexer;
-mod common;
 mod color;
+mod common;
+mod expr;
+mod scanner;
 mod selection;
 
-
-pub use expr::*;
-pub use lexer::*;
+// Exports.
 pub use common::*;
+pub use expr::*;
+pub use scanner::*;
 pub use selection::*;
 pub use self::color::*;
+

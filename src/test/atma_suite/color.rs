@@ -92,3 +92,31 @@ fn hex_code_3_long() {
 
     assert_eq!(actual, expected);
 }
+
+
+/// Tests hex_code with 3 digits, with whitespace.
+#[test]
+fn hex_code_3_whitespace() {
+    let text = "# abc";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok == AtmaToken::Whitespace);
+
+    let failure = hex_code(3)
+        (lexer)
+        .err()
+        .unwrap();
+    println!("{}", failure);
+
+    let actual = failure.error_span_display();
+
+    let expected = (
+        "unexpected token",
+        "\"# \" (0:0-0:2, bytes 0-2)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}

@@ -5,19 +5,8 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Atma parser & tests.
+//! Atma parser tests.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
-mod expr;
-mod lexer;
-mod common;
 mod color;
-mod selection;
-
-
-pub use expr::*;
-pub use lexer::*;
-pub use common::*;
-pub use selection::*;
-pub use self::color::*;
