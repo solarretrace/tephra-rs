@@ -13,36 +13,63 @@
 
 
 // Local imports.
-use crate::atma::AtmaToken;
 use crate::atma::AtmaScanner;
+use crate::atma::AtmaToken;
+use crate::combinator::any;
+use crate::combinator::bracket;
+use crate::combinator::bracket_dynamic;
+use crate::combinator::exact;
+use crate::combinator::one;
+use crate::combinator::right;
+use crate::combinator::text;
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::span::NewLine;
+use crate::result::Failure;
+use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
-use crate::result::ParseError;
-use crate::result::Failure;
-use crate::combinator::one;
-use crate::combinator::any;
-use crate::combinator::bracket_dynamic;
-use crate::combinator::bracket;
-use crate::combinator::text;
-use crate::combinator::exact;
-use crate::combinator::right;
+use crate::result::Success;
+use crate::span::NewLine;
 
 // External library imports.
 use ::color::Color;
 
+// Standard library imports.
+use std::str::FromStr as _;
+
+
 
 /// Returns a parser which parses a hex code with the given number of digits.
-pub fn hex_code<'t, Sc, Nl>(digits: u32)
-    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, u32>
-    where
-        Sc: Scanner,
-        Nl: NewLine,
+pub fn hex_code<'t, Nl>(digits: usize)
+    -> impl FnMut(Lexer<'t, AtmaScanner, Nl>) 
+        -> ParseResult<'t, AtmaScanner, Nl, u32>
+    where Nl: NewLine,
 {
     move |mut lexer| {
-        unimplemented!()
+        let (mut val, succ) = exact(
+            right(
+                one(AtmaToken::Hash),
+                text(one(AtmaToken::HexDigits))))
+            (lexer)?
+            .take_value();
+
+        if val.len() == digits {
+            match u32::from_str_radix(val, 16) {
+                Ok(val) => Ok(Success {
+                    lexer: succ.lexer,
+                    value: val,
+                }),
+                Err(_)  => unreachable!(),
+            }
+        } else {
+            Err(Failure {
+                parse_error: ParseError::new("wrong number of digits")
+                    .with_span(format!("{} digits required", digits),
+                        succ.lexer.span()),
+                lexer: succ.lexer,
+                source: None,
+            })
+        }
     }
 }
 

@@ -98,13 +98,15 @@ pub enum AtmaToken {
     
     /// Any number of uint digits or underscore characters.
     Uint,
+    /// Any number of hex digits.
+    HexDigits,
     /// An identifier with the form "[_[alpha]][alphanumeric]+".
     Ident,
 
     /// An underscore character '_'.
     Underscore,
-    
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // AtmaScanner
@@ -178,6 +180,21 @@ impl AtmaScanner {
         if radix != 10 { cols += 2 }
         if cols > 0 {
             return Some((AtmaToken::Uint, Pos::new(cols, 0, cols)));
+        } else {
+            None
+        }
+    }
+
+    /// Parses an HexDigits token.
+    fn parse_hex_digits(&mut self, mut text: &str)
+        -> Option<(AtmaToken, Pos)>
+    {
+        let rest = text
+            .trim_start_matches(|c: char| c.is_digit(16));
+        
+        let cols = text.len() - rest.len();
+        if cols > 0 {
+            return Some((AtmaToken::HexDigits, Pos::new(cols, 0, cols)));
         } else {
             None
         }
@@ -590,6 +607,11 @@ impl Scanner for AtmaScanner {
                 None
             },
 
+            Some(Hash) => {
+                return_if_some!(self.parse_hex_digits(text));
+                self.scan::<Nl>(text)
+            }
+
             None => {
                 return_if_some!(self.parse_whitespace::<Nl>(text));
                 return_if_some!(self.parse_open_paren(text));
@@ -611,7 +633,11 @@ impl Scanner for AtmaScanner {
 
                 return_if_some!(self.parse_colon(text));
                 return_if_some!(self.parse_comma(text));
-                return_if_some!(self.parse_hash(text));
+                if let Some(parse) = self.parse_hash(text) {
+                    self.open = Some(Hash);
+                    return Some(parse);
+                }
+
                 return_if_some!(self.parse_mult(text));
                 return_if_some!(self.parse_plus(text));
                 return_if_some!(self.parse_minus(text));

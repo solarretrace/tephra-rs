@@ -332,8 +332,10 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
             start_byte -= left.len();
         }
         // Find the end byte and column.
-        let right = self.source[end_byte..]
-            .split_terminator(Nl::STR).next().unwrap();        
+        let right = &self.source[end_byte..]
+            .split_terminator(Nl::STR)
+            .next()
+            .unwrap_or("");
         let right_pos = Pos::new_from_string::<_, Nl>(right);
         end_byte += right_pos.byte;
         debug_assert_eq!(right_pos.page.line, 0); // Should not cross any lines.
