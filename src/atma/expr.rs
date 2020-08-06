@@ -11,16 +11,19 @@
 #![allow(unused)]
 #![allow(missing_docs)]
 
+// Local imports.
+use crate::span::Span;
+
 // Standard library imports.
 use std::borrow::Cow;
 
+// External library imports.
+use ::color::Color;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Expr types
 ////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug)]
-pub struct Color(u32);
 
 #[derive(Debug)]
 pub enum Expr {
@@ -70,7 +73,6 @@ pub enum UnaryBlendMethod {
     SetRed,
     SetGreen,
     SetBlue,
-
     HueShift,
     SetHue,
     Saturate,
@@ -204,4 +206,20 @@ pub enum InvalidCellSelector {
         low: Cow<'static, str>,
         high: Cow<'static, str>,
     },
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Function calls
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug)]
+pub struct FnCall<'text, Nl> {
+    pub name: &'text str,
+    pub args: Vec<(FnArg, Span<'text, Nl>)>,
+}
+
+#[derive(Debug)]
+pub enum FnArg {
+    U32(u32),
+    F32(f32),
 }

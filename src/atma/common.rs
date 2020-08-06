@@ -106,6 +106,34 @@ from_str_radix_impl!(u128);
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Float parsing
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn float<'text, Nl, T>(lexer: Lexer<'text, AtmaScanner, Nl>)
+    -> ParseResult<'text, AtmaScanner, Nl, T>
+    where
+        Nl: NewLine,
+        T: std::str::FromStr,
+        <T as std::str::FromStr>::Err: std::error::Error + Sync + Send + 'static
+{
+    let (mut val, succ) = text(one(AtmaToken::Float))
+        (lexer)?
+        .take_value();
+
+    
+    match T::from_str(&*val) {
+        Ok(val) => Ok(succ.map_value(|_| val)),
+        Err(e) => Err(Failure {
+            parse_error: ParseError::new("invalid float value")
+                .with_span("invalid value", succ.lexer.span()),
+            lexer: succ.lexer,
+            source: Some(Box::new(e)),
+        })
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // String parsing
 ////////////////////////////////////////////////////////////////////////////////
 

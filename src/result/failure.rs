@@ -32,7 +32,9 @@ pub struct Failure<'text, Sc, Nl> where Sc: Scanner {
 }
 
 impl<'text, Sc, Nl> Failure<'text, Sc, Nl> 
-    where Sc: Scanner,
+    where
+        Sc: Scanner,
+        Nl: NewLine,
 {
     #[cfg(test)]
     pub fn error_span_display(self) -> (&'static str, String) {
@@ -56,7 +58,11 @@ impl<'text, Sc, Nl> std::fmt::Display for Failure<'text, Sc, Nl>
         Nl: NewLine,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.parse_error)
+        write!(f, "{}", self.parse_error)?;
+        if let Some(src) = &self.source {
+            write!(f, "Caused by {}", src)?;
+        }
+        Ok(())
     }
 }
 

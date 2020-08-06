@@ -56,7 +56,11 @@ pub struct Lexer<'text, Sc, Nl> where Sc: Scanner {
     // TODO: Push/lookahead buffer?
 }
 
-impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
+impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+{
     /// Constructs a new Lexer for the given text and span newlines.
     pub fn new(scanner: Sc, source: &'text str, newline: Nl) -> Self {
         Lexer {
@@ -86,7 +90,8 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
         IterWithSpans { lexer: self }
     }
 
-    /// Sets the token filter to a given function.
+    /// Sets the token filter to a given function. And token for which the
+    /// filter returns `true` will be emitted to parsers.
     pub fn set_filter_fn<F>(&mut self, filter: F) 
         where F: for<'a> Fn(&'a Sc::Token) -> bool + 'static
     {
@@ -111,22 +116,33 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl> where Sc: Scanner {
         self.source
     }
 
+    /// Returns the lexer's start position.
+    pub fn start_pos(&self) -> Pos {
+        self.end
+    }
+
     /// Returns the current lexer position.
-    pub fn current_pos(&self) -> Pos {
+    pub fn end_pos(&self) -> Pos {
         self.end
     }
 
     /// Consumes text from the start of the lexed span up to the current
     /// position.
-    pub fn consume_current(&mut self) {
+    fn consume_current(&mut self) {
         self.full = self.end;
         self.start = self.end;
     }
 
     /// Constructs a new lexer which consumes the lexed spans of the given one.
-    pub fn into_consumed(mut self) -> Self {
+    fn into_consumed(mut self) -> Self {
         self.consume_current();
         self
+    }
+
+    /// Creates a sublexer starting at the current lex position.
+    pub fn sublexer(&self) -> Self {
+        self.clone().into_consumed()
+        
     }
 
     /// Resets any lexed text back to the last consumed position.

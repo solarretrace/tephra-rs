@@ -12,12 +12,14 @@
 mod color;
 mod common;
 mod expr;
+mod function;
 mod scanner;
 mod selection;
 
 // Exports.
 pub use common::*;
 pub use expr::*;
+pub use function::*;
 pub use scanner::*;
 pub use selection::*;
 pub use self::color::*;
