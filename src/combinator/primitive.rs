@@ -39,7 +39,7 @@ pub fn empty<'t, Sc, Nl>(lexer: Lexer<'t, Sc, Nl>)
         Nl: NewLine,
 {
     Ok(Success {
-        lexer: lexer,
+        lexer,
         value: (),
     })
 }
@@ -82,6 +82,7 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
         Nl: NewLine,
 {
     move |mut lexer| {
+        // print!("one({:?})", token);
         if lexer.is_empty() {
             // Unexpected End-of-text.
             return Err(Failure {
@@ -93,24 +94,33 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
 
         match lexer.next() {
             // Lexer error.
-            None => Err(Failure {
-                parse_error: ParseError::unrecognized_token(lexer.last_span()),
-                lexer,
-                source: None,
-            }),
+            None => {
+                // println!(" -> unrecognized {}", lexer.last_span());
+                Err(Failure {
+                    parse_error: ParseError::unrecognized_token(lexer.end_span()),
+                    lexer,
+                    source: None,
+                })
+            },
 
             // Matching token.
-            Some(lex) if lex == token => Ok(Success {
-                lexer,
-                value: token.clone(),
-            }),
+            Some(lex) if lex == token => {
+                // println!(" {}", lexer.last_span());
+                Ok(Success {
+                    lexer,
+                    value: token.clone(),
+                })
+            },
 
             // Incorrect token.
-            Some(_) => Err(Failure {
-                parse_error: ParseError::unexpected_token(lexer.last_span()),
-                lexer,
-                source: None,
-            }),
+            Some(_) => {
+                // println!( " -> unexpected {}", lexer.last_span());
+                Err(Failure {
+                    parse_error: ParseError::unexpected_token(lexer.last_span()),
+                    lexer,
+                    source: None,
+                })
+            },
         }
     }
 }

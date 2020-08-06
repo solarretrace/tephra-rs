@@ -38,7 +38,7 @@ impl<'text, Nl> ParseError<'text, Nl> {
 
     pub fn unrecognized_token(span: Span<'text, Nl>) -> Self {
         ParseError::new("unrecognized token")
-            .with_span("token not expected", span)
+            .with_span("symbol not recognized", span)
     }
 
     pub fn unexpected_token(span: Span<'text, Nl>) -> Self {
@@ -93,6 +93,7 @@ impl<'text, Nl> std::fmt::Display for ParseError<'text, Nl>
                     .with_source_name(&source_name)
                     .with_highlight(Highlight::new(span, msg)))
         } else {
+            // TODO: Clean up message.
             write!(f, "{} NO SPAN", self.description)
         }
 

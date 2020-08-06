@@ -177,6 +177,12 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
     pub fn end_span(&self) -> Span<'text, Nl> {
         Span::new_from(self.end, self.source)
     }
+
+    /// Skips past any filtered tokens at the lex position.
+    pub fn skip_filtered(&mut self) {
+        let _ = self.next();
+        self.end = self.last;
+    }
 }
 
 impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>

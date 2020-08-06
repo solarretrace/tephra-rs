@@ -59,6 +59,16 @@ pub enum AtmaToken {
     /// A close parenthesis character ')'.
     CloseParen,
 
+    /// An open square bracket character '['.
+    OpenBracket,
+    /// A close square bracket character ']'.
+    CloseBracket,
+
+    /// An open curly bracket character '{'.
+    OpenBrace,
+    /// A close curly bracket character '}'.
+    CloseBrace,
+
     /// A raw string open "r[#*]\"".
     RawStringOpen,
     /// A raw string close "\"[#*]", which must match the corresponding open
@@ -126,6 +136,16 @@ impl AtmaScanner {
         }
     }
 
+    /// Parses a OpenParen token.
+    fn parse_char(&mut self, text: &str, c: char, token: AtmaToken)
+        -> Option<(AtmaToken, Pos)>
+    {
+        if text.starts_with(c) {
+            Some((token, Pos::new(c.len_utf8(), 0, 1)))
+        } else {
+            None
+        }
+    }
 
     /// Parses a Ident token.
     fn parse_ident(&mut self, text: &str)
@@ -253,118 +273,6 @@ impl AtmaScanner {
         None
     }
 
-    /// Parses a OpenParen token.
-    fn parse_open_paren(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with('(') {
-            Some((AtmaToken::OpenParen, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-
-    /// Parses a CloseParen token.
-    fn parse_close_paren(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with(')') {
-            Some((AtmaToken::CloseParen, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a Decimal token.
-    fn parse_decimal(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with('.') {
-            Some((AtmaToken::Decimal, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a Colon token.
-    fn parse_colon(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with(':') {
-            Some((AtmaToken::Colon, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a Comma token.
-    fn parse_comma(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with(',') {
-            Some((AtmaToken::Comma, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a Hash token.
-    fn parse_hash(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with('#') {
-            Some((AtmaToken::Hash, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a Mult token.
-    fn parse_mult(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with('*') {
-            Some((AtmaToken::Mult, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a Plus token.
-    fn parse_plus(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with('+') {
-            Some((AtmaToken::Plus, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a Minus token.
-    fn parse_minus(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with('-') {
-            Some((AtmaToken::Minus, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-
-    /// Parses a Underscore token.
-    fn parse_underscore(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with('_') {
-            Some((AtmaToken::Underscore, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
     /// Parses a RawStringOpen token.
     fn parse_raw_string_open(&mut self, text: &str)
         -> Option<(AtmaToken, Pos)>
@@ -447,50 +355,6 @@ impl AtmaScanner {
         }
 
         None
-    }
-
-    /// Parses a StringOpenSingle token.
-    fn parse_string_open_single(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("'") {
-            Some((AtmaToken::StringOpenSingle, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-    
-    /// Parses a StringCloseSingle token.
-    fn parse_string_close_single(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("'") {
-            Some((AtmaToken::StringCloseSingle, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a StringOpenDouble token.
-    fn parse_string_open_double(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("\"") {
-            Some((AtmaToken::StringOpenDouble, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a StringCloseDouble token.
-    fn parse_string_close_double(&mut self, text: &str)
-        -> Option<(AtmaToken, Pos)>
-    {
-        if text.starts_with("\"") {
-            Some((AtmaToken::StringCloseDouble, Pos::new(1, 0, 1)))
-        } else {
-            None
-        }
     }
 
     /// Parses a StringText token.
@@ -588,7 +452,7 @@ impl Scanner for AtmaScanner {
             },
 
             Some(StringOpenSingle) => {
-                return_if_some!(self.parse_string_close_single(text));
+                return_if_some!(self.parse_char(text, '\'', StringCloseSingle));
                 if let Some(parse) = self
                     .parse_string_text::<Nl>(text, StringOpenSingle)
                 {
@@ -598,7 +462,7 @@ impl Scanner for AtmaScanner {
                 None
             },
             Some(StringOpenDouble) => {
-                return_if_some!(self.parse_string_close_double(text));
+                return_if_some!(self.parse_char(text, '\"', StringCloseDouble));
                 if let Some(parse) = self
                     .parse_string_text::<Nl>(text, StringOpenDouble)
                 {
@@ -615,42 +479,50 @@ impl Scanner for AtmaScanner {
 
             None => {
                 return_if_some!(self.parse_whitespace::<Nl>(text));
-                return_if_some!(self.parse_open_paren(text));
-                return_if_some!(self.parse_close_paren(text));
+                return_if_some!(self.parse_char(text, '(', OpenParen));
+                return_if_some!(self.parse_char(text, ')', CloseParen));
+                return_if_some!(self.parse_char(text, '[', OpenBracket));
+                return_if_some!(self.parse_char(text, ']', CloseBracket));
+                return_if_some!(self.parse_char(text, '{', OpenBrace));
+                return_if_some!(self.parse_char(text, '}', CloseBrace));
 
                 // RawStringOpen must be parsed before Hash.
                 if let Some(parse) = self.parse_raw_string_open(text) {
                     self.open = Some(RawStringOpen);
                     return Some(parse);
                 }
-                if let Some(parse) = self.parse_string_open_single(text) {
+                if let Some(parse) = self
+                    .parse_char(text, '\'', StringOpenSingle)
+                {
                     self.open = Some(StringOpenSingle);
                     return Some(parse);
                 }
-                if let Some(parse) = self.parse_string_open_double(text) {
+                if let Some(parse) = self
+                    .parse_char(text, '\"', StringOpenDouble)
+                {
                     self.open = Some(StringOpenDouble);
                     return Some(parse);
                 }
 
-                return_if_some!(self.parse_colon(text));
-                return_if_some!(self.parse_comma(text));
-                if let Some(parse) = self.parse_hash(text) {
+                return_if_some!(self.parse_char(text, ':', Colon));
+                return_if_some!(self.parse_char(text, ',', Comma));
+                if let Some(parse) = self.parse_char(text, '#', Hash) {
                     self.open = Some(Hash);
                     return Some(parse);
                 }
 
-                return_if_some!(self.parse_mult(text));
-                return_if_some!(self.parse_plus(text));
-                return_if_some!(self.parse_minus(text));
+                return_if_some!(self.parse_char(text, '*', Mult));
+                return_if_some!(self.parse_char(text, '+', Plus));
+                return_if_some!(self.parse_char(text, '-', Minus));
                 
                 // Float must be parsed before Uint and Decimal.
                 return_if_some!(self.parse_float(text));
-                return_if_some!(self.parse_decimal(text));
+                return_if_some!(self.parse_char(text, '.', Decimal));
                 return_if_some!(self.parse_uint(text));
 
                 // Ident must be parsed before Underscore.
                 return_if_some!(self.parse_ident(text));
-                return_if_some!(self.parse_underscore(text));
+                return_if_some!(self.parse_char(text, '_', Underscore));
                 
                 None
             },

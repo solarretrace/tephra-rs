@@ -259,18 +259,13 @@ fn function_rgb_u8() {
     assert_eq!(actual, expected);
 }
 
-
-/// Tests `color_function` with RGB u8 values.
+/// Tests `color_function` with RGB u8 values, using the wrong bracket.
 #[test]
 fn function_rgb_u8_wrong_bracket() {
     let text = "rgb[0,255,127]";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
-
-    println!("{:?}", lexer.next());
-    println!("{:?}", lexer.next());
-    println!("{:?}", lexer.next());
 
     let failure = color_function
         (lexer)
@@ -282,7 +277,38 @@ fn function_rgb_u8_wrong_bracket() {
 
     let expected = (
         "unexpected token",
-        "\"[\" (0:3-0:4, bytes 3-4)".to_owned());
+        "\"rgb[\" (0:0-0:4, bytes 0-4)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `color_function` with RGB u8 values, out of range.
+#[test]
+fn function_rgb_u8_out_of_range() {
+    let text = "rgb(0, 255, 1270)";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    // for tok in &mut lexer {
+    //     println!("{:?}", tok);
+    // }
+
+    let failure = color_function
+        (lexer)
+        .err()
+        .unwrap();
+    println!("{}", failure);
+
+    let actual = failure.error_span_display();
+
+    let expected = (
+        "invalid RGB color",
+        "\"rgb(0, 255, 1270)\" (0:0-0:17, bytes 0-17)".to_owned());
 
     println!("{:?}", actual);
     println!("{:?}", expected);

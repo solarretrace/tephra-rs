@@ -21,7 +21,6 @@ use crate::combinator::any;
 use crate::combinator::bracket;
 use crate::combinator::bracket_dynamic;
 use crate::combinator::exact;
-use crate::combinator::error_context;
 use crate::combinator::one;
 use crate::combinator::right;
 use crate::combinator::seq;

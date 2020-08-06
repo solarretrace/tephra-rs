@@ -16,9 +16,6 @@ use crate::span::NewLine;
 use crate::span::Span;
 use crate::result::ParseResult;
 use crate::result::Success;
-use crate::result::ParseError;
-use crate::result::Failure;
-use crate::result::FailureOwned;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,6 +44,34 @@ pub fn exact<'text, Sc, Nl, F, V>(mut parser: F)
         }
     }
 }
+
+
+/// A combinator which identifies a delimiter or bracket which starts a new
+/// failure span section.
+pub fn section<'text, Sc, Nl, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+{
+    move |lexer| {
+        match (parser)(lexer) {
+            Ok(mut succ) => {
+                succ.lexer.skip_filtered();
+                succ.lexer = succ.lexer.sublexer();
+
+                Ok(succ)
+            },
+            Err(mut fail) => {
+                fail.lexer.skip_filtered();
+                fail.lexer = fail.lexer.sublexer();
+                Err(fail)
+            },
+        }
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Parse result substitution combinators.
@@ -123,38 +148,3 @@ pub fn with_span<'text, Sc, Nl, F, V>(mut parser: F)
     }
 }
 
-
-/// A combinator which includes the span of the parsed value.
-pub fn error_context<'text, Sc, Nl, S, F, V>(
-    description: &'static str,
-    span_message: S,
-    mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Nl>)
-        -> ParseResult<'text, Sc, Nl, V>
-    where
-        Sc: Scanner,
-        Nl: NewLine,
-        S: Into<String>,
-        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
-{
-    let msg = span_message.into();
-    move |lexer| {
-        let start = lexer.start_pos();
-        let source = lexer.source();
-
-        match (parser)(lexer.sublexer()) {
-            Ok(succ) => Ok(succ),
-
-            // TODO: Try adding context as new highlight on existing span.
-            Err(fail) => Err(Failure {
-                parse_error: ParseError::new(description)
-                    .with_span(msg.clone(), Span::new_enclosing(
-                        start,
-                        fail.lexer.end_pos(),
-                        source)),
-                lexer,
-                source: Some(Box::new(FailureOwned::from(fail))),
-            }),
-        }
-    }
-}

@@ -22,7 +22,10 @@ use crate::result::ParseResultExt as _;
 use crate::result::ParseError;
 use crate::result::Failure;
 use crate::combinator::one;
+use crate::combinator::exact;
 use crate::combinator::any;
+use crate::combinator::right;
+use crate::combinator::empty;
 use crate::combinator::bracket_dynamic;
 use crate::combinator::bracket;
 use crate::combinator::text;
@@ -34,12 +37,13 @@ use std::borrow::Cow;
 // Integer parsing
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn uint<'text, Nl, T>(lexer: Lexer<'text, AtmaScanner, Nl>)
+pub fn uint<'text, Nl, T>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, T>
     where
         Nl: NewLine,
-        T: FromStrRadix,
+        T: FromStrRadix + std::fmt::Debug,
 {
+    lexer.skip_filtered(); // Remove prefixed tokens.
     let (mut val, succ) = text(one(AtmaToken::Uint))
         (lexer)?
         .take_value();

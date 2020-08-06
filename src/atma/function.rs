@@ -18,6 +18,7 @@ use crate::atma::float;
 use crate::combinator::both;
 use crate::combinator::intersperse_collect;
 use crate::combinator::one;
+use crate::combinator::section;
 use crate::combinator::with_span;
 use crate::combinator::text;
 use crate::combinator::bracket;
@@ -39,10 +40,10 @@ pub fn fn_call<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
     both(
         text(one(AtmaToken::Ident)),
         bracket(
-            one(AtmaToken::OpenParen),
+            section(one(AtmaToken::OpenParen)),
             intersperse_collect(0, None,
                 with_span(fn_arg),
-                one(AtmaToken::Comma)),
+                section(one(AtmaToken::Comma))),
             one(AtmaToken::CloseParen)))
         (lexer)
         .map_value(|(name, args)| FnCall { name, args })
