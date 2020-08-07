@@ -25,7 +25,7 @@ use crate::result::Highlight;
 pub struct ParseError<'text, Nl> {
     description: &'static str,
     span: Option<(Span<'text, Nl>, String)>,
-
+    is_lexer_error: bool,
 }
 
 impl<'text, Nl> ParseError<'text, Nl> {
@@ -33,27 +33,8 @@ impl<'text, Nl> ParseError<'text, Nl> {
         ParseError {
             description,
             span: None,
+            is_lexer_error: false,
         }
-    }
-
-    pub fn unrecognized_token(span: Span<'text, Nl>) -> Self {
-        ParseError::new("unrecognized token")
-            .with_span("symbol not recognized", span)
-    }
-
-    pub fn unexpected_token(span: Span<'text, Nl>) -> Self {
-        ParseError::new("unexpected token")
-            .with_span("token not expected", span)
-    }
-
-    pub fn unexpected_end_of_text(span: Span<'text, Nl>) -> Self {
-        ParseError::new("unexpected end of text")
-            .with_span("text ends here", span)
-    }
-
-    pub fn unexpected_text(span: Span<'text, Nl>) -> Self {
-        ParseError::new("expected end of text")
-            .with_span("text should end here", span)
     }
 
     pub fn with_span<S>(mut self, message: S, span: Span<'text, Nl>) -> Self 
@@ -63,8 +44,44 @@ impl<'text, Nl> ParseError<'text, Nl> {
         self
     }
 
+    pub fn unrecognized_token(span: Span<'text, Nl>) -> Self {
+        ParseError {
+            description: "unrecognized token",
+            span: Some((span, "symbol not recognized".to_owned())),
+            is_lexer_error: true,
+        }
+    }
+
+    pub fn unexpected_token(span: Span<'text, Nl>) -> Self {
+        ParseError {
+            description: "unexpected token",
+            span: Some((span, "token not expected".to_owned())),
+            is_lexer_error: true,
+        }
+    }
+
+    pub fn unexpected_end_of_text(span: Span<'text, Nl>) -> Self {
+        ParseError {
+            description: "unexpected end of text",
+            span: Some((span, "text ends here".to_owned())),
+            is_lexer_error: true,
+        }
+    }
+
+    pub fn unexpected_text(span: Span<'text, Nl>) -> Self {
+        ParseError {
+            description: "expected end of text",
+            span: Some((span, "text should end here".to_owned())),
+            is_lexer_error: true,
+        }
+    }
+
     pub fn description(&self) -> &'static str {
         self.description
+    }
+
+    pub fn is_lexer_error(&self) -> bool {
+        self.is_lexer_error
     }
 }
 
@@ -75,10 +92,23 @@ impl<'text, Nl> ParseError<'text, Nl>
     {
         ParseErrorOwned {
             display: format!("{}", self),
+            is_lexer_error: self.is_lexer_error,
         }
     }
 }
 
+
+impl<'text, Nl> Default for ParseError<'text, Nl>
+    where Nl: NewLine,
+{
+    fn default() -> Self {
+        ParseError {
+            description: "parse error",
+            span: None,
+            is_lexer_error: false,
+        }
+    }
+}
 
 impl<'text, Nl> std::fmt::Display for ParseError<'text, Nl>
     where Nl: NewLine,
@@ -105,6 +135,7 @@ impl<'text, Nl> From<&'static str> for ParseError<'text, Nl> {
         ParseError {
             description,
             span: None,
+            is_lexer_error: false,
         }
     }
 }
@@ -115,6 +146,7 @@ impl<'text, Nl> From<&'static str> for ParseError<'text, Nl> {
 #[derive(Debug)]
 pub struct ParseErrorOwned {
     display: String,
+    is_lexer_error: bool,
 }
 
 

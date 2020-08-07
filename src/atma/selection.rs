@@ -54,13 +54,23 @@ pub fn cell_ref<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, CellRef<'text>>
     where Nl: NewLine,
 {
-    if let Ok(succ) = position(lexer.clone()) {
-        return Ok(succ).map_value(CellRef::Position);
+    match position
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ)        => return Ok(succ).map_value(CellRef::Position),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
     // Index must come after position.
-    if let Ok(succ) = index(lexer.clone()) {
-        return Ok(succ).map_value(CellRef::Index);
+    match index
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ)        => return Ok(succ).map_value(CellRef::Index),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
     group_or_name

@@ -67,46 +67,69 @@ pub fn uint<'text, Nl, T>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
 
     match T::from_str_radix(&*val, radix) {
         Ok(val) => Ok(succ.map_value(|_| val)),
-        Err(e) => Err(Failure {
-            parse_error: ParseError::new("invalid integer value")
-                .with_span(format!("base {} integer", radix),
-                    succ.lexer.span()),
-            lexer: succ.lexer,
-            source: Some(Box::new(e)),
-        })
+        Err(e) => {
+            let display_val = T::error_from_str_radix(&*val, radix);
+            Err(Failure {
+                parse_error: ParseError::new("invalid integer value")
+                    .with_span(format!(
+                        "value ({}) is too large for {} value",
+                            T::error_from_str_radix(&*val, radix).map_or_else(
+                                || val.to_string(),
+                                |v| v.to_string()),
+                            T::SIZE_DESCRIPTION),
+                        succ.lexer.last_span()),
+                lexer: succ.lexer,
+                source: Some(Box::new(e)),
+            })
+        }
     }
 }
 
 
 pub trait FromStrRadix: Sized {
+    const SIZE_DESCRIPTION: &'static str;
+
+    type ErrorValue: ToString;
+
     fn from_str_radix(src: &str, radix: u32)
         -> Result<Self, std::num::ParseIntError>;
+
+    fn error_from_str_radix(src: &str, radix: u32)
+        -> Option<Self::ErrorValue>;
 }
 
 macro_rules! from_str_radix_impl {
-    ($t:ty) => {
+    ($t:ty, $desc:expr, $ev:ty) => {
         impl FromStrRadix for $t {
+            const SIZE_DESCRIPTION: &'static str = $desc;
+            type ErrorValue = $ev;
             fn from_str_radix(src: &str, radix: u32)
                 -> Result<$t, std::num::ParseIntError>
             {
                 <$t>::from_str_radix(src, radix)
             }
+
+            fn error_from_str_radix(src: &str, radix: u32)
+                -> Option<Self::ErrorValue>
+            {
+                <$ev>::from_str_radix(src, radix).ok()
+            }
         }
     }
 }
 
-from_str_radix_impl!(isize);
-from_str_radix_impl!(i8);
-from_str_radix_impl!(i16);
-from_str_radix_impl!(i32);
-from_str_radix_impl!(i64);
-from_str_radix_impl!(i128);
-from_str_radix_impl!(usize);
-from_str_radix_impl!(u8);
-from_str_radix_impl!(u16);
-from_str_radix_impl!(u32);
-from_str_radix_impl!(u64);
-from_str_radix_impl!(u128);
+from_str_radix_impl!(isize, "signed size",      i128);
+from_str_radix_impl!(i8   , "signed 8 bit",     i128);
+from_str_radix_impl!(i16  , "signed 16 bit",    i128);
+from_str_radix_impl!(i32  , "signed 32 bit",    i128);
+from_str_radix_impl!(i64  , "signed 64 bit",    i128);
+from_str_radix_impl!(i128 , "signed 128 bit",   i128);
+from_str_radix_impl!(usize, "unsigned size",    u128);
+from_str_radix_impl!(u8   , "unsigned 8 bit",   u128);
+from_str_radix_impl!(u16  , "unsigned 16 bit",  u128);
+from_str_radix_impl!(u32  , "unsigned 32 bit",  u128);
+from_str_radix_impl!(u64  , "unsigned 64 bit",  u128);
+from_str_radix_impl!(u128 , "unsigned 128 bit", u128);
 
 
 ////////////////////////////////////////////////////////////////////////////////
