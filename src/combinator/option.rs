@@ -33,9 +33,31 @@ pub fn maybe<'text, Sc, Nl, F, V>(mut parser: F)
     move |lexer| {
         match (parser)(lexer.clone()) {
             Ok(succ) => Ok(succ.map_value(Some)),
-            Err(_fail) => Ok(Success {
-                    lexer,
-                    value: None,
+            Err(_)   => Ok(Success {
+                lexer,
+                value: None,
+            }),
+        }
+    }
+}
+
+/// Returns a parser which converts a failure into an empty success if no
+/// non-filtered tokens are consumed.
+pub fn atomic<'text, Sc, Nl, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, Option<V>>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+{
+    move |lexer| {
+        let end = lexer.last_span().end();
+        match (parser)(lexer.clone()) {
+            Ok(succ) => Ok(succ.map_value(Some)),
+            Err(fail) if fail.lexer.last_span().end() > end => Err(fail),
+            Err(_) => Ok(Success {
+                lexer,
+                value: None,
             }),
         }
     }

@@ -23,6 +23,7 @@ use crate::atma::PositionSelector;
 use crate::atma::string;
 use crate::atma::uint;
 use crate::combinator::any;
+use crate::combinator::atomic;
 use crate::combinator::both;
 use crate::combinator::bracket;
 use crate::combinator::bracket_dynamic;
@@ -114,7 +115,7 @@ pub fn group_or_name<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     exact(
         both(
             string,
-            maybe(
+            atomic(
                 right(one(AtmaToken::Colon),
                     uint::<_, u32>))))
         (lexer)
@@ -146,53 +147,78 @@ pub fn cell_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
 {
     use CellSelector::*;
 
-    if let Ok(succ) = exact(
+    match exact(
         left(
             string,
             seq(&[AtmaToken::Colon, AtmaToken::Mult])))
         (lexer.clone())
+        .filter_lexer_error()
     {
-        return Ok(succ).map_value(|name| GroupAll(name));
+        Ok(succ)        => return Ok(succ).map_value(|name| GroupAll(name)),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
-    if let Ok(succ) = range(position)(lexer.clone()) {
-        let (val, succ) = succ.take_value();
-        match val {
-            (low, Some(high)) if low > high => unimplemented!(),
+    match range(position)
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ) => {
+            let (val, succ) = succ.take_value();
+            match val {
+                (low, Some(high)) if low > high => unimplemented!(),
 
-            (low, Some(high)) => return Ok(succ)
-                .map_value(|_| PositionRange { low, high }),
+                (low, Some(high)) => return Ok(succ)
+                    .map_value(|_| PositionRange { low, high }),
 
-            (pos, None)       => return Ok(succ)
-                .map_value(|_| PositionSelector(pos.into())),
-        }
+                (pos, None)       => return Ok(succ)
+                    .map_value(|_| PositionSelector(pos.into())),
+            }
+        },
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
     // PositionSelector must come after PositionRange.
-    if let Ok(succ) = position_selector(lexer.clone()) {
-        return Ok(succ).map_value(PositionSelector);
+    match position_selector
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ)        => return Ok(succ).map_value(PositionSelector),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
     // Index must come after PositionRange and PositionSelector.
-    if let Ok(succ) = range(index)(lexer.clone()) {
-        let (val, succ) = succ.take_value();
-        match val {
-            (low, Some(high)) if low > high => unimplemented!(),
+    match range(index)
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ) => {
+            let (val, succ) = succ.take_value();
+            match val {
+                (low, Some(high)) if low > high => unimplemented!(),
 
-            (low, Some(high)) => return Ok(succ)
-                .map_value(|_| IndexRange { low, high }),
+                (low, Some(high)) => return Ok(succ)
+                    .map_value(|_| IndexRange { low, high }),
 
-            (idx, None)       => return Ok(succ)
-                .map_value(|_| Index(idx)),
-        }
+                (idx, None)       => return Ok(succ)
+                    .map_value(|_| Index(idx)),
+            }
+        },
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
     // All must come after PositionSelector. 
-    if let Ok(succ) = exact(
+    match exact(
             seq(&[AtmaToken::Colon, AtmaToken::Mult]))
         (lexer.clone())
+        .filter_lexer_error()
     {
-        return Ok(succ).map_value(|_| All);
+        Ok(succ)        => return Ok(succ).map_value(|_| All),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
     // Group and Name must come after GroupAll.
