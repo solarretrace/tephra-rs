@@ -40,10 +40,10 @@ pub fn fn_call<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
     both(
         text(one(AtmaToken::Ident)),
         bracket(
-            section(one(AtmaToken::OpenParen)),
+            one(AtmaToken::OpenParen),
             intersperse_collect(0, None,
-                with_span(fn_arg),
-                section(one(AtmaToken::Comma))),
+                section(with_span(fn_arg)),
+                one(AtmaToken::Comma)),
             one(AtmaToken::CloseParen)))
         (lexer)
         .map_value(|(name, args)| FnCall { name, args })

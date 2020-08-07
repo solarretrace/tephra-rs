@@ -105,7 +105,7 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
 
             // Matching token.
             Some(lex) if lex == token => {
-                // println!(" {}", lexer.last_span());
+                // println!(" -> MATCH {}", lexer.last_span());
                 Ok(Success {
                     lexer,
                     value: token.clone(),

@@ -234,7 +234,9 @@ Going forward, one of the central constraints is that a given parser shouldn't k
 
 Another big idea is that there are such things as 'bounded' and 'unbounded' parses, determined by whether a parser is effectively recursive or not. It is much easier to push error handling for bounded parsers lower in the grammar because they take on a fewer variety of forms and the details of what was supposed to be present are much clearer. Conversely, unbounded parses can traverse through many intermediate rules, and it is often much less helpful to know what those rules were as opposed to what is bracketting those rules. So in essence, we usually want to phrase errors arrising from failures in unbounded rules in terms of the bounded rules that introduce or bracket them.
 
-So every time we're about to introduce an 'open bracket' or delimitted parse, we want to break off into a new span.
+Furthermore, in order to keep our parsers general purpose, we want to minimize the amount of special context handling within a parser. For example, the `bracket` combinator is not going to consider any of its arguments as inherently special; it should be suitable for parsing `abc` just as easily as `[b]`.
+
+So every time we're about to introduce an 'open bracket' or delimitted parse, we want to break off into a new span. 
 
 
 ## Recovery

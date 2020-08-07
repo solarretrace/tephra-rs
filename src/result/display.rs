@@ -82,19 +82,23 @@ impl<'text, 'msg, Nl> std::fmt::Display for SourceSpan<'text, 'msg, Nl>
         for (line_num, line_span) in self.span.split_lines()
             .map(|span| (span.start().page.line, span))
         {
+            // println!("## LS {}", line_span);
             write_gutter(f, line_num, gutter_width)?;
             write_riser(f,
                 multi_split.riser_data(line_num),
-                riser_width)?;
+                riser_width,
+                false)?;
             write_source_ln(f,
                 line_span)?;
             end_spacer_needed = true;
 
             for line_data in multi_split.line_data(line_num) {
+                // println!("## LD {:?}", line_data);
                 write_gutter(f, "", gutter_width)?;
                 write_riser(f,
                     multi_split.riser_data(line_num),
-                    riser_width)?;
+                    riser_width,
+                    line_data.leader_line)?;
                 write_highlight_ln(f,
                     line_data.span,
                     line_data.highlight_ul,
@@ -128,7 +132,8 @@ fn write_gutter<G>(
 fn write_riser<R>(
     f: &mut std::fmt::Formatter<'_>,
     risers: R,
-    width: usize)
+    width: usize,
+    leader_line: bool)
     -> std::fmt::Result
     where R: Iterator<Item=RiserSymbol>,
 {
@@ -145,14 +150,19 @@ fn write_riser<R>(
     for i in i..width {
         write!(f, " ")?;
     }
+    if leader_line {
+        write!(f, "_")?;
+    } else {
+        write!(f, " ")?;
+    }
     Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum RiserSymbol {
     Empty,
-    Bar,
     UpPoint,
+    Bar,
     DnPoint,
 }
 pub fn write_source_info_line<M, Nl>(
@@ -201,14 +211,16 @@ fn write_highlight_ln<'text,'msg,  Nl>(
     let underline_width = std::cmp::max(
         span.end().page.column - span.start().page.column,
         1);
-    match highlight_ul {
-        // TODO: Fix underlining of tab/multi-width characters.
-        HighlightUnderline::Dash => for _ in 0..underline_width {
-            write!(f, "-")?;
-        },
-        HighlightUnderline::Hat => for _ in 0..underline_width {
-            write!(f, "^")?;
-        },
+    // TODO: Fix underlining of tab/multi-width characters.
+    for i in 0..underline_width {
+        if leader_line && i < underline_width - 1 {
+            write!(f, "_")?;
+        } else {
+            match highlight_ul {
+                HighlightUnderline::Dash => write!(f, "-")?,
+                HighlightUnderline::Hat  => write!(f, "^")?,
+            }
+        }
     }
 
     writeln!(f, " {}", message)
@@ -233,20 +245,20 @@ pub struct Highlight<'text, 'msg, Nl> {
 }
 
 impl<'text, 'msg, Nl> Highlight<'text, 'msg, Nl> {
-    pub fn new(span: Span<'text, Nl>, start_message: &'msg str)
+    pub fn new(span: Span<'text, Nl>, end_message: &'msg str)
         -> Self
     {
         Highlight {
             span,
-            start_message,
-            end_message: "",
+            start_message: "",
+            end_message,
             color: (),
             underline: HighlightUnderline::Hat,
         }
     }
 
-    pub fn with_end_message(mut self, end_message: &'msg str) -> Self {
-        self.end_message = end_message;
+    pub fn with_start_message(mut self, start_message: &'msg str) -> Self {
+        self.start_message = start_message;
         self
     }
 
@@ -256,6 +268,9 @@ impl<'text, 'msg, Nl> Highlight<'text, 'msg, Nl> {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// MultiSplitLines
+////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 struct MultiSplitLines<'text, 'msg, 'hl, Nl> {
     highlights: &'hl [Highlight<'text, 'msg, Nl>],
@@ -294,7 +309,7 @@ impl<'text, 'msg, 'hl, Nl> MultiSplitLines<'text, 'msg, 'hl, Nl>
             .filter(|hl| hl.is_multiline()) 
         {
             let start_line = hl.span.start().page.line;
-            let end_line = hl.span.start().page.line;
+            let end_line = hl.span.end().page.line;
             
             if start_line == end_line {
                 riser_data.push(RiserSymbol::Empty);
@@ -308,7 +323,7 @@ impl<'text, 'msg, 'hl, Nl> MultiSplitLines<'text, 'msg, 'hl, Nl>
                 if hl.span.end().page.column == 0 {
                     riser_data.push(RiserSymbol::DnPoint);
                 } else {
-                    riser_data.push(RiserSymbol::Empty);
+                    riser_data.push(RiserSymbol::Bar);
 
                 }
             } else if line > start_line && line < end_line {
@@ -331,13 +346,13 @@ impl<'text, 'msg, 'hl, Nl> MultiSplitLines<'text, 'msg, 'hl, Nl>
             match curr {
                 Some(c) if c.start().page.line == line => {
                     let hl = &self.highlights[i];
-                    let message_a = if hl.span.start().page.line == line {
-                        hl.start_message
+                    let message_a = if hl.span.end().page.line == line {
+                        hl.end_message
                     } else {
                         ""
                     };
-                    let message_b = if hl.span.end().page.line == line {
-                        hl.end_message
+                    let message_b = if hl.span.start().page.line == line {
+                        hl.start_message
                     } else {
                         ""
                     };

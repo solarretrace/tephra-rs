@@ -328,7 +328,7 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
         } else {
             debug_assert!(start_byte > 0);
             let left = self.source[..start_byte]
-                .rsplit_terminator(Nl::STR).next().unwrap();
+                .rsplit(Nl::STR).next().unwrap();
             start_byte -= left.len();
         }
         // Find the end byte and column.

@@ -133,16 +133,28 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
         self.start = self.end;
     }
 
-    /// Constructs a new lexer which consumes the lexed spans of the given one.
-    fn into_consumed(mut self) -> Self {
-        self.consume_current();
-        self
-    }
-
     /// Creates a sublexer starting at the current lex position.
     pub fn sublexer(&self) -> Self {
-        self.clone().into_consumed()
-        
+        let mut sub = self.clone();
+        sub.next_filtered();
+        sub.consume_current();
+        sub
+    }
+
+    /// Joins the lexers together by unioning their full spans.
+    /// The receiver's scanner state is retained.
+    pub fn join(mut self, other: Self) -> Self {
+        if self.end < other.end {
+            self.end = other.end;
+            self.last = other.last;
+            self.last_full = other.last_full;
+        }
+
+        if self.full > other.full {
+            self.full = other.full;
+            self.start = other.start;
+        }
+        self
     }
 
     /// Resets any lexed text back to the last consumed position.
@@ -179,10 +191,12 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
     }
 
     /// Skips past any filtered tokens at the lex position.
-    pub fn skip_filtered(&mut self) {
+    pub fn next_filtered(&mut self) {
         let _ = self.next();
+        // Move back to the start of last unfiltered token.
         self.end = self.last;
     }
+
 }
 
 impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>

@@ -56,18 +56,12 @@ pub fn section<'text, Sc, Nl, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
 {
     move |lexer| {
-        match (parser)(lexer) {
+        match (parser)(lexer.sublexer()) {
             Ok(mut succ) => {
-                succ.lexer.skip_filtered();
-                succ.lexer = succ.lexer.sublexer();
-
+                succ.lexer = lexer.join(succ.lexer);
                 Ok(succ)
             },
-            Err(mut fail) => {
-                fail.lexer.skip_filtered();
-                fail.lexer = fail.lexer.sublexer();
-                Err(fail)
-            },
+            Err(fail) => Err(fail),
         }
     }
 }
@@ -136,11 +130,11 @@ pub fn with_span<'text, Sc, Nl, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
 {
     move |lexer| {
-        match (parser)(lexer) {
+        match (parser)(lexer.sublexer()) {
             Ok(succ) => {
                 Ok(Success {
-                    value: (succ.value, succ.lexer.span()),
-                    lexer: succ.lexer,
+                    value: (succ.value, succ.lexer.full_span()),
+                    lexer: lexer.join(succ.lexer),
                 })
             },
             Err(fail) => Err(fail),

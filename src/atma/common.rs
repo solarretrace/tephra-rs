@@ -43,7 +43,7 @@ pub fn uint<'text, Nl, T>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         Nl: NewLine,
         T: FromStrRadix + std::fmt::Debug,
 {
-    lexer.skip_filtered(); // Remove prefixed tokens.
+    lexer.next_filtered(); // Remove prefixed tokens.
     let (mut val, succ) = text(one(AtmaToken::Uint))
         (lexer)?
         .take_value();

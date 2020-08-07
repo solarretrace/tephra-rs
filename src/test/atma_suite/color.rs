@@ -259,6 +259,32 @@ fn function_rgb_u8() {
     assert_eq!(actual, expected);
 }
 
+/// Tests `color_function` with RGB u8 values and newlines.
+#[test]
+fn function_rgb_u8_newline() {
+    let text = "rgb(0, \n\
+        255, \n\
+        127)";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = color_function
+        (lexer)
+        .unwrap()
+        .value_span_display();
+
+    let expected = (
+        Color::from(Rgb::from([0, 255, 127])),
+        "\"rgb(0, \n255, \n127)\" (0:0-2:4, bytes 0-18)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
 /// Tests `color_function` with RGB u8 values, using the wrong bracket.
 #[test]
 fn function_rgb_u8_wrong_bracket() {
@@ -277,7 +303,7 @@ fn function_rgb_u8_wrong_bracket() {
 
     let expected = (
         "unexpected token",
-        "\"rgb[\" (0:0-0:4, bytes 0-4)".to_owned());
+        "\"[\" (0:3-0:4, bytes 3-4)".to_owned());
 
     println!("{:?}", actual);
     println!("{:?}", expected);
@@ -309,6 +335,39 @@ fn function_rgb_u8_out_of_range() {
     let expected = (
         "invalid RGB color",
         "\"rgb(0, 255, 1270)\" (0:0-0:17, bytes 0-17)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `color_function` with RGB u8 values with newlines, out of range.
+#[test]
+fn function_rgb_u8_out_of_range_newline() {
+    let text = "rgb(0,\n\
+        255,\n\
+        1270)";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    // for tok in &mut lexer {
+    //     println!("{:?}", tok);
+    // }
+
+    let failure = color_function
+        (lexer)
+        .err()
+        .unwrap();
+    println!("{}", failure);
+
+    let actual = failure.error_span_display();
+
+    let expected = (
+        "invalid RGB color",
+        "\"rgb(0,\n255,\n1270)\" (0:0-2:5, bytes 0-17)".to_owned());
 
     println!("{:?}", actual);
     println!("{:?}", expected);
