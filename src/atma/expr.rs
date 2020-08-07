@@ -155,7 +155,7 @@ pub enum CellRef<'name> {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Position {
     pub page: u16,
     pub line: u16,
@@ -166,6 +166,16 @@ pub struct PositionSelector {
     pub page: Option<u16>,
     pub line: Option<u16>,
     pub column: Option<u16>,
+}
+
+impl From<Position> for PositionSelector {
+    fn from(pos: Position) -> Self {
+        PositionSelector {
+            page: Some(pos.page),
+            line: Some(pos.line),
+            column: Some(pos.column),
+        }
+    }
 }
 
 #[derive(Debug)]
