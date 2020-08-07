@@ -105,7 +105,7 @@ fn rgb_hex_code_3_whitespace() {
     let text = "# abc";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
-    lexer.set_filter_fn(|tok| *tok == AtmaToken::Whitespace);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let failure = rgb_hex_code
         (lexer)

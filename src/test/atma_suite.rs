@@ -10,3 +10,4 @@
 
 // Internal modules.
 mod color;
+mod selection;

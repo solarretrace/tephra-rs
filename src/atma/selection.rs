@@ -13,35 +13,36 @@
     
 
 // Local imports.
-use crate::atma::AtmaToken;
 use crate::atma::AtmaScanner;
-use crate::atma::string;
-use crate::atma::uint;
+use crate::atma::AtmaToken;
+use crate::atma::CellRef;
+use crate::atma::CellSelection;
+use crate::atma::CellSelector;
 use crate::atma::Position;
 use crate::atma::PositionSelector;
-use crate::atma::CellRef;
-use crate::atma::CellSelector;
-use crate::atma::CellSelection;
+use crate::atma::string;
+use crate::atma::uint;
+use crate::combinator::any;
+use crate::combinator::both;
+use crate::combinator::bracket;
+use crate::combinator::bracket_dynamic;
+use crate::combinator::exact;
+use crate::combinator::intersperse_collect;
+use crate::combinator::left;
+use crate::combinator::maybe;
+use crate::combinator::one;
+use crate::combinator::right;
+use crate::combinator::section;
+use crate::combinator::seq;
+use crate::combinator::text;
 use crate::lexer::Lexer;
-use crate::span::NewLine;
+use crate::result::Failure;
+use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
-use crate::result::ParseError;
-use crate::result::Failure;
-use crate::combinator::one;
-use crate::combinator::any;
-use crate::combinator::bracket_dynamic;
-use crate::combinator::bracket;
-use crate::combinator::text;
-use crate::combinator::both;
-use crate::combinator::left;
-use crate::combinator::seq;
-use crate::combinator::maybe;
-use crate::combinator::exact;
-use crate::combinator::right;
-use crate::combinator::intersperse_collect;
-use crate::combinator::section;
+use crate::span::NewLine;
 
+// Standard library imports.
 use std::borrow::Cow;
 
 
@@ -238,8 +239,7 @@ fn uint_16_or_all<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         .map_value(Some)
 }
 
-
-pub fn range<'text, Nl, F, V>(mut parser: F)
+fn range<'text, Nl, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, AtmaScanner, Nl>)
         -> ParseResult<'text, AtmaScanner, Nl, (V, Option<V>)>
     where

@@ -236,9 +236,24 @@ Another big idea is that there are such things as 'bounded' and 'unbounded' pars
 
 Furthermore, in order to keep our parsers general purpose, we want to minimize the amount of special context handling within a parser. For example, the `bracket` combinator is not going to consider any of its arguments as inherently special; it should be suitable for parsing `abc` just as easily as `[b]`.
 
-So every time we're about to introduce an 'open bracket' or delimitted parse, we want to break off into a new span. 
 
+## Sections and Recovery
 
-## Recovery
+Every time we're about to introduce an 'open bracket' or delimitted parse, we want to break off into a new span. 
 
 Speaking of brackets, when we have a failure within a delimitted rule, it often makes sense to log an error, advance to the next delimiter, and continue on to look for further errors. 
+
+
+## Error relavance and validation
+
+Parsers frequently attempt a sequence of sub-parsers, and perhaps naively, one would expect to swallow up any intermediate errors and move on to try the next thing. This is simple to implement and it works well enough, unless none of the sub-parsers succeed and you 'drop out' at the bottom: at this point, the parse which failed is entirely ambiguous, because they *all* failed.
+
+And frequently, the problem is not due to an obvious grammatical error. All of the correct tokens may be in place, but one of the attempts may have failed in performing some necessary conversion on it, leaving the parser to swallow up that error and go on to do everything else which has no hope of succeeding.
+
+The broader point here is that there is a scaled notion of relevance when multiple sub-parses are performed. In the case that both parses would succeed, the most relevant one is the first to be applied (as one would expect and/or desire for sequential code... If we're parsing concurrently, this question might need a more serious answer.)
+
+If only one of the two succeeds, the successful one is more relevant. However, if both parses fail, the naive process above results in the last one being the most relevant, and that is often *not* what we want, unless none of the rules are gramattically correct. We could try adding a flag to the error type so we can decide whether to return or continue (or perhaps more wildly: simulate "throwing exceptions"), but we should make sure not to handle this decision at the sub-parser's call site, because there may be successful parses following a conversion failure, and we want successful parses to take priority.
+
+Another thing to bear in mind is that grammatical errors only have a few possible error states: unexpected tokens, unexpected end-of-text, unrecognized tokens, and unexpected text. All other errors signify that only valid tokens were produced and consumed, so they must be conversion errors.
+
+As an addendum to all of the above, a lot of these kinds headaches can be avoided by delaying any validation operations as long as possible. You might parse the entire input to validate its grammar and capture all values as text, then do a second pass to convert text values into semantically meaningful values. By doing this, you ensure that all parsers have consistent behavior, because they can only fail due to grammatical errors. The downside of this is that it becomes difficult to compose parsers, because you have to forbid calling into anything that does validation.

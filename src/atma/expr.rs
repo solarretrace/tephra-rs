@@ -144,7 +144,7 @@ pub enum InterpolateFunction {
 // Selection types
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CellRef<'name> {
     Index(u32),
     Position(Position),
@@ -161,7 +161,7 @@ pub struct Position {
     pub line: u16,
     pub column: u16,
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PositionSelector {
     pub page: Option<u16>,
     pub line: Option<u16>,
@@ -178,10 +178,10 @@ impl From<Position> for PositionSelector {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct CellSelection<'name>(pub Vec<CellSelector<'name>>);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CellSelector<'name> {
     All,
     Index(u32),
