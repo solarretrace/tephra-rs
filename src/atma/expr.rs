@@ -145,6 +145,17 @@ pub enum InterpolateFunction {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug)]
+pub enum CellRef<'name> {
+    Index(u32),
+    Position(Position),
+    Name(Cow<'name, str>),
+    Group {
+        group: Cow<'name, str>,
+        idx: u32,
+    },
+}
+
+#[derive(Debug)]
 pub struct Position {
     pub page: u16,
     pub line: u16,
@@ -155,16 +166,6 @@ pub struct PositionSelector {
     pub page: Option<u16>,
     pub line: Option<u16>,
     pub column: Option<u16>,
-}
-#[derive(Debug)]
-pub enum CellRef<'name> {
-    Index(u32),
-    Position(Position),
-    Name(Cow<'name, str>),
-    Group {
-        group: Cow<'name, str>,
-        idx: u32,
-    },
 }
 
 #[derive(Debug)]

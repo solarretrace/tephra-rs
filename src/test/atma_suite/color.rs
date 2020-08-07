@@ -18,6 +18,7 @@ use ::color::Rgb;
 use ::color::Color;
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // RGB hex code
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +304,7 @@ fn function_rgb_u8_wrong_bracket() {
 
     let expected = (
         "unexpected token",
-        "\"[\" (0:3-0:4, bytes 3-4)".to_owned());
+        "\"rgb[\" (0:0-0:4, bytes 0-4)".to_owned());
 
     println!("{:?}", actual);
     println!("{:?}", expected);

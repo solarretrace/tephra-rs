@@ -48,42 +48,16 @@ use std::convert::TryFrom as _;
 ////////////////////////////////////////////////////////////////////////////////
 // color
 ////////////////////////////////////////////////////////////////////////////////
-
+/// Returns a parser which parses a `Color`.
 pub fn color<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, Color>
     where Nl: NewLine,
 {
-    unimplemented!()
-//     match exact(
-//         right(
-//             one(AtmaToken::Hash),
-//             text(one(AtmaToken::Uint))))
-//         (lexer)
-//     {
-//         Ok(mut succ)  => {
-//             use std::str::FromStr;
-//             if succ.value.len() != 6 {
-//                 return Err(Failure {
-//                     parse_error: ParseError::new("invalid color")
-//                         .with_span("color requires 6 hex digits",
-//                             succ.lexer.span()),
-//                     lexer: succ.lexer,
-//                     source: None,
-//                 })
-//             }
-//             match u32::from_str(succ.value) {
-//                 Ok(val) => Ok(succ.map_value(|_| Color(val))),
-//                 Err(e) => Err(Failure {
-//                     parse_error: ParseError::new("invalid color")
-//                         .with_span("color conversion failed",
-//                             succ.lexer.span()),
-//                     lexer: succ.lexer,
-//                     source: Some(Box::new(e)),
-//                 }),
-//             }
-//         }
-//         Err(fail) => Err(fail),
-//     }
+    if let Ok(succ) = rgb_hex_code(lexer.clone()) {
+        return Ok(succ).map_value(Color::from);
+    }
+
+    color_function(lexer).map_value(Color::from)
 }
 
 
@@ -131,18 +105,18 @@ pub fn color_function<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
     where Nl: NewLine,
 {
     let (val, succ) = fn_call
-            (lexer)?
+            (lexer.sublexer())?
         .take_value();
 
     if val.name.eq_ignore_ascii_case("rgb") {
-        return rgb_from_args(succ.lexer, val.args)
+        return rgb_from_args(lexer.join(succ.lexer), val.args)
             .map_value(Color::from);
     }
 
     Err(Failure {
         parse_error: ParseError::new("invalid color")
             .with_span("not a recognized color form", succ.lexer.full_span()),
-        lexer: succ.lexer,
+        lexer: lexer.join(succ.lexer),
         source: None,
     })
 }
@@ -158,12 +132,11 @@ fn rgb_from_args<'text, Nl>(
         return Err(Failure {
             parse_error: ParseError::new("invalid RGB color")
                 .with_span(
-                    format!("RGB requires 3 arguments, {} provided",
+                    format!("RGB color requires 3 arguments, {} provided",
                         args.len()),
                     lexer.last_span()),
             lexer,
             source: None,
-
         });
     }
 
@@ -173,21 +146,24 @@ fn rgb_from_args<'text, Nl>(
             if *r < 0.0 || *r > 1.0 {
                 Err(Failure {
                     parse_error: ParseError::new("invalid RGB color")
-                        .with_span("value out of range [0.0, 1.0]", *rs),
+                        .with_span(
+                            "red value out of allowed range [0.0, 1.0]", *rs),
                     lexer,
                     source: None,
                 })
             } else if *g < 0.0 || *g > 1.0 {
                 Err(Failure {
                     parse_error: ParseError::new("invalid RGB color")
-                        .with_span("value out of range [0.0, 1.0]", *gs),
+                        .with_span(
+                            "green value out of allowed range [0.0, 1.0]", *gs),
                     lexer,
                     source: None,
                 })
             } else if *b < 0.0 || *b > 1.0 {
                 Err(Failure {
                     parse_error: ParseError::new("invalid RGB color")
-                        .with_span("value out of range [0.0, 1.0]", *bs),
+                        .with_span(
+                            "blue value out of allowed range [0.0, 1.0]", *bs),
                     lexer,
                     source: None,
                 })
@@ -212,19 +188,19 @@ fn rgb_from_args<'text, Nl>(
 
             (Ok(r), Ok(g), Err(e)) => Err(Failure {
                 parse_error: ParseError::new("invalid RGB color")
-                    .with_span("octet out of range", *bs),
+                    .with_span("blue octet out of range [0-255]", *bs),
                 lexer,
                 source: Some(Box::new(e)),
             }),
             (Ok(r), Err(e),     _) => Err(Failure {
                 parse_error: ParseError::new("invalid RGB color")
-                    .with_span("octet out of range", *gs),
+                    .with_span("green octet out of range [0-255]", *gs),
                 lexer,
                 source: Some(Box::new(e)),
             }),
             (Err(e),     _,     _) => Err(Failure {
                 parse_error: ParseError::new("invalid RGB color")
-                    .with_span("octet out of range", *rs),
+                    .with_span("red octet out of range [0-255]", *rs),
                 lexer,
                 source: Some(Box::new(e)),
             }),
@@ -233,7 +209,7 @@ fn rgb_from_args<'text, Nl>(
         ((U32(_), _), (U32(_), _), (F32(_), s)) |
         ((U32(_), _), (F32(_), s), _          ) => Err(Failure {
             parse_error: ParseError::new("invalid RGB color")
-                .with_span("expected u8 value", *s),
+                .with_span("expected u8 value here", *s),
             lexer,
             source: None,
         }),
@@ -241,7 +217,7 @@ fn rgb_from_args<'text, Nl>(
         ((F32(_), _), (F32(_), _), (U32(_), s)) |
         ((F32(_), _), (U32(_), s), _          ) => Err(Failure {
             parse_error: ParseError::new("invalid RGB color")
-                .with_span("expected f32 value", *s),
+                .with_span("expected f32 value here", *s),
             lexer,
             source: None,
         }),
