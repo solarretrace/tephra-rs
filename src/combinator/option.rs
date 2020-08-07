@@ -23,12 +23,12 @@ use crate::span::NewLine;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Returns a parser which converts any failure into an empty success.
-pub fn maybe<'t, Sc, Nl, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Option<V>>
+pub fn maybe<'text, Sc, Nl, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, Option<V>>
     where
         Sc: Scanner,
         Nl: NewLine,
-        F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
+        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
 {
     move |lexer| {
         match (parser)(lexer.clone()) {
@@ -47,13 +47,13 @@ pub fn maybe<'t, Sc, Nl, F, V>(mut parser: F)
 /// This acts like a `maybe` combinator that can be conditionally disabled:
 /// `require_if(|| false, p)` is identical to `maybe(p)` and 
 /// `require_if(|| true, p)` is identical to `p`.
-pub fn require_if<'t, Sc, Nl, P, F, V>(mut pred: P, mut parser: F)
-    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Option<V>>
+pub fn require_if<'text, Sc, Nl, P, F, V>(mut pred: P, mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, Option<V>>
     where
         Sc: Scanner,
         Nl: NewLine,
         P: FnMut() -> bool,
-        F: FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, V>,
+        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
 {
     move |lexer| {
         if (pred)() {

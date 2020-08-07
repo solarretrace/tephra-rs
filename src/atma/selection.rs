@@ -21,6 +21,7 @@ use crate::atma::Position;
 use crate::atma::PositionSelector;
 use crate::atma::CellRef;
 use crate::atma::CellSelector;
+use crate::atma::CellSelection;
 use crate::lexer::Lexer;
 use crate::span::NewLine;
 use crate::result::ParseResult;
@@ -38,8 +39,11 @@ use crate::combinator::seq;
 use crate::combinator::maybe;
 use crate::combinator::exact;
 use crate::combinator::right;
+use crate::combinator::intersperse_collect;
+use crate::combinator::section;
 
 use std::borrow::Cow;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // CellRef
@@ -106,34 +110,24 @@ pub fn group_or_name<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// CellSelector
+// CellSelection
 ////////////////////////////////////////////////////////////////////////////////
 
-// #[derive(Debug)]
-// pub enum CellSelector<'name> {
-//     All,
-//     Index(u32),
-//     IndexRange {
-//         low: u32,
-//         high: u32,
-//     },
-//     PositionSelector(PositionSelector),
-//     PositionRange {
-//         low: Position,
-//         high: Position
-//     },
-//     Name(Cow<'name, str>),
-//     Group {
-//         group: Cow<'name, str>,
-//         idx: u32,
-//     },
-//     GroupRange {
-//         group: Cow<'name, str>,
-//         low: u32,
-//         high: u32,
-//     },
-//     GroupAll(Cow<'name, str>),
-// }
+pub fn cell_selection<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
+    -> ParseResult<'text, AtmaScanner, Nl, CellSelection<'text>>
+    where Nl: NewLine,
+{
+    intersperse_collect(1, None,
+        section(cell_selector),
+        one(AtmaToken::Comma))
+        (lexer)
+        .map_value(CellSelection)
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// CellSelector
+////////////////////////////////////////////////////////////////////////////////
 
 pub fn cell_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, CellSelector<'text>>
@@ -245,12 +239,13 @@ fn uint_16_or_all<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
 }
 
 
-pub fn range<'t, Nl, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'t, AtmaScanner, Nl>)
-        -> ParseResult<'t, AtmaScanner, Nl, (V, Option<V>)>
+pub fn range<'text, Nl, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, AtmaScanner, Nl>)
+        -> ParseResult<'text, AtmaScanner, Nl, (V, Option<V>)>
     where
         Nl: NewLine,
-        F: FnMut(Lexer<'t, AtmaScanner, Nl>) -> ParseResult<'t, AtmaScanner, Nl, V>,
+        F: FnMut(Lexer<'text, AtmaScanner, Nl>)
+            -> ParseResult<'text, AtmaScanner, Nl, V>,
 {
     move |lexer| {
         let (l, succ) = (&mut parser)

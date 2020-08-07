@@ -32,8 +32,8 @@ use crate::result::ParseError;
 /// ## Failure
 ///
 /// This parser cannot fail.
-pub fn empty<'t, Sc, Nl>(lexer: Lexer<'t, Sc, Nl>)
-    -> ParseResult<'t, Sc, Nl, ()>
+pub fn empty<'text, Sc, Nl>(lexer: Lexer<'text, Sc, Nl>)
+    -> ParseResult<'text, Sc, Nl, ()>
     where
         Sc: Scanner,
         Nl: NewLine,
@@ -49,8 +49,8 @@ pub fn empty<'t, Sc, Nl>(lexer: Lexer<'t, Sc, Nl>)
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses the end of the text.
-pub fn end_of_text<'t, Sc, Nl, F, V>(lexer: Lexer<'t, Sc, Nl>)
-    -> ParseResult<'t, Sc, Nl, ()>
+pub fn end_of_text<'text, Sc, Nl, F, V>(lexer: Lexer<'text, Sc, Nl>)
+    -> ParseResult<'text, Sc, Nl, ()>
     where
         Sc: Scanner,
         Nl: NewLine,
@@ -75,8 +75,8 @@ pub fn end_of_text<'t, Sc, Nl, F, V>(lexer: Lexer<'t, Sc, Nl>)
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser which consumes a single token if it matches the given
 /// token.
-pub fn one<'t, Sc, Nl>(token: Sc::Token)
-    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Sc::Token>
+pub fn one<'text, Sc, Nl>(token: Sc::Token)
+    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, Sc::Token>
     where
         Sc: Scanner,
         Nl: NewLine,
@@ -130,8 +130,8 @@ pub fn one<'t, Sc, Nl>(token: Sc::Token)
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser attempts each of the given tokens in sequence, returning
 /// the first which succeeds.
-pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
-    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, Sc::Token>
+pub fn any<'text, Sc, Nl>(tokens: &[Sc::Token])
+    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, Sc::Token>
     where
         Sc: Scanner,
         Nl: NewLine,
@@ -173,8 +173,8 @@ pub fn any<'t, Sc, Nl>(tokens: &[Sc::Token])
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser attempts each of the given tokens in sequence, returning
 /// the success only if each succeeds.
-pub fn seq<'t, Sc, Nl>(tokens: &[Sc::Token])
-    -> impl FnMut(Lexer<'t, Sc, Nl>) -> ParseResult<'t, Sc, Nl, ()>
+pub fn seq<'text, Sc, Nl>(tokens: &[Sc::Token])
+    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, ()>
     where
         Sc: Scanner,
         Nl: NewLine,

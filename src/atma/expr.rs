@@ -179,7 +179,7 @@ impl From<Position> for PositionSelector {
 }
 
 #[derive(Debug)]
-pub struct CellSelection<'name>(Vec<CellSelector<'name>>);
+pub struct CellSelection<'name>(pub Vec<CellSelector<'name>>);
 
 #[derive(Debug)]
 pub enum CellSelector<'name> {
@@ -205,18 +205,6 @@ pub enum CellSelector<'name> {
         high: u32,
     },
     GroupAll(Cow<'name, str>),
-}
-
-#[derive(Debug)]
-pub enum InvalidCellSelector {
-    RangeMismatch {
-        low: Cow<'static, str>,
-        high: Cow<'static, str>,
-    },
-    RangeOrder {
-        low: Cow<'static, str>,
-        high: Cow<'static, str>,
-    },
 }
 
 
