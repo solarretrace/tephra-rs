@@ -118,6 +118,40 @@ pub enum AtmaToken {
     Underscore,
 }
 
+impl std::fmt::Display for AtmaToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use AtmaToken::*;
+        match self {
+            Whitespace        => write!(f, "whitespace"),
+            OpenParen         => write!(f, "'('"),
+            CloseParen        => write!(f, "')'"),
+            OpenBracket       => write!(f, "'['"),
+            CloseBracket      => write!(f, "']'"),
+            OpenBrace         => write!(f, "'{{'"),
+            CloseBrace        => write!(f, "'}}'"),
+            RawStringOpen     => write!(f, "raw string quote"),
+            RawStringClose    => write!(f, "raw string quote"),
+            RawStringText     => write!(f, "raw string text"),
+            StringOpenSingle  => write!(f, "'''"),
+            StringCloseSingle => write!(f, "'''"),
+            StringOpenDouble  => write!(f, "'\"'"),
+            StringCloseDouble => write!(f, "'\"'"),
+            StringText        => write!(f, "string text"),
+            Colon             => write!(f, "':'"),
+            Comma             => write!(f, "','"),
+            Hash              => write!(f, "'#'"),
+            Mult              => write!(f, "'*'"),
+            Plus              => write!(f, "'+'"),
+            Minus             => write!(f, "'-'"),
+            Float             => write!(f, "float"),
+            Decimal           => write!(f, "'.'"),
+            Uint              => write!(f, "integer"),
+            HexDigits         => write!(f, "hex digits"),
+            Ident             => write!(f, "idetifier"),
+            Underscore        => write!(f, "'_'"),
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // AtmaScanner

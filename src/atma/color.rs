@@ -53,8 +53,13 @@ pub fn color<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, Color>
     where Nl: NewLine,
 {
-    if let Ok(succ) = rgb_hex_code(lexer.clone()) {
-        return Ok(succ).map_value(Color::from);
+    match rgb_hex_code
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ)        => return Ok(succ).map_value(Color::from),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
     color_function(lexer).map_value(Color::from)

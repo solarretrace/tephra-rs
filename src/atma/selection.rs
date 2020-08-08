@@ -30,7 +30,6 @@ use crate::combinator::bracket_dynamic;
 use crate::combinator::exact;
 use crate::combinator::intersperse_collect;
 use crate::combinator::left;
-use crate::combinator::maybe;
 use crate::combinator::one;
 use crate::combinator::right;
 use crate::combinator::section;
@@ -288,7 +287,7 @@ fn range<'text, Nl, F, V>(mut parser: F)
             (lexer)?
             .take_value();
 
-        maybe(
+        atomic(
             right(
                 one(AtmaToken::Minus),
                 &mut parser))

@@ -43,6 +43,8 @@ pub fn maybe<'text, Sc, Nl, F, V>(mut parser: F)
 
 /// Returns a parser which converts a failure into an empty success if no
 /// non-filtered tokens are consumed.
+///
+/// This is equivalent to `maybe` if the parser consumes at most a single token.
 pub fn atomic<'text, Sc, Nl, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, Option<V>>
     where

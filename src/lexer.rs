@@ -15,6 +15,7 @@ use crate::span::Pos;
 
 // Standard library imports.
 use std::fmt::Debug;
+use std::fmt::Display;
 use std::sync::Arc;
 
 
@@ -25,7 +26,7 @@ use std::sync::Arc;
 /// a set of parseable tokens.
 pub trait Scanner: Debug + Clone + PartialEq {
     /// The parse token type.
-    type Token: Debug + Clone + PartialEq + Send + Sync + 'static;
+    type Token: Display + Debug + Clone + PartialEq + Send + Sync + 'static;
 
     /// Parses a token from the given string. When the parse success, the
     /// length of the consumed text should be returned. When the parse fails,

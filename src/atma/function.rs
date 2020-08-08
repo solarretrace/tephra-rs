@@ -24,7 +24,6 @@ use crate::combinator::text;
 use crate::combinator::bracket;
 use crate::lexer::Lexer;
 use crate::result::ParseResult;
-use crate::result::ParseError;
 use crate::result::ParseResultExt as _;
 use crate::span::NewLine;
 
@@ -53,18 +52,17 @@ pub fn fn_arg<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, FnArg>
     where Nl: NewLine,
 {
-    
-    let res = (float::<_, f32>)(lexer.clone());
-    if res.is_ok() {
-        return res.map_value(FnArg::F32);
+    match float::<_, f32>
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ)        => return Ok(succ).map_value(FnArg::F32),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
-    match (uint::<_, u32>)(lexer) {
-        Ok(succ) => Ok(succ.map_value(FnArg::U32)),
-        Err(mut fail) => {
-            fail.parse_error = ParseError::unexpected_token(fail.lexer.span());
-            Err(fail)
-        }
-    }
 
+    uint::<_, u32>
+        (lexer)
+        .map_value(FnArg::U32)
 }

@@ -250,7 +250,7 @@ fn minus() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", dbg!(a.minus(&b)).next().unwrap());
+    let actual = format!("{}", a.minus(&b).next().unwrap());
     let expected = "\"\n \" (2:0-3:1, bytes 3-5)".to_owned();
 
     println!("{:?}", actual);

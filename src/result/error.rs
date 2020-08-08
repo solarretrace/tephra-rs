@@ -52,10 +52,12 @@ impl<'text, Nl> ParseError<'text, Nl> {
         }
     }
 
-    pub fn unexpected_token(span: Span<'text, Nl>) -> Self {
+    pub fn unexpected_token<T>(span: Span<'text, Nl>, expected: T) -> Self 
+        where T: std::fmt::Display
+    {
         ParseError {
             description: "unexpected token",
-            span: Some((span, "token not expected".to_owned())),
+            span: Some((span, format!("expected {}", expected))),
             is_lexer_error: true,
         }
     }

@@ -38,6 +38,19 @@ enum TestToken {
     Ws,
 }
 
+impl std::fmt::Display for TestToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use TestToken::*;
+        match self {
+            Aa  => write!(f, "'aa'"),
+            A   => write!(f, "'a'"),
+            B   => write!(f, "'b'"),
+            Def => write!(f, "'def'"),
+            Ws  => write!(f, "whitespace"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Test;
 
