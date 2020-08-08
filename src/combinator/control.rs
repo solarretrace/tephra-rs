@@ -21,6 +21,31 @@ use crate::result::Success;
 ////////////////////////////////////////////////////////////////////////////////
 // Control combinators.
 ////////////////////////////////////////////////////////////////////////////////
+/// A combinator which filters tokens during exectution of the given parser.
+pub fn filter<'text, Sc, Nl, F, P, V>(filter_fn: F, mut parser: P)
+    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>
+    where
+        Sc: Scanner,
+        Nl: NewLine,
+        F: for<'a> Fn(&'a Sc::Token) -> bool + Clone + 'static,
+        P: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+{
+    move |mut lexer| {
+        let old_filter = lexer.take_filter();
+        lexer.set_filter_fn(filter_fn.clone());
+        match (parser)(lexer) {
+            Ok(mut succ)  => {
+                succ.lexer.set_filter(old_filter);
+                Ok(succ)
+            },
+            Err(mut fail) => {
+                fail.lexer.set_filter(old_filter);
+                Err(fail)
+            },
+        }
+    }
+}
+
 /// A combinator which disables all token filters during exectution of the given
 /// parser.
 pub fn exact<'text, Sc, Nl, F, V>(mut parser: F)
@@ -44,7 +69,6 @@ pub fn exact<'text, Sc, Nl, F, V>(mut parser: F)
         }
     }
 }
-
 
 /// A combinator which identifies a delimiter or bracket which starts a new
 /// failure span section.

@@ -19,12 +19,15 @@ use crate::atma::CellRef;
 use crate::atma::CellSelection;
 use crate::atma::CellSelector;
 use crate::atma::Position;
+use crate::atma::PositionOrIndex;
 use crate::atma::PositionSelector;
 use crate::atma::string;
 use crate::atma::uint;
 use crate::combinator::any;
 use crate::combinator::atomic;
+use crate::combinator::maybe;
 use crate::combinator::both;
+use crate::combinator::filter;
 use crate::combinator::bracket;
 use crate::combinator::bracket_dynamic;
 use crate::combinator::exact;
@@ -37,6 +40,7 @@ use crate::combinator::seq;
 use crate::combinator::text;
 use crate::lexer::Lexer;
 use crate::result::Failure;
+use crate::result::Success;
 use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
@@ -44,6 +48,7 @@ use crate::span::NewLine;
 
 // Standard library imports.
 use std::borrow::Cow;
+use std::convert::TryFrom as _;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,21 +59,11 @@ pub fn cell_ref<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, CellRef<'text>>
     where Nl: NewLine,
 {
-    match position
+    match position_or_index
         (lexer.clone())
         .filter_lexer_error()
     {
-        Ok(succ)        => return Ok(succ).map_value(CellRef::Position),
-        Err(Some(fail)) => return Err(fail),
-        Err(None)       => (),
-    }
-
-    // Index must come after position.
-    match index
-        (lexer.clone())
-        .filter_lexer_error()
-    {
-        Ok(succ)        => return Ok(succ).map_value(CellRef::Index),
+        Ok(succ)        => return Ok(succ).map_value(CellRef::from),
         Err(Some(fail)) => return Err(fail),
         Err(None)       => (),
     }
@@ -81,6 +76,52 @@ pub fn cell_ref<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         })
 }
 
+pub fn position_or_index<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
+    -> ParseResult<'text, AtmaScanner, Nl, PositionOrIndex>
+    where Nl: NewLine,
+{
+    let (idx, idx_succ) = exact(
+        right(one(AtmaToken::Colon),
+            uint::<_, u32>))
+        (lexer)?
+        .take_value();
+
+    match exact(
+        both(
+            right(one(AtmaToken::Decimal), uint::<_, u16>),
+            right(one(AtmaToken::Decimal), uint::<_, u16>)))
+        (idx_succ.lexer.clone())
+    {
+        Ok(succ) => match u16::try_from(idx) {
+            Ok(page) => Ok(Success {
+                value: PositionOrIndex::Position(Position {
+                    page, 
+                    line: succ.value.0,
+                    column: succ.value.1,
+                }),
+                lexer: succ.lexer,
+            }),
+            Err(e) => Err(Failure {
+                parse_error: ParseError::new("invalid integer value")
+                    .with_span(format!(
+                        "value ({}) is too large for unsigned 16 bit value",
+                            idx),
+                        idx_succ.lexer.last_span()),
+                lexer: succ.lexer,
+                source: Some(Box::new(e)),
+            }),
+        },
+        Err(fail) => if fail.parse_error.is_lexer_error() {
+            Ok(Success {
+                value: PositionOrIndex::Index(idx),
+                lexer: idx_succ.lexer,
+            })
+        } else {
+            Err(fail)
+        },
+    }
+}
+
 pub fn index<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, u32>
     where Nl: NewLine,
@@ -90,7 +131,6 @@ pub fn index<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
             uint::<_, u32>))
         (lexer)
 }
-
 
 pub fn position<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     -> ParseResult<'text, AtmaScanner, Nl, Position>
@@ -158,53 +198,46 @@ pub fn cell_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         Err(None)       => (),
     }
 
-    match range(position)
+    match range(position_or_index)
         (lexer.clone())
         .filter_lexer_error()
     {
         Ok(succ) => {
             let (val, succ) = succ.take_value();
+            use PositionOrIndex::*;
             match val {
-                (low, Some(high)) if low > high => unimplemented!(),
+                (Index(idx),    None)
+                    => return Ok(succ).map_value(|_| CellSelector::Index(idx)),
 
-                (low, Some(high)) => return Ok(succ)
-                    .map_value(|_| PositionRange { low, high }),
+                (Index(low),    Some(Index(high))) if low > high => {
+                    unimplemented!()
+                },
 
-                (pos, None)       => return Ok(succ)
-                    .map_value(|_| PositionSelector(pos.into())),
+                (Index(low),    Some(Index(high)))
+                    => return Ok(succ).map_value(|_| IndexRange { low, high }),
+
+                (Position(pos), None)
+                    => return Ok(succ).map_value(|_| PositionSelector(pos.into())),
+
+                (Position(low), Some(Position(high))) if low > high => {
+                    unimplemented!()
+                },
+
+                (Position(low), Some(Position(high)))
+                    => return Ok(succ).map_value(|_| PositionRange { low, high }),
+
+                _   => unimplemented!(),
             }
         },
         Err(Some(fail)) => return Err(fail),
         Err(None)       => (),
     }
 
-    // PositionSelector must come after PositionRange.
     match position_selector
         (lexer.clone())
         .filter_lexer_error()
     {
         Ok(succ)        => return Ok(succ).map_value(PositionSelector),
-        Err(Some(fail)) => return Err(fail),
-        Err(None)       => (),
-    }
-
-    // Index must come after PositionRange and PositionSelector.
-    match range(index)
-        (lexer.clone())
-        .filter_lexer_error()
-    {
-        Ok(succ) => {
-            let (val, succ) = succ.take_value();
-            match val {
-                (low, Some(high)) if low > high => unimplemented!(),
-
-                (low, Some(high)) => return Ok(succ)
-                    .map_value(|_| IndexRange { low, high }),
-
-                (idx, None)       => return Ok(succ)
-                    .map_value(|_| Index(idx)),
-            }
-        },
         Err(Some(fail)) => return Err(fail),
         Err(None)       => (),
     }
@@ -289,7 +322,11 @@ fn range<'text, Nl, F, V>(mut parser: F)
 
         atomic(
             right(
-                one(AtmaToken::Minus),
+                exact(
+                    bracket(
+                        maybe(one(AtmaToken::Whitespace)),
+                        one(AtmaToken::Minus),
+                        maybe(one(AtmaToken::Whitespace)))),
                 &mut parser))
             (succ.lexer)
             .map_value(|r| (l, r))

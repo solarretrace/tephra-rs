@@ -86,7 +86,8 @@ pub fn one<'text, Sc, Nl>(token: Sc::Token)
         if lexer.is_empty() {
             // Unexpected End-of-text.
             return Err(Failure {
-                parse_error: ParseError::unexpected_end_of_text(lexer.end_span()),
+                parse_error: ParseError::unexpected_end_of_text(
+                    lexer.end_span()),
                 lexer,
                 source: None,
             });
@@ -97,7 +98,8 @@ pub fn one<'text, Sc, Nl>(token: Sc::Token)
             None => {
                 // println!(" -> unrecognized {}", lexer.last_span());
                 Err(Failure {
-                    parse_error: ParseError::unrecognized_token(lexer.end_span()),
+                    parse_error: ParseError::unrecognized_token(
+                        lexer.end_span()),
                     lexer,
                     source: None,
                 })
@@ -166,12 +168,30 @@ pub fn any<'text, Sc, Nl>(tokens: &[Sc::Token])
         Err(Failure {
             parse_error: ParseError::unexpected_token(
                 lexer.last_span(),
-                format!("{:?}", tokens)),
+                format!("one of {}", DisplayList(&tokens[..]))),
             lexer,
             source: None,
         })
     }
 }
+
+/// Struct for displaying tokens in `any` errors.
+struct DisplayList<'a, T>(&'a[T]);
+
+impl<'a, T> std::fmt::Display for DisplayList<'a, T>
+    where T: std::fmt::Display
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, val) in self.0.iter().enumerate() {
+            write!(f, "{}", val)?;
+            if i < self.0.len() - 1 {
+                write!(f, ", ")?;
+            }
+        }
+        Ok(())
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // seq
@@ -190,7 +210,8 @@ pub fn seq<'text, Sc, Nl>(tokens: &[Sc::Token])
             if lexer.is_empty() {
                 // Unexpected End-of-text.
                 return Err(Failure {
-                    parse_error: ParseError::unexpected_end_of_text(lexer.end_span()),
+                    parse_error: ParseError::unexpected_end_of_text(
+                        lexer.end_span()),
                     lexer,
                     source: None,
                 });
@@ -199,7 +220,8 @@ pub fn seq<'text, Sc, Nl>(tokens: &[Sc::Token])
             match lexer.next() {
                 // Lexer error.
                 None => return Err(Failure {
-                    parse_error: ParseError::unrecognized_token(lexer.last_span()),
+                    parse_error: ParseError::unrecognized_token(
+                        lexer.last_span()),
                     lexer,
                     source: None,
                 }),

@@ -155,12 +155,28 @@ pub enum CellRef<'name> {
     },
 }
 
+impl<'name> From<PositionOrIndex> for CellRef<'name> {
+    fn from(poi: PositionOrIndex) -> Self {
+        match poi {
+            PositionOrIndex::Position(pos) => CellRef::Position(pos),
+            PositionOrIndex::Index(idx)    => CellRef::Index(idx),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Position {
     pub page: u16,
     pub line: u16,
     pub column: u16,
 }
+
+#[derive(Debug, PartialEq)]
+pub enum PositionOrIndex {
+    Index(u32),
+    Position(Position),
+}
+
 #[derive(Debug, PartialEq)]
 pub struct PositionSelector {
     pub page: Option<u16>,

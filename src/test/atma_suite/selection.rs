@@ -24,8 +24,7 @@ fn cell_ref_index() {
     let text = ":0";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
-    lexer.set_filter_fn(|tok| *tok == AtmaToken::Whitespace);
-
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_ref
         (lexer)
@@ -80,7 +79,7 @@ fn cell_ref_position() {
     let text = ":0.0.0";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
-    lexer.set_filter_fn(|tok| *tok == AtmaToken::Whitespace);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_ref
         (lexer)
@@ -129,14 +128,13 @@ fn cell_ref_position_out_of_range() {
     assert_eq!(actual, expected);
 }
 
-
 /// Tests `cell_ref` with an name value.
 #[test]
 fn cell_ref_name() {
     let text = "'abcd'";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
-    lexer.set_filter_fn(|tok| *tok == AtmaToken::Whitespace);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_ref
         (lexer)
@@ -154,14 +152,13 @@ fn cell_ref_name() {
     assert_eq!(actual, expected);
 }
 
-
 /// Tests `cell_ref` with an group value.
 #[test]
 fn cell_ref_group() {
     let text = "'abcd':0";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf);
-    lexer.set_filter_fn(|tok| *tok == AtmaToken::Whitespace);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_ref
         (lexer)
@@ -210,3 +207,145 @@ fn cell_ref_group_out_of_range() {
     assert_eq!(actual, expected);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// CellSelector
+////////////////////////////////////////////////////////////////////////////////
+
+/// Tests `cell_selector` with an All value.
+#[test]
+fn cell_selector_all() {
+    let text = ":*";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = cell_selector
+        (lexer)
+        .unwrap()
+        .value_span_display();
+
+    let expected = (
+        CellSelector::All,
+        "\":*\" (0:0-0:2, bytes 0-2)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `cell_selector` with an Index value.
+#[test]
+fn cell_selector_index() {
+    let text = ":0xFFFFFFFF";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = cell_selector
+        (lexer)
+        .unwrap()
+        .value_span_display();
+
+    let expected = (
+        CellSelector::Index(0xFFFFFFFF),
+        "\":0xFFFFFFFF\" (0:0-0:11, bytes 0-11)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `cell_selector` with an Index value out of range.
+#[test]
+fn cell_selector_index_out_of_range() {
+    let text = ":0x1_0000_0000";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    // for tok in &mut lexer {
+    //     println!("{:?}", tok);
+    // }
+
+    let failure = cell_selector
+        (lexer)
+        .err()
+        .unwrap();
+    println!("{}", failure);
+
+    let actual = failure.error_span_display();
+
+    let expected = (
+        "invalid integer value",
+        "\":0x1_0000_0000\" (0:0-0:14, bytes 0-14)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `cell_selector` with an IndexRange value.
+#[test]
+fn cell_selector_index_range() {
+    let text = ":0xA00F - :0xFFFF";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    // for tok in &mut lexer {
+    //     println!("{:?}", tok);
+    // }
+
+    let actual = cell_selector
+        (lexer)
+        .unwrap()
+        .value_span_display();
+
+    let expected = (
+        CellSelector::IndexRange { low: 0xA00F, high: 0xFFFF },
+        "\":0xA00F - :0xFFFF\" (0:0-0:17, bytes 0-17)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `cell_selector` with an IndexRange value out of range.
+#[test]
+fn cell_selector_index_range_out_of_range() {
+    let text = ":0-:0x1_0000_0000";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    // for tok in &mut lexer {
+    //     println!("{:?}", tok);
+    // }
+
+    let failure = cell_selector
+        (lexer)
+        .err()
+        .unwrap();
+    println!("{}", failure);
+
+    let actual = failure.error_span_display();
+
+    let expected = (
+        "invalid integer value",
+        "\":0-:0x1_0000_0000\" (0:0-0:17, bytes 0-17)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
