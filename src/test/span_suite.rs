@@ -184,7 +184,7 @@ fn enclose() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", a.enclose(&b));
+    let actual = format!("{}", a.enclose(b));
     let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
 
     println!("{:?}", actual);
@@ -206,7 +206,7 @@ fn union() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", a.union(&b).next().unwrap());
+    let actual = format!("{}", a.union(b).next().unwrap());
     let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
 
     println!("{:?}", actual);
@@ -228,7 +228,7 @@ fn intersect() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", a.intersect(&b).unwrap());
+    let actual = format!("{}", a.intersect(b).unwrap());
     let expected = "\"\nabcd\" (3:1-4:4, bytes 5-10)".to_owned();
 
     println!("{:?}", actual);
@@ -250,7 +250,7 @@ fn minus() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", a.minus(&b).next().unwrap());
+    let actual = format!("{}", a.minus(b).next().unwrap());
     let expected = "\"\n \" (2:0-3:1, bytes 3-5)".to_owned();
 
     println!("{:?}", actual);

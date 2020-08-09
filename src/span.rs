@@ -165,11 +165,6 @@ impl<'text, Nl> Span<'text, Nl> {
         self.byte.start == 0 && self.byte.end == self.source.len()
     }
 
-    /// Returns the span if it is non-empty, or None otherwise.
-    pub fn into_nonempty(self) -> Option<Self> {
-        if self.is_empty() { None } else { Some(self) }
-    }
-
     /// Returns the spanned text.
     pub fn text(&self) -> &'text str {
         &self.source[self.byte.start..self.byte.end]
@@ -206,7 +201,10 @@ impl<'text, Nl> Span<'text, Nl> {
     /// Returns true if the given spans overlap.
     ///
     /// This will return true if the boundary points of the spans overlap.
-    pub fn intersects(&self, other: &Self) -> bool {
+    pub fn intersects<S>(&self, other: S) -> bool 
+        where S: Into<Self>,
+    {
+        let other = other.into();
         self.contains(&other.start()) ||
         self.contains(&other.end()) ||
         other.contains(&self.start()) ||
@@ -215,12 +213,18 @@ impl<'text, Nl> Span<'text, Nl> {
 
     /// Returns true if the given spans share a boundary point without
     /// containing each other.
-    pub fn adjacent(&self, other: &Self) -> bool {
+    pub fn adjacent<S>(&self, other: S) -> bool 
+        where S: Into<Self>,
+    {
+        let other = other.into();
         self.start() == other.end() || self.end() == other.start()
     }
 
     /// Returns the smallest span covering the given spans.
-    pub fn enclose(&self, other: &Self) -> Self {
+    pub fn enclose<S>(&self, other: S) -> Self 
+        where S: Into<Self>,
+    {
+        let other = other.into();
         let a_start = self.start();
         let b_start = other.start();
         let a_end = self.end();
@@ -231,16 +235,22 @@ impl<'text, Nl> Span<'text, Nl> {
     }
 
     /// Returns the smallest set of spans covering the given spans.
-    pub fn union(&self, other: &Self) -> Few<Self> {
-        if self.intersects(other) {
+    pub fn union<S>(&self, other: S) -> Few<Self> 
+        where S: Into<Self>,
+    {
+        let other = other.into();
+        if self.intersects(other.clone()) {
             Few::One(self.enclose(other))
         } else {
-            Few::Two(self.clone(), other.clone())
+            Few::Two(self.clone(), other)
         }
     }
 
     /// Returns the overlapping portion the spans.
-    pub fn intersect(&self, other: &Self) -> Option<Self> {
+    pub fn intersect<S>(&self, other: S) -> Option<Self>
+        where S: Into<Self>,
+    {
+        let other = other.into();
         let a_start = self.start();
         let b_start = other.start();
         let a_end = self.end();
@@ -267,7 +277,10 @@ impl<'text, Nl> Span<'text, Nl> {
     ///
     /// Note that if an endpoint becomes an empty span, it is omitted. If the
     /// right span is empty, it effectively splits the left span at that point.
-    pub fn minus(&self, other: &Self) -> Few<Self> {
+    pub fn minus<S>(&self, other: S) -> Few<Self> 
+        where S: Into<Self>,
+    {
+        let other = other.into();
         let a_0 = self.start();
         let b_0 = other.start();
         let a_1 = self.end();
@@ -356,7 +369,7 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
     }
 
     /// Trims the span on the left and right, removing any whitespace.
-    pub fn trim(&self) -> Self{
+    pub fn trim(&self) -> Self {
         let text = self.text();
         if text.is_empty() { return self.clone(); }
         
@@ -418,6 +431,16 @@ impl<'text, Nl> std::fmt::Display for Span<'text, Nl> {
     }
 }
 
+impl<'text, Nl> From<&'text OwnedSpan<Nl>> for Span<'text, Nl> {
+    fn from(owned: &'text OwnedSpan<Nl>) -> Self {
+        Span {
+            newline: owned.newline,
+            source: &*owned.source,
+            byte: owned.byte,
+            page: owned.page,
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // ByteSpan
@@ -586,6 +609,150 @@ impl std::fmt::Display for Page {
     }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// OwnedSpan
+////////////////////////////////////////////////////////////////////////////////
+/// A specific section of the source text.
+// NOTE: Span methods must maintain an invariant: span.start() < span.end().
+#[derive(Debug, Clone, Hash)]
+pub struct OwnedSpan<Nl> {
+    /// The newline type marker.
+    newline: std::marker::PhantomData<Nl>,
+    /// The source text.
+    source: Box<str>,
+    /// The byte range of the captured section within the source.
+    full_byte: ByteSpan,
+    /// The page range of the captured section within the source.
+    full_page: PageSpan,
+    /// The byte range of the spanned section within the source.
+    byte: ByteSpan,
+    /// The page range of the spanned section within the source.
+    page: PageSpan,
+}
+
+
+impl<Nl> OwnedSpan<Nl> {
+
+    /// Returns the spanned text.
+    pub fn text(&self) -> &str {
+        &self.source[self.byte.start..self.byte.end]
+    }
+
+    /// Returns the start position of the span.
+    pub fn start(&self) -> Pos {
+        Pos {
+            byte: self.byte.start,
+            page: self.page.start,
+        }
+    }
+
+    /// Returns the end position of the span.
+    pub fn end(&self) -> Pos {
+        Pos {
+            byte: self.byte.end,
+            page: self.page.end,
+        }
+    }
+
+    /// Returns the length of the span in bytes.
+    pub fn len(&self) -> usize {
+        self.byte.len()
+    }
+
+    /// Returns true if the given position is contained within the span.
+    ///
+    /// This will return true if the position is a boundary point of the span.
+    pub fn contains(&self, pos: &Pos) -> bool {
+        *pos >= self.start()  && *pos <= self.end()
+    }
+
+    /// Returns true if the given spans overlap.
+    ///
+    /// This will return true if the boundary points of the spans overlap.
+    pub fn intersects(&self, other: &Self) -> bool {
+        self.contains(&other.start()) ||
+        self.contains(&other.end()) ||
+        other.contains(&self.start()) ||
+        other.contains(&self.end())
+    }
+
+    /// Returns true if the given spans share a boundary point without
+    /// containing each other.
+    pub fn adjacent(&self, other: &Self) -> bool {
+        self.start() == other.end() || self.end() == other.start()
+    }
+
+    /// Returns the overlapping portion the spans.
+    pub fn intersect<'text, S>(&'text self, other: S) -> Option<Span<'text, Nl>> 
+        where S: Into<Span<'text, Nl>>,
+    {
+        let other = other.into();
+        let a_start = self.start();
+        let b_start = other.start();
+        let a_end = self.end();
+        let b_end = other.end();
+
+        let start = match (self.contains(&b_start), other.contains(&a_start)) {
+            (true,  true)  => a_start, // Starts coincide.
+            (true,  false) => b_start,
+            (false, true)  => a_start,
+            (false, false) => return None,
+        };
+
+        let end = match (self.contains(&b_end), other.contains(&a_end)) {
+            (true,  true)  => a_end, // Ends coincide.
+            (true,  false) => b_end,
+            (false, true)  => a_end,
+            (false, false) => return None,
+        };
+
+        Some(Span::new_enclosing(start, end, other.source))
+    }
+
+    /// Returns the result of removing a portion of the span.
+    ///
+    /// Note that if an endpoint becomes an empty span, it is omitted. If the
+    /// right span is empty, it effectively splits the left span at that point.
+    pub fn minus<'text, S>(&'text self, other: S) -> Few<Span<'text, Nl>> 
+        where S: Into<Span<'text, Nl>>,
+    {
+        let other = other.into();
+        let a_0 = self.start();
+        let b_0 = other.start();
+        let a_1 = self.end();
+        let b_1 = other.end();
+
+        let (l, r) = match (a_0 < b_0, a_1 < b_1) {
+            (true, true) => (Some((a_0, b_0)), Some((b_1, a_1))),
+            (true, _)    => (Some((a_0, b_0)), None),
+            (_,    true) => (None,             Some((b_1, a_1))),
+            _            => (None,             None),
+        };
+
+        let l = l.map(|(a, b)| Span::new_enclosing(a, b, other.source));
+        let r = r.map(|(a, b)| Span::new_enclosing(a, b, other.source));
+        Few::from((l, r))
+    }
+}
+
+impl<'text, Nl> From<Span<'text, Nl>> for OwnedSpan<Nl>
+    where Nl: NewLine,
+{
+    fn from(span: Span<'text, Nl>) -> Self {
+        let byte = span.byte;
+        let page = span.page;
+        let span = span.widen_to_line();
+        OwnedSpan {
+            newline: span.newline,
+            source: span.text().to_owned().into_boxed_str(),
+            full_byte: span.byte,
+            full_page: span.page,
+            byte,
+            page,
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // NewLine

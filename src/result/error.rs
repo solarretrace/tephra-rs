@@ -128,7 +128,6 @@ impl<'text, Nl> std::fmt::Display for ParseError<'text, Nl>
             // TODO: Clean up message.
             write!(f, "{} NO SPAN", self.description)
         }
-
     }
 }
 

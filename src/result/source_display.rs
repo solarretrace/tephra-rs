@@ -271,6 +271,7 @@ pub enum MessageType {
 }
 
 impl MessageType {
+    /// Returns the color associated with the message type.
     pub fn color(&self) -> Color {
         use MessageType::*;
         match self {
@@ -279,6 +280,18 @@ impl MessageType {
             Warning => Color::BrightYellow,
             Note    => Color::BrightBlue,
             Help    => Color::BrightGreen,
+        }
+    }
+
+    /// Returns the underline char associated with the message type.
+    pub fn underline(&self) -> char {
+        use MessageType::*;
+        match self {
+            Info    => '-',
+            Error   => '^',
+            Warning => '^',
+            Note    => '-',
+            Help    => '~',
         }
     }
 }
@@ -444,6 +457,7 @@ impl<'text, 'msg, Nl> Highlight<'text, 'msg, Nl> {
                 (Some(fst), Some(snd)) => unimplemented!(),
                 (None,      None)      => writeln!(f, "")?,
             }
+
         }  else if self.span.start().page.line == line {
             for _ in 0..self.span.start().page.column {
                 write!(f, "{}", "_".color(self.message_type.color()))?;
@@ -454,6 +468,7 @@ impl<'text, 'msg, Nl> Highlight<'text, 'msg, Nl> {
                     .color(self.message_type.color()))?,
                 None      => writeln!(f, "")?,
             }
+            
         } else if self.span.end().page.line == line {
             for _ in 0..(self.span.end().page.column - 1) {
                 write!(f, "{}", "_".color(self.message_type.color()))?;
