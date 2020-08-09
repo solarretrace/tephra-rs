@@ -9,14 +9,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
-mod display;
+// mod display;
+mod source_display;
 mod error;
 mod ext;
 mod failure;
 mod success;
 
 // Exports.
-pub use self::display::*;
+pub use self::source_display::*;
 pub use self::error::*;
 pub use self::ext::*;
 pub use self::failure::*;

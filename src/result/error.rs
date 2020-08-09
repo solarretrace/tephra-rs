@@ -14,8 +14,8 @@
 // Local imports.
 use crate::span::Span;
 use crate::span::NewLine;
+use crate::result::SourceDisplay;
 use crate::result::SourceSpan;
-use crate::result::Highlight;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,11 +119,11 @@ impl<'text, Nl> std::fmt::Display for ParseError<'text, Nl>
         if let Some((span, msg)) = &self.span {
             let span = *span;
             let msg = &*msg;
-            let source_name = "[SOURCE TEXT]".to_string();
             write!(f, "{}", 
-                SourceSpan::new(span, &self.description)
-                    .with_source_name(&source_name)
-                    .with_highlight(Highlight::new(span, msg)))
+                SourceDisplay::new(self.description)
+                    .with_error_type()
+                    .with_source_span(
+                        SourceSpan::new_error_highlight(span, msg)))
         } else {
             // TODO: Clean up message.
             write!(f, "{} NO SPAN", self.description)

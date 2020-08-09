@@ -206,27 +206,48 @@ pub fn cell_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
             let (val, succ) = succ.take_value();
             use PositionOrIndex::*;
             match val {
-                (Index(idx),    None)
-                    => return Ok(succ).map_value(|_| CellSelector::Index(idx)),
+                (Index(idx),    None) => return Ok(succ)
+                    .map_value(|_| CellSelector::Index(idx)),
 
                 (Index(low),    Some(Index(high))) if low > high => {
-                    unimplemented!()
+                    return Err(Failure {
+                        parse_error: ParseError::new("invalid index range")
+                            .with_span(
+                                "range bounds are in the wrong order", 
+                                succ.lexer.span()),
+                        lexer: succ.lexer,
+                        source: None,
+                    })
                 },
 
-                (Index(low),    Some(Index(high)))
-                    => return Ok(succ).map_value(|_| IndexRange { low, high }),
+                (Index(low),    Some(Index(high))) => return Ok(succ)
+                    .map_value(|_| IndexRange { low, high }),
 
-                (Position(pos), None)
-                    => return Ok(succ).map_value(|_| PositionSelector(pos.into())),
+                (Position(pos), None) => return Ok(succ)
+                    .map_value(|_| PositionSelector(pos.into())),
 
                 (Position(low), Some(Position(high))) if low > high => {
-                    unimplemented!()
+                    return Err(Failure {
+                        parse_error: ParseError::new("invalid position range")
+                            .with_span(
+                                "range bounds are in the wrong order", 
+                                succ.lexer.span()),
+                        lexer: succ.lexer,
+                        source: None,
+                    })
                 },
 
-                (Position(low), Some(Position(high)))
-                    => return Ok(succ).map_value(|_| PositionRange { low, high }),
+                (Position(low), Some(Position(high))) => return Ok(succ)
+                    .map_value(|_| PositionRange { low, high }),
 
-                _   => unimplemented!(),
+                _ => return Err(Failure {
+                    parse_error: ParseError::new("invalid range")
+                        .with_span(
+                            "range bounds have incompatable types", 
+                            succ.lexer.span()),
+                    lexer: succ.lexer,
+                    source: None,
+                }),
             }
         },
         Err(Some(fail)) => return Err(fail),
@@ -258,14 +279,40 @@ pub fn cell_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         (lexer.clone())?
         .take_value();
     match val {
-        ((l, Some(low)), Some((r, Some(high)))) if low > high => unimplemented!(),
-        ((l, Some(low)), Some((r, Some(high)))) if l != r => unimplemented!(),
+        ((l, Some(low)), Some((r, Some(high)))) if low > high => {
+            return Err(Failure {
+                parse_error: ParseError::new("invalid group range")
+                    .with_span(
+                        "range bounds are in the wrong order", 
+                        succ.lexer.span()),
+                lexer: succ.lexer,
+                source: None,
+            })
+        },
+
+        ((l, Some(low)), Some((r, Some(high)))) if l != r => {
+            return Err(Failure {
+                parse_error: ParseError::new("invalid group range")
+                    .with_span(
+                        "range bounds are in different groups", 
+                        succ.lexer.span()),
+                lexer: succ.lexer,
+                source: None,
+            })
+        },
         
         ((l, Some(low)), Some((r, Some(high)))) => Ok(succ)
             .map_value(|_| GroupRange { group: l, low, high }),
 
-        ((_, None),      Some((_, _)))    => unimplemented!(),
-        ((_, _),         Some((_, None))) => unimplemented!(),
+        ((_, None),      Some((_, _)))    |
+        ((_, _),         Some((_, None))) => return Err(Failure {
+            parse_error: ParseError::new("invalid range")
+                .with_span(
+                    "range bounds have incompatable types", 
+                    succ.lexer.span()),
+            lexer: succ.lexer,
+            source: None,
+        }),
         
         ((l, Some(idx)), None) => Ok(succ)
             .map_value(|_| Group { group: l, idx }),

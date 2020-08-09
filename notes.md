@@ -124,6 +124,22 @@ Error constructing value
 
 
 
+## Source span display
+
+### Description
+### Source Span
+### Highlight Span
+### Note / Help
+### Color
+### Gutter (Line numbers)
+### Riser
+### Source line
+### highlight line
+### highlight style (Hat, Dash)
+### Span message start
+### Span message end
+
+
 a
 
     error[E0308]: mismatched types
