@@ -44,7 +44,7 @@ use crate::result::Success;
 use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
-use crate::span::NewLine;
+use crate::position::NewLine;
 
 // Standard library imports.
 use std::borrow::Cow;

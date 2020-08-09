@@ -25,7 +25,7 @@ use crate::combinator::bracket;
 use crate::lexer::Lexer;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
-use crate::span::NewLine;
+use crate::position::NewLine;
 
 
 ////////////////////////////////////////////////////////////////////////////////

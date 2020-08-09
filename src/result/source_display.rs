@@ -14,7 +14,7 @@
 // Local imports.
 use crate::span::Span;
 use crate::span::SplitLines;
-use crate::span::NewLine;
+use crate::position::NewLine;
 
 // External library imports.
 use colored::Color;

@@ -11,9 +11,9 @@
 // Local imports.
 use crate::lexer::Scanner;
 use crate::lexer::Lexer;
-use crate::span::Pos;
-use crate::span::Lf;
-use crate::span::NewLine;
+use crate::position::Pos;
+use crate::position::Lf;
+use crate::position::NewLine;
 
 
 ////////////////////////////////////////////////////////////////////////////////

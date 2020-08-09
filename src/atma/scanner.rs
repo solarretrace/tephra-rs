@@ -15,8 +15,8 @@
 // Local imports.
 use crate::lexer::Scanner;
 use crate::lexer::Lexer;
-use crate::span::Pos;
-use crate::span::NewLine;
+use crate::position::Pos;
+use crate::position::NewLine;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::ParseError;

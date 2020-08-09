@@ -11,7 +11,7 @@
 // Local imports.
 use crate::atma::*;
 use crate::lexer::Lexer;
-use crate::span::Lf;
+use crate::position::Lf;
 
 
 ////////////////////////////////////////////////////////////////////////////////

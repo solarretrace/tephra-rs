@@ -10,8 +10,8 @@
 
 // Local imports.
 use crate::span::Span;
-use crate::span::Lf;
-use crate::span::Pos;
+use crate::position::Lf;
+use crate::position::Pos;
 
 
 ////////////////////////////////////////////////////////////////////////////////

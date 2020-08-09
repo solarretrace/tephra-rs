@@ -32,7 +32,7 @@ use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::Success;
-use crate::span::NewLine;
+use crate::position::NewLine;
 use crate::span::Span;
 
 // External library imports.

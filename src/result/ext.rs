@@ -10,7 +10,7 @@
 
 // Local imports.
 use crate::lexer::Scanner;
-use crate::span::NewLine;
+use crate::position::NewLine;
 use crate::result::Success;
 use crate::result::Failure;
 use crate::result::FailureOwned;

@@ -10,8 +10,8 @@
 
 // Local imports.
 use crate::span::Span;
-use crate::span::NewLine;
-use crate::span::Pos;
+use crate::position::NewLine;
+use crate::position::Pos;
 
 // Standard library imports.
 use std::fmt::Debug;

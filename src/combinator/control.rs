@@ -12,7 +12,7 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::span::NewLine;
+use crate::position::NewLine;
 use crate::span::Span;
 use crate::result::ParseResult;
 use crate::result::Success;

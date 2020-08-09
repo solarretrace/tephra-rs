@@ -13,7 +13,7 @@
 
 // Local imports.
 use crate::span::Span;
-use crate::span::NewLine;
+use crate::position::NewLine;
 use crate::result::SourceDisplay;
 use crate::result::SourceSpan;
 

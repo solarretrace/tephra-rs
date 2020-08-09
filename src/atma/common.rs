@@ -16,7 +16,7 @@
 use crate::atma::AtmaToken;
 use crate::atma::AtmaScanner;
 use crate::lexer::Lexer;
-use crate::span::NewLine;
+use crate::position::NewLine;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::ParseError;
