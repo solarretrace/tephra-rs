@@ -228,9 +228,9 @@ pub enum CellSelector<'name> {
 // Function calls
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
-pub struct FnCall<'text, Nl> {
+pub struct FnCall<'text, Cm> {
     pub name: &'text str,
-    pub args: Vec<(FnArg, Span<'text, Nl>)>,
+    pub args: Vec<(FnArg, Span<'text, Cm>)>,
 }
 
 #[derive(Debug)]

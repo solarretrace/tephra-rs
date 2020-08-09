@@ -16,7 +16,7 @@
 use crate::lexer::Scanner;
 use crate::lexer::Lexer;
 use crate::position::Pos;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::ParseError;
@@ -367,9 +367,9 @@ impl AtmaScanner {
     }
 
     /// Parses a RawStringText token.
-    fn parse_raw_string_text<Nl>(&mut self, text: &str)
+    fn parse_raw_string_text<Cm>(&mut self, text: &str)
         -> Option<(AtmaToken, Pos)>
-        where Nl: NewLine,
+        where Cm: ColumnMetrics,
     {
         let mut pos = Pos::ZERO;
         let mut chars = text.chars();
@@ -392,18 +392,18 @@ impl AtmaScanner {
     }
 
     /// Parses a StringText token.
-    fn parse_string_text<Nl>(&mut self, text: &str, open: AtmaToken)
+    fn parse_string_text<Cm>(&mut self, text: &str, open: AtmaToken)
         -> Option<(AtmaToken, Pos)>
-        where Nl: NewLine,
+        where Cm: ColumnMetrics,
     {
         let mut pos = Pos::ZERO;
         let mut chars = text.chars();
         
         loop {
             // Skip past newline chars.
-            if chars.as_str().starts_with(Nl::STR) {
-                pos += Pos::new(Nl::len(), 1, 0);
-                let _ = chars.nth(Nl::len() - 1);
+            if chars.as_str().starts_with(Cm::STR) {
+                pos += Pos::new(Cm::len(), 1, 0);
+                let _ = chars.nth(Cm::len() - 1);
                 continue;
             }
 
@@ -441,14 +441,14 @@ impl AtmaScanner {
     }
 
     /// Parses a Whitespace token.
-    fn parse_whitespace<Nl>(&mut self, text: &str)
+    fn parse_whitespace<Cm>(&mut self, text: &str)
         -> Option<(AtmaToken, Pos)>
-        where Nl: NewLine,
+        where Cm: ColumnMetrics,
     {
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
-            let span = Pos::new_from_string::<_, Nl>(&text[0..substr_len]);
+            let span = Pos::new_from_string::<_, Cm>(&text[0..substr_len]);
             Some((AtmaToken::Whitespace, span))
         } else {
             None
@@ -459,9 +459,9 @@ impl AtmaScanner {
 impl Scanner for AtmaScanner {
     type Token = AtmaToken;
 
-    fn scan<'text, Nl>(&mut self, text: &'text str)
+    fn scan<'text, Cm>(&mut self, text: &'text str)
         -> Option<(Self::Token, Pos)>
-        where Nl: NewLine,
+        where Cm: ColumnMetrics,
     {
         use AtmaToken::*;
         match self.open.take() {
@@ -481,14 +481,14 @@ impl Scanner for AtmaScanner {
                     self.depth = 0;
                     return Some(parse);
                 }
-                return_if_some!(self.parse_raw_string_text::<Nl>(text));
+                return_if_some!(self.parse_raw_string_text::<Cm>(text));
                 None
             },
 
             Some(StringOpenSingle) => {
                 return_if_some!(self.parse_char(text, '\'', StringCloseSingle));
                 if let Some(parse) = self
-                    .parse_string_text::<Nl>(text, StringOpenSingle)
+                    .parse_string_text::<Cm>(text, StringOpenSingle)
                 {
                     self.open = Some(StringOpenSingle);
                     return Some(parse);
@@ -498,7 +498,7 @@ impl Scanner for AtmaScanner {
             Some(StringOpenDouble) => {
                 return_if_some!(self.parse_char(text, '\"', StringCloseDouble));
                 if let Some(parse) = self
-                    .parse_string_text::<Nl>(text, StringOpenDouble)
+                    .parse_string_text::<Cm>(text, StringOpenDouble)
                 {
                     self.open = Some(StringOpenDouble);
                     return Some(parse);
@@ -508,11 +508,11 @@ impl Scanner for AtmaScanner {
 
             Some(Hash) => {
                 return_if_some!(self.parse_hex_digits(text));
-                self.scan::<Nl>(text)
+                self.scan::<Cm>(text)
             },
 
             None => {
-                return_if_some!(self.parse_whitespace::<Nl>(text));
+                return_if_some!(self.parse_whitespace::<Cm>(text));
                 return_if_some!(self.parse_char(text, '(', OpenParen));
                 return_if_some!(self.parse_char(text, ')', CloseParen));
                 return_if_some!(self.parse_char(text, '[', OpenBracket));

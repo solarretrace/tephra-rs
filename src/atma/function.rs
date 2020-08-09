@@ -25,16 +25,16 @@ use crate::combinator::bracket;
 use crate::lexer::Lexer;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // FnCall
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn fn_call<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, FnCall<'text, Nl>>
-    where Nl: NewLine,
+pub fn fn_call<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, FnCall<'text, Cm>>
+    where Cm: ColumnMetrics,
 {
     both(
         text(one(AtmaToken::Ident)),
@@ -48,9 +48,9 @@ pub fn fn_call<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
         .map_value(|(name, args)| FnCall { name, args })
 }
 
-pub fn fn_arg<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, FnArg>
-    where Nl: NewLine,
+pub fn fn_arg<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, FnArg>
+    where Cm: ColumnMetrics,
 {
     match float::<_, f32>
         (lexer.clone())

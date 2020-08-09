@@ -13,7 +13,7 @@
 
 // Local imports.
 use crate::span::Span;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 use crate::result::SourceDisplay;
 use crate::result::SourceSpan;
 
@@ -22,13 +22,13 @@ use crate::result::SourceSpan;
 // ParseError
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
-pub struct ParseError<'text, Nl> {
+pub struct ParseError<'text, Cm> {
     description: &'static str,
-    span: Option<(Span<'text, Nl>, String)>,
+    span: Option<(Span<'text, Cm>, String)>,
     is_lexer_error: bool,
 }
 
-impl<'text, Nl> ParseError<'text, Nl> {
+impl<'text, Cm> ParseError<'text, Cm> {
     pub fn new(description: &'static str) -> Self {
         ParseError {
             description,
@@ -37,14 +37,14 @@ impl<'text, Nl> ParseError<'text, Nl> {
         }
     }
 
-    pub fn with_span<S>(mut self, message: S, span: Span<'text, Nl>) -> Self 
+    pub fn with_span<S>(mut self, message: S, span: Span<'text, Cm>) -> Self 
         where S: Into<String>,
     {
         self.span = Some((span, message.into()));
         self
     }
 
-    pub fn unrecognized_token(span: Span<'text, Nl>) -> Self {
+    pub fn unrecognized_token(span: Span<'text, Cm>) -> Self {
         ParseError {
             description: "unrecognized token",
             span: Some((span, "symbol not recognized".to_owned())),
@@ -52,7 +52,7 @@ impl<'text, Nl> ParseError<'text, Nl> {
         }
     }
 
-    pub fn unexpected_token<T>(span: Span<'text, Nl>, expected: T) -> Self 
+    pub fn unexpected_token<T>(span: Span<'text, Cm>, expected: T) -> Self 
         where T: std::fmt::Display
     {
         ParseError {
@@ -62,7 +62,7 @@ impl<'text, Nl> ParseError<'text, Nl> {
         }
     }
 
-    pub fn unexpected_end_of_text(span: Span<'text, Nl>) -> Self {
+    pub fn unexpected_end_of_text(span: Span<'text, Cm>) -> Self {
         ParseError {
             description: "unexpected end of text",
             span: Some((span, "text ends here".to_owned())),
@@ -70,7 +70,7 @@ impl<'text, Nl> ParseError<'text, Nl> {
         }
     }
 
-    pub fn unexpected_text(span: Span<'text, Nl>) -> Self {
+    pub fn unexpected_text(span: Span<'text, Cm>) -> Self {
         ParseError {
             description: "expected end of text",
             span: Some((span, "text should end here".to_owned())),
@@ -87,8 +87,8 @@ impl<'text, Nl> ParseError<'text, Nl> {
     }
 }
 
-impl<'text, Nl> ParseError<'text, Nl> 
-    where Nl: NewLine,
+impl<'text, Cm> ParseError<'text, Cm> 
+    where Cm: ColumnMetrics,
 {
     pub fn into_owned(self) -> ParseErrorOwned 
     {
@@ -100,8 +100,8 @@ impl<'text, Nl> ParseError<'text, Nl>
 }
 
 
-impl<'text, Nl> Default for ParseError<'text, Nl>
-    where Nl: NewLine,
+impl<'text, Cm> Default for ParseError<'text, Cm>
+    where Cm: ColumnMetrics,
 {
     fn default() -> Self {
         ParseError {
@@ -112,8 +112,8 @@ impl<'text, Nl> Default for ParseError<'text, Nl>
     }
 }
 
-impl<'text, Nl> std::fmt::Display for ParseError<'text, Nl>
-    where Nl: NewLine,
+impl<'text, Cm> std::fmt::Display for ParseError<'text, Cm>
+    where Cm: ColumnMetrics,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some((span, msg)) = &self.span {
@@ -131,7 +131,7 @@ impl<'text, Nl> std::fmt::Display for ParseError<'text, Nl>
     }
 }
 
-impl<'text, Nl> From<&'static str> for ParseError<'text, Nl> {
+impl<'text, Cm> From<&'static str> for ParseError<'text, Cm> {
     fn from(description: &'static str) -> Self {
         ParseError {
             description,

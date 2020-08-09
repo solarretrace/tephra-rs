@@ -10,7 +10,7 @@
 
 // Local imports.
 use crate::span::Span;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 use crate::position::Pos;
 
 // Standard library imports.
@@ -32,9 +32,9 @@ pub trait Scanner: Debug + Clone + PartialEq {
     /// length of the consumed text should be returned. When the parse fails,
     /// the length of the text to skip before resuming should be returned. If no
     /// further progress is possible, 0 should be returned instead.
-    fn scan<'text, Nl>(&mut self, text: &'text str)
+    fn scan<'text, Cm>(&mut self, text: &'text str)
         -> Option<(Self::Token, Pos)>
-        where Nl: NewLine;
+        where Cm: ColumnMetrics;
 }
 
 
@@ -43,10 +43,10 @@ pub trait Scanner: Debug + Clone + PartialEq {
 ////////////////////////////////////////////////////////////////////////////////
 /// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Clone)]
-pub struct Lexer<'text, Sc, Nl> where Sc: Scanner {
+pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
     source: &'text str,
     scanner: Sc,
-    newline: Nl,
+    newline: Cm,
     filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
     full: Pos,
     start: Pos,
@@ -57,13 +57,13 @@ pub struct Lexer<'text, Sc, Nl> where Sc: Scanner {
     // TODO: Push/lookahead buffer?
 }
 
-impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
+impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     where
         Sc: Scanner,
-        Nl: NewLine,
+        Cm: ColumnMetrics,
 {
     /// Constructs a new Lexer for the given text and span newlines.
-    pub fn new(scanner: Sc, source: &'text str, newline: Nl) -> Self {
+    pub fn new(scanner: Sc, source: &'text str, newline: Cm) -> Self {
         Lexer {
             source,
             scanner,
@@ -85,7 +85,7 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
 
     /// Returns an iterator over the lexer tokens together with their spans.
     pub fn iter_with_spans<'l>(&'l mut self)
-        -> IterWithSpans<'text, 'l, Sc, Nl>
+        -> IterWithSpans<'text, 'l, Sc, Cm>
         where Sc: Scanner
     {
         IterWithSpans { lexer: self }
@@ -166,28 +166,28 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
 
     /// Returns the full span (including filtered text) back to the last
     /// consumed position.
-    pub fn full_span(&self) -> Span<'text, Nl> {
+    pub fn full_span(&self) -> Span<'text, Cm> {
         Span::new_enclosing(self.full, self.end, self.source)
     }
 
     /// Returns the span (excluding filtered text) back to the last consumed
     /// position.
-    pub fn span(&self) -> Span<'text, Nl> {
+    pub fn span(&self) -> Span<'text, Cm> {
         Span::new_enclosing(self.start, self.end, self.source)
     }
 
     /// Returns the span (including filtered text) of the last lexed token.
-    pub fn last_full_span(&self) -> Span<'text, Nl> {
+    pub fn last_full_span(&self) -> Span<'text, Cm> {
         Span::new_enclosing(self.last_full, self.end, self.source)
     }
 
     /// Returns the span (excluding filtered text) of the last lexed token.
-    pub fn last_span(&self) -> Span<'text, Nl> {
+    pub fn last_span(&self) -> Span<'text, Cm> {
         Span::new_enclosing(self.last, self.end, self.source)
     }
 
     /// Returns the span of the end of the lexed text.
-    pub fn end_span(&self) -> Span<'text, Nl> {
+    pub fn end_span(&self) -> Span<'text, Cm> {
         Span::new_from(self.end, self.source)
     }
 
@@ -200,16 +200,16 @@ impl<'text, Sc, Nl> Lexer<'text, Sc, Nl>
 
 }
 
-impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
+impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
     where
         Sc: Scanner,
-        Nl: NewLine,
+        Cm: ColumnMetrics,
 {
     type Item = Sc::Token;
     
     fn next(&mut self) -> Option<Self::Item> {
         while self.end.byte < self.source.len() {
-            match self.scanner.scan::<Nl>(&self.source[self.end.byte..]) {
+            match self.scanner.scan::<Cm>(&self.source[self.end.byte..]) {
                 Some((token, adv)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
@@ -243,7 +243,7 @@ impl<'text, Sc, Nl> Iterator for Lexer<'text, Sc, Nl>
     }
 }
 
-impl<'text, Sc, Nl> Debug for Lexer<'text, Sc, Nl> where Sc: Scanner {
+impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm> where Sc: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Lexer")
             .field("source_len", &self.source.len())
@@ -259,7 +259,7 @@ impl<'text, Sc, Nl> Debug for Lexer<'text, Sc, Nl> where Sc: Scanner {
     }
 }
 
-impl<'text, Sc, Nl> PartialEq for Lexer<'text, Sc, Nl> where Sc: Scanner {
+impl<'text, Sc, Cm> PartialEq for Lexer<'text, Sc, Cm> where Sc: Scanner {
     fn eq(&self, other: &Self) -> bool {
         self.source == other.source &&
         self.scanner == other.scanner &&
@@ -280,18 +280,18 @@ impl<'text, Sc, Nl> PartialEq for Lexer<'text, Sc, Nl> where Sc: Scanner {
 /// An iterator over lexer tokens together with their spans. Created by the
 /// `Lexer::iter_with_spans` method.
 #[derive(Debug)]
-pub struct IterWithSpans<'text, 'l, Sc, Nl> 
+pub struct IterWithSpans<'text, 'l, Sc, Cm> 
     where Sc: Scanner,
 {
-    lexer: &'l mut Lexer<'text, Sc, Nl>
+    lexer: &'l mut Lexer<'text, Sc, Cm>
 }
 
-impl<'text, 'l, Sc, Nl> Iterator for IterWithSpans<'text, 'l, Sc, Nl>
+impl<'text, 'l, Sc, Cm> Iterator for IterWithSpans<'text, 'l, Sc, Cm>
     where
         Sc: Scanner,
-        Nl: NewLine,
+        Cm: ColumnMetrics,
 {
-    type Item = (Sc::Token, Span<'text, Nl>);
+    type Item = (Sc::Token, Span<'text, Cm>);
     
     fn next(&mut self) -> Option<Self::Item> {
         self.lexer.next().map(|t| {

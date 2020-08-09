@@ -5,18 +5,18 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Text spans.
+//! Character positioning.
 ////////////////////////////////////////////////////////////////////////////////
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// NewLine
+// ColumnMetrics
 ////////////////////////////////////////////////////////////////////////////////
 /// A trait representing the requirements for a Span's line separator.
-pub trait NewLine: std::fmt::Debug + Clone + Copy + PartialEq + Eq 
+pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy + PartialEq + Eq 
     + PartialOrd + Ord + Default
 {
-    /// THe NewLine separator string.
+    /// THe ColumnMetrics separator string.
     const STR: &'static str;
 
     /// Returns the byte length of the newline.
@@ -27,25 +27,52 @@ pub trait NewLine: std::fmt::Debug + Clone + Copy + PartialEq + Eq
 
 /// Carriage Return (`\r`) newline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Cr;
+pub struct Cr {
+    tab_width: u8,
+}
 
-impl NewLine for Cr {
+impl Cr {
+    pub fn with_tab_width(tab_width: u8) -> Self {
+        assert!(tab_width > 0);
+        Cr { tab_width }
+    }
+}
+
+impl ColumnMetrics for Cr {
     const STR: &'static str = "\r";
 }
 
 /// Carriage Return - Line Feed (`\r\n`) newline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct CrLf;
+pub struct CrLf {
+    tab_width: u8,
+}
 
-impl NewLine for CrLf {
+impl CrLf {
+    pub fn with_tab_width(tab_width: u8) -> Self {
+        assert!(tab_width > 0);
+        CrLf { tab_width }
+    }
+}
+
+impl ColumnMetrics for CrLf {
     const STR: &'static str = "\r\n";
 }
 
 /// Line Feed (`\n`) newline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Lf;
+pub struct Lf {
+    tab_width: u8,
+}
 
-impl NewLine for Lf {
+impl Lf {
+    pub fn with_tab_width(tab_width: u8) -> Self {
+        assert!(tab_width > 0);
+        Lf { tab_width }
+    }
+}
+
+impl ColumnMetrics for Lf {
     const STR: &'static str = "\n";
 }
 
@@ -81,15 +108,15 @@ impl Pos {
     }
 
     /// Constructs the end position from the given string.
-    pub fn new_from_string<S, Nl>(text: S) -> Self
+    pub fn new_from_string<S, Cm>(text: S) -> Self
         where
             S: AsRef<str>,
-            Nl: NewLine,
+            Cm: ColumnMetrics,
     {
         let text = text.as_ref();
         Pos {
             byte: text.len(),
-            page: Page::ZERO.advance::<Nl>(text.as_ref()),
+            page: Page::ZERO.advance::<Cm>(text.as_ref()),
         }
     }
 }
@@ -144,16 +171,16 @@ impl Page {
     pub const ZERO: Page = Page { line: 0, column: 0 };
 
     /// Advances the Page by the contents of the given text.
-    pub fn advance<'t, Nl>(mut self, text: &'t str) -> Self
-        where Nl: NewLine,
+    pub fn advance<'t, Cm>(mut self, text: &'t str) -> Self
+        where Cm: ColumnMetrics,
     {
         let mut chars = text.chars();
         loop {
             // Skip past newline chars.
-            if chars.as_str().starts_with(Nl::STR) {
+            if chars.as_str().starts_with(Cm::STR) {
                 self.line += 1;
                 self.column = 0;
-                let _ = chars.nth(Nl::len() - 1);
+                let _ = chars.nth(Cm::len() - 1);
                 continue;
             }
 

@@ -11,7 +11,7 @@
 // Local imports.
 use crate::position::Pos;
 use crate::position::Page;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 
 // External library imports.
 use few::Few;
@@ -24,9 +24,9 @@ use few::Few;
 /// A specific section of the source text.
 // NOTE: Span methods must maintain an invariant: span.start() < span.end().
 #[derive(Debug, Copy, Hash)]
-pub struct Span<'text, Nl> {
+pub struct Span<'text, Cm> {
     /// The newline type marker.
-    newline: std::marker::PhantomData<Nl>,
+    newline: std::marker::PhantomData<Cm>,
     /// The source text.
     source: &'text str,
     /// The byte range of the spanned section within the source.
@@ -35,12 +35,12 @@ pub struct Span<'text, Nl> {
     page: PageSpan,
 }
 
-impl<'text, Nl> Span<'text, Nl> {
+impl<'text, Cm> Span<'text, Cm> {
 
     /// Constructs a new empty span in the given source text.
     pub fn new(source: &'text str) -> Self {
         Span {
-            newline: std::marker::PhantomData::<Nl>,
+            newline: std::marker::PhantomData::<Cm>,
             source,
             byte: ByteSpan::default(),
             page: PageSpan::default(),
@@ -51,7 +51,7 @@ impl<'text, Nl> Span<'text, Nl> {
     /// given byte and page.
     pub fn new_from(pos: Pos, source: &'text str) -> Self {
         Span {
-            newline: std::marker::PhantomData::<Nl>,
+            newline: std::marker::PhantomData::<Cm>,
             source,
             byte: ByteSpan { start: pos.byte, end: pos.byte },
             page: PageSpan { start: pos.page, end: pos.page },
@@ -62,7 +62,7 @@ impl<'text, Nl> Span<'text, Nl> {
     pub fn new_enclosing(a: Pos, b: Pos, source: &'text str) -> Self
     {
         Span {
-            newline: std::marker::PhantomData::<Nl>,
+            newline: std::marker::PhantomData::<Cm>,
             source,
             byte: ByteSpan { start: a.byte, end: b.byte },
             page: PageSpan { start: a.page, end: b.page },
@@ -229,7 +229,7 @@ impl<'text, Nl> Span<'text, Nl> {
     }
 }
 
-impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
+impl<'text, Cm> Span<'text, Cm> where Cm: ColumnMetrics {
     /// Constructs a new span covering given source text.
     pub fn full(source: &'text str) -> Self
     {
@@ -243,11 +243,11 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
         let substr = &self.source[self.byte.end..self.byte.end+bytes];
 
         self.byte = ByteSpan::from_text_starting(self.byte.end, substr);
-        self.page = PageSpan::from_text_starting::<Nl>(self.page.start, substr);
+        self.page = PageSpan::from_text_starting::<Cm>(self.page.start, substr);
     }
 
     /// Returns an iterator over the lines of the span.
-    pub fn split_lines(&self) -> SplitLines<'text, Nl> {
+    pub fn split_lines(&self) -> SplitLines<'text, Cm> {
         SplitLines {
             newline: self.newline,
             base: self.start(),
@@ -271,21 +271,21 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
         } else {
             debug_assert!(start_byte > 0);
             let left = self.source[..start_byte]
-                .rsplit(Nl::STR).next().unwrap();
+                .rsplit(Cm::STR).next().unwrap();
             start_byte -= left.len();
         }
         // Find the end byte and column.
         let right = &self.source[end_byte..]
-            .split_terminator(Nl::STR)
+            .split_terminator(Cm::STR)
             .next()
             .unwrap_or("");
-        let right_pos = Pos::new_from_string::<_, Nl>(right);
+        let right_pos = Pos::new_from_string::<_, Cm>(right);
         end_byte += right_pos.byte;
         debug_assert_eq!(right_pos.page.line, 0); // Should not cross any lines.
         end_column += right_pos.page.column; 
 
         Span {
-            newline: std::marker::PhantomData::<Nl>,
+            newline: std::marker::PhantomData::<Cm>,
             source: self.source,
             byte: ByteSpan {
                 start: start_byte,
@@ -306,9 +306,9 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
         let trimmed = text.trim_start();
         let left_len = text.len() - trimmed.len();
         let mut left_pos = self.start();
-        left_pos += Pos::new_from_string::<_, Nl>(&text[..left_len]);
+        left_pos += Pos::new_from_string::<_, Cm>(&text[..left_len]);
         let trimmed = trimmed.trim_end();
-        let right_pos = Pos::new_from_string::<_, Nl>(trimmed);
+        let right_pos = Pos::new_from_string::<_, Cm>(trimmed);
 
         let mut span = Span::new_from(left_pos, self.source);
         span.extend_by(right_pos);
@@ -317,11 +317,11 @@ impl<'text, Nl> Span<'text, Nl> where Nl: NewLine {
     }
 }
 
-// Implement Clone manually to avoid requiring Nl: Clone.
-impl<'text, Nl> Clone for Span<'text, Nl> {
+// Implement Clone manually to avoid requiring Cm: Clone.
+impl<'text, Cm> Clone for Span<'text, Cm> {
     fn clone(&self) -> Self {
         Span {
-            newline: std::marker::PhantomData::<Nl>,
+            newline: std::marker::PhantomData::<Cm>,
             source: self.source,
             byte: self.byte,
             page: self.page,
@@ -329,21 +329,21 @@ impl<'text, Nl> Clone for Span<'text, Nl> {
     }
 }
 
-// Implement PartialOrd manually to avoid requiring Nl: PartialOrd.
-impl<'text, Nl> PartialOrd for Span<'text, Nl> {
+// Implement PartialOrd manually to avoid requiring Cm: PartialOrd.
+impl<'text, Cm> PartialOrd for Span<'text, Cm> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.byte.partial_cmp(&other.byte)
     }
 }
 
-// Implement Ord manually to avoid requiring Nl: Ord.
-impl<'text, Nl> Ord for Span<'text, Nl> {
+// Implement Ord manually to avoid requiring Cm: Ord.
+impl<'text, Cm> Ord for Span<'text, Cm> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.partial_cmp(&other).unwrap()
     }
 }
-// Implement PartialEq manually to avoid requiring Nl: PartialEq.
-impl<'text, Nl> PartialEq for Span<'text, Nl> {
+// Implement PartialEq manually to avoid requiring Cm: PartialEq.
+impl<'text, Cm> PartialEq for Span<'text, Cm> {
     fn eq(&self, other: &Self) -> bool {
         self.byte == other.byte &&
         self.page == other.page &&
@@ -351,18 +351,18 @@ impl<'text, Nl> PartialEq for Span<'text, Nl> {
     }
 }
 
-// Implement Eq manually to avoid requiring Nl: Eq.
-impl<'text, Nl> Eq for Span<'text, Nl> {}
+// Implement Eq manually to avoid requiring Cm: Eq.
+impl<'text, Cm> Eq for Span<'text, Cm> {}
 
 
-impl<'text, Nl> std::fmt::Display for Span<'text, Nl> {
+impl<'text, Cm> std::fmt::Display for Span<'text, Cm> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\"{}\" ({}, bytes {})", self.text(), self.page, self.byte)
     }
 }
 
-impl<'text, Nl> From<&'text OwnedSpan<Nl>> for Span<'text, Nl> {
-    fn from(owned: &'text OwnedSpan<Nl>) -> Self {
+impl<'text, Cm> From<&'text OwnedSpan<Cm>> for Span<'text, Cm> {
+    fn from(owned: &'text OwnedSpan<Cm>) -> Self {
         Span {
             newline: owned.newline,
             source: &*owned.source,
@@ -438,13 +438,13 @@ impl PageSpan {
     }
 
     /// Generates the PageSpan of the input text relative to the given Page.
-    fn from_text_starting<'t, Nl>(start: Page, text: &'t str)
+    fn from_text_starting<'t, Cm>(start: Page, text: &'t str)
         -> Self
-        where Nl: NewLine,
+        where Cm: ColumnMetrics,
     {
         PageSpan {
             start,
-            end: start.advance::<Nl>(text),
+            end: start.advance::<Cm>(text),
         }
     }
 }
@@ -468,10 +468,10 @@ impl std::fmt::Display for PageSpan {
 ////////////////////////////////////////////////////////////////////////////////
 /// A specific section of the source text.
 // NOTE: Span methods must maintain an invariant: span.start() < span.end().
-#[derive(Debug, Clone, Hash)]
-pub struct OwnedSpan<Nl> {
+#[derive(Debug, Hash)]
+pub struct OwnedSpan<Cm> {
     /// The newline type marker.
-    newline: std::marker::PhantomData<Nl>,
+    newline: std::marker::PhantomData<Cm>,
     /// The source text.
     source: Box<str>,
     /// The byte range of the captured section within the source.
@@ -485,7 +485,7 @@ pub struct OwnedSpan<Nl> {
 }
 
 
-impl<Nl> OwnedSpan<Nl> {
+impl<Cm> OwnedSpan<Cm> {
 
     /// Returns the spanned text.
     pub fn text(&self) -> &str {
@@ -537,8 +537,8 @@ impl<Nl> OwnedSpan<Nl> {
     }
 
     /// Returns the overlapping portion the spans.
-    pub fn intersect<'text, S>(&'text self, other: S) -> Option<Span<'text, Nl>> 
-        where S: Into<Span<'text, Nl>>,
+    pub fn intersect<'text, S>(&'text self, other: S) -> Option<Span<'text, Cm>> 
+        where S: Into<Span<'text, Cm>>,
     {
         let other = other.into();
         let a_start = self.start();
@@ -567,8 +567,8 @@ impl<Nl> OwnedSpan<Nl> {
     ///
     /// Note that if an endpoint becomes an empty span, it is omitted. If the
     /// right span is empty, it effectively splits the left span at that point.
-    pub fn minus<'text, S>(&'text self, other: S) -> Few<Span<'text, Nl>> 
-        where S: Into<Span<'text, Nl>>,
+    pub fn minus<'text, S>(&'text self, other: S) -> Few<Span<'text, Cm>> 
+        where S: Into<Span<'text, Cm>>,
     {
         let other = other.into();
         let a_0 = self.start();
@@ -589,10 +589,56 @@ impl<Nl> OwnedSpan<Nl> {
     }
 }
 
-impl<'text, Nl> From<Span<'text, Nl>> for OwnedSpan<Nl>
-    where Nl: NewLine,
+// Implement Clone manually to avoid requiring Cm: Clone.
+impl<Cm> Clone for OwnedSpan<Cm> {
+    fn clone(&self) -> Self {
+        OwnedSpan {
+            newline: std::marker::PhantomData::<Cm>,
+            source: self.source.clone(),
+            full_byte: self.full_byte,
+            full_page: self.full_page,
+            byte: self.byte,
+            page: self.page,
+        }
+    }
+}
+
+// Implement PartialOrd manually to avoid requiring Cm: PartialOrd.
+impl<Cm> PartialOrd for OwnedSpan<Cm> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.byte.partial_cmp(&other.byte)
+    }
+}
+
+// Implement Ord manually to avoid requiring Cm: Ord.
+impl<Cm> Ord for OwnedSpan<Cm> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(&other).unwrap()
+    }
+}
+// Implement PartialEq manually to avoid requiring Cm: PartialEq.
+impl<Cm> PartialEq for OwnedSpan<Cm> {
+    fn eq(&self, other: &Self) -> bool {
+        self.byte == other.byte &&
+        self.page == other.page &&
+        self.source == other.source
+    }
+}
+
+// Implement Eq manually to avoid requiring Cm: Eq.
+impl<Cm> Eq for OwnedSpan<Cm> {}
+
+
+impl<Cm> std::fmt::Display for OwnedSpan<Cm> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"{}\" ({}, bytes {})", self.text(), self.page, self.byte)
+    }
+}
+
+impl<'text, Cm> From<Span<'text, Cm>> for OwnedSpan<Cm>
+    where Cm: ColumnMetrics,
 {
-    fn from(span: Span<'text, Nl>) -> Self {
+    fn from(span: Span<'text, Cm>) -> Self {
         let byte = span.byte;
         let page = span.page;
         let span = span.widen_to_line();
@@ -614,16 +660,16 @@ impl<'text, Nl> From<Span<'text, Nl>> for OwnedSpan<Nl>
 /// An iterator over the lines of a span. Returned by the `lines` method on
 /// `Span`.
 #[derive(Debug, Clone)]
-pub struct SplitLines<'text, Nl> {
-    newline: std::marker::PhantomData::<Nl>,
+pub struct SplitLines<'text, Cm> {
+    newline: std::marker::PhantomData::<Cm>,
     base: Pos,
     text: &'text str,
     source: &'text str,
     max_line: usize,
 }
 
-impl<'text, Nl> Iterator for SplitLines<'text, Nl> where Nl: NewLine {
-    type Item = Span<'text, Nl>;
+impl<'text, Cm> Iterator for SplitLines<'text, Cm> where Cm: ColumnMetrics {
+    type Item = Span<'text, Cm>;
     
     fn next(&mut self) -> Option<Self::Item> {
         if self.base.page.line > self.max_line { return None; }
@@ -634,12 +680,12 @@ impl<'text, Nl> Iterator for SplitLines<'text, Nl> where Nl: NewLine {
             return Some(span);
         }
 
-        if let Some(next) = self.text.split(Nl::STR).next() {
+        if let Some(next) = self.text.split(Cm::STR).next() {
             
             let mut span = Span::new_from(self.base, self.source);
 
             self.base.page.line += 1;
-            self.base.byte += Nl::len();
+            self.base.byte += Cm::len();
             
             let column = next.chars().count();
             self.base.page.column = column;
@@ -647,9 +693,9 @@ impl<'text, Nl> Iterator for SplitLines<'text, Nl> where Nl: NewLine {
 
             span.extend_by(Pos::new(next.len(), 0, column));
 
-            let next_start = next.len() + Nl::len();
+            let next_start = next.len() + Cm::len();
             if next_start < self.text.len() {
-                self.text = &self.text[next.len() + Nl::len()..];
+                self.text = &self.text[next.len() + Cm::len()..];
             } else {
                 self.text = "";
             }
@@ -663,12 +709,12 @@ impl<'text, Nl> Iterator for SplitLines<'text, Nl> where Nl: NewLine {
     }
 }
 
-impl<'text, Nl> std::iter::FusedIterator for SplitLines<'text, Nl> 
-    where Nl: NewLine,
+impl<'text, Cm> std::iter::FusedIterator for SplitLines<'text, Cm> 
+    where Cm: ColumnMetrics,
 {}
 
-impl<'text, Nl> ExactSizeIterator for SplitLines<'text, Nl> 
-    where Nl: NewLine,
+impl<'text, Cm> ExactSizeIterator for SplitLines<'text, Cm> 
+    where Cm: ColumnMetrics,
 {
     fn len(&self) -> usize {
          self.max_line - self.base.page.line

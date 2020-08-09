@@ -23,7 +23,7 @@ use crate::position::Lf;
 fn cell_ref_index() {
     let text = ":0";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_ref
@@ -47,7 +47,7 @@ fn cell_ref_index() {
 fn cell_ref_index_out_of_range() {
     let text = ":0x100000000";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -78,7 +78,7 @@ fn cell_ref_index_out_of_range() {
 fn cell_ref_position() {
     let text = ":0.0.0";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_ref
@@ -102,7 +102,7 @@ fn cell_ref_position() {
 fn cell_ref_position_out_of_range() {
     let text = ":0xFFFF.0x10000.0xFFFF";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -133,7 +133,7 @@ fn cell_ref_position_out_of_range() {
 fn cell_ref_name() {
     let text = "'abcd'";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_ref
@@ -157,7 +157,7 @@ fn cell_ref_name() {
 fn cell_ref_group() {
     let text = "'abcd':0";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_ref
@@ -181,7 +181,7 @@ fn cell_ref_group() {
 fn cell_ref_group_out_of_range() {
     let text = "'abcd':0x1_0000_0000";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -217,7 +217,7 @@ fn cell_ref_group_out_of_range() {
 fn cell_selector_all() {
     let text = ":*";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_selector
@@ -245,7 +245,7 @@ fn cell_selector_all() {
 fn cell_selector_index() {
     let text = ":0xFFFFFFFF";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_selector
@@ -269,7 +269,7 @@ fn cell_selector_index() {
 fn cell_selector_index_out_of_range() {
     let text = ":0x1_0000_0000";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -305,7 +305,7 @@ fn cell_selector_index_out_of_range() {
 fn cell_selector_index_range() {
     let text = ":0xA00F - :0xFFFF";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -333,7 +333,7 @@ fn cell_selector_index_range() {
 fn cell_selector_index_range_out_of_range() {
     let text = ":0-:0x1_0000_0000";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -364,7 +364,7 @@ fn cell_selector_index_range_out_of_range() {
 fn cell_selector_index_range_out_of_order() {
     let text = ":0xFF - :0b10";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -400,7 +400,7 @@ fn cell_selector_index_range_out_of_order() {
 fn cell_selector_position_selector() {
     let text = ":0xFFFF.*.0";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_selector
@@ -428,7 +428,7 @@ fn cell_selector_position_selector() {
 fn cell_selector_position_selector_out_of_range() {
     let text = ":0x1_0000.*.0";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -459,7 +459,7 @@ fn cell_selector_position_selector_out_of_range() {
 fn cell_selector_position_range() {
     let text = ":0xFFFF.0.0 - :0xFFFF.2.3";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = cell_selector
@@ -490,7 +490,7 @@ fn cell_selector_position_range() {
 fn cell_selector_position_range_out_of_range() {
     let text = ":0xFFFF.0.0 - :0xFFFF.0x1_0000.3";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -521,7 +521,7 @@ fn cell_selector_position_range_out_of_range() {
 fn cell_selector_position_range_out_of_order() {
     let text = ":0xFFFF.1.0 -\n:0xFFFF.0.3";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {

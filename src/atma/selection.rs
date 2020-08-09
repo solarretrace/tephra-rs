@@ -44,7 +44,7 @@ use crate::result::Success;
 use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -55,9 +55,9 @@ use std::convert::TryFrom as _;
 // CellRef
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn cell_ref<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, CellRef<'text>>
-    where Nl: NewLine,
+pub fn cell_ref<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, CellRef<'text>>
+    where Cm: ColumnMetrics,
 {
     match position_or_index
         (lexer.clone())
@@ -76,9 +76,9 @@ pub fn cell_ref<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         })
 }
 
-pub fn position_or_index<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, PositionOrIndex>
-    where Nl: NewLine,
+pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, PositionOrIndex>
+    where Cm: ColumnMetrics,
 {
     let (idx, idx_succ) = exact(
         right(one(AtmaToken::Colon),
@@ -122,9 +122,9 @@ pub fn position_or_index<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     }
 }
 
-pub fn index<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, u32>
-    where Nl: NewLine,
+pub fn index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, u32>
+    where Cm: ColumnMetrics,
 {
     exact(
         right(one(AtmaToken::Colon),
@@ -132,9 +132,9 @@ pub fn index<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         (lexer)
 }
 
-pub fn position<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, Position>
-    where Nl: NewLine,
+pub fn position<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Position>
+    where Cm: ColumnMetrics,
 {
     exact(
         right(one(AtmaToken::Colon),
@@ -147,9 +147,9 @@ pub fn position<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         .map_value(|(page, (line, column))| Position { page, line, column })
 }
 
-pub fn group_or_name<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, (Cow<'text, str>, Option<u32>)>
-    where Nl: NewLine,
+pub fn group_or_name<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, (Cow<'text, str>, Option<u32>)>
+    where Cm: ColumnMetrics,
 {
     exact(
         both(
@@ -164,9 +164,9 @@ pub fn group_or_name<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
 // CellSelection
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn cell_selection<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, CellSelection<'text>>
-    where Nl: NewLine,
+pub fn cell_selection<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, CellSelection<'text>>
+    where Cm: ColumnMetrics,
 {
     intersperse_collect(1, None,
         section(cell_selector),
@@ -180,9 +180,9 @@ pub fn cell_selection<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
 // CellSelector
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn cell_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, CellSelector<'text>>
-    where Nl: NewLine,
+pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, CellSelector<'text>>
+    where Cm: ColumnMetrics,
 {
     use CellSelector::*;
 
@@ -322,9 +322,9 @@ pub fn cell_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
     }
 }
 
-pub fn position_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, PositionSelector>
-    where Nl: NewLine,
+pub fn position_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, PositionSelector>
+    where Cm: ColumnMetrics,
 {
     exact(
         right(one(AtmaToken::Colon),
@@ -341,9 +341,9 @@ pub fn position_selector<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         })
 }
 
-fn uint_16_or_all<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, Option<u16>>
-    where Nl: NewLine,
+fn uint_16_or_all<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Option<u16>>
+    where Cm: ColumnMetrics,
 {
     if let Ok(succ) = one(AtmaToken::Mult)(lexer.clone()) {
         return Ok(succ).map_value(|_| None);
@@ -354,13 +354,13 @@ fn uint_16_or_all<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
         .map_value(Some)
 }
 
-fn range<'text, Nl, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, AtmaScanner, Nl>)
-        -> ParseResult<'text, AtmaScanner, Nl, (V, Option<V>)>
+fn range<'text, Cm, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, AtmaScanner, Cm>)
+        -> ParseResult<'text, AtmaScanner, Cm, (V, Option<V>)>
     where
-        Nl: NewLine,
-        F: FnMut(Lexer<'text, AtmaScanner, Nl>)
-            -> ParseResult<'text, AtmaScanner, Nl, V>,
+        Cm: ColumnMetrics,
+        F: FnMut(Lexer<'text, AtmaScanner, Cm>)
+            -> ParseResult<'text, AtmaScanner, Cm, V>,
 {
     move |lexer| {
         let (l, succ) = (&mut parser)

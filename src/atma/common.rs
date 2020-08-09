@@ -16,7 +16,7 @@
 use crate::atma::AtmaToken;
 use crate::atma::AtmaScanner;
 use crate::lexer::Lexer;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::ParseError;
@@ -37,10 +37,10 @@ use std::borrow::Cow;
 // Integer parsing
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn uint<'text, Nl, T>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, T>
+pub fn uint<'text, Cm, T>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, T>
     where
-        Nl: NewLine,
+        Cm: ColumnMetrics,
         T: FromStrRadix + std::fmt::Debug,
 {
     lexer.next_filtered(); // Remove prefixed tokens.
@@ -136,10 +136,10 @@ from_str_radix_impl!(u128 , "unsigned 128 bit", u128);
 // Float parsing
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn float<'text, Nl, T>(lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, T>
+pub fn float<'text, Cm, T>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, T>
     where
-        Nl: NewLine,
+        Cm: ColumnMetrics,
         T: std::str::FromStr,
         <T as std::str::FromStr>::Err: std::error::Error + Sync + Send + 'static
 {
@@ -164,10 +164,10 @@ pub fn float<'text, Nl, T>(lexer: Lexer<'text, AtmaScanner, Nl>)
 // String parsing
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn string<'text, Nl>(
-    lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, Cow<'text, str>>
-    where Nl: NewLine,
+pub fn string<'text, Cm>(
+    lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Cow<'text, str>>
+    where Cm: ColumnMetrics,
 {
     if let Ok(succ) = raw_string(lexer.clone()) {
         return Ok(succ.map_value(Cow::from))
@@ -176,10 +176,10 @@ pub fn string<'text, Nl>(
     escaped_string(lexer)
 }
 
-pub fn raw_string<'text, Nl>(
-    lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, &'text str>
-    where Nl: NewLine,
+pub fn raw_string<'text, Cm>(
+    lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, &'text str>
+    where Cm: ColumnMetrics,
 {
     use AtmaToken::*;
     bracket(
@@ -189,10 +189,10 @@ pub fn raw_string<'text, Nl>(
         (lexer)
 }
 
-pub fn escaped_string<'text, Nl>(
-    lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, Cow<'text, str>>
-    where Nl: NewLine,
+pub fn escaped_string<'text, Cm>(
+    lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Cow<'text, str>>
+    where Cm: ColumnMetrics,
 {
     use AtmaToken::*;
     let corresponding = move |lexer, tok| match tok {

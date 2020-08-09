@@ -32,7 +32,7 @@ use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::Success;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 use crate::span::Span;
 
 // External library imports.
@@ -49,9 +49,9 @@ use std::convert::TryFrom as _;
 // color
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser which parses a `Color`.
-pub fn color<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, Color>
-    where Nl: NewLine,
+pub fn color<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Color>
+    where Cm: ColumnMetrics,
 {
     match rgb_hex_code
         (lexer.clone())
@@ -71,9 +71,9 @@ pub fn color<'text, Nl>(mut lexer: Lexer<'text, AtmaScanner, Nl>)
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Returns a parser which parses a hex code with the given number of digits.
-pub fn rgb_hex_code<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, Rgb>
-    where Nl: NewLine,
+pub fn rgb_hex_code<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Rgb>
+    where Cm: ColumnMetrics,
 {
     let (mut val, succ) = text(exact(
             seq(&[AtmaToken::Hash, AtmaToken::HexDigits])))
@@ -105,9 +105,9 @@ pub fn rgb_hex_code<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
 // color_function
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn color_function<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
-    -> ParseResult<'text, AtmaScanner, Nl, Color>
-    where Nl: NewLine,
+pub fn color_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Color>
+    where Cm: ColumnMetrics,
 {
     let (val, succ) = fn_call
             (lexer.sublexer())?
@@ -127,11 +127,11 @@ pub fn color_function<'text, Nl>(lexer: Lexer<'text, AtmaScanner, Nl>)
 }
 
 
-fn rgb_from_args<'text, Nl>(
-    lexer: Lexer<'text, AtmaScanner, Nl>,
-    args: Vec<(FnArg, Span<'text, Nl>)>)
-    -> ParseResult<'text, AtmaScanner, Nl, Rgb>
-    where Nl: NewLine,
+fn rgb_from_args<'text, Cm>(
+    lexer: Lexer<'text, AtmaScanner, Cm>,
+    args: Vec<(FnArg, Span<'text, Cm>)>)
+    -> ParseResult<'text, AtmaScanner, Cm, Rgb>
+    where Cm: ColumnMetrics,
 {
     if args.len() != 3 {
         return Err(Failure {

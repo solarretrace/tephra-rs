@@ -28,7 +28,7 @@ use ::color::Color;
 fn rgb_hex_code_3() {
     let text = "#abc";
     let scanner = AtmaScanner::new();
-    let lexer = Lexer::new(scanner, text, Lf);
+    let lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
 
     let actual = rgb_hex_code
         (lexer)
@@ -51,7 +51,7 @@ fn rgb_hex_code_3() {
 fn rgb_hex_code_3_short() {
     let text = "#ab";
     let scanner = AtmaScanner::new();
-    let lexer = Lexer::new(scanner, text, Lf);
+    let lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
 
     let failure = rgb_hex_code
         (lexer)
@@ -77,7 +77,7 @@ fn rgb_hex_code_3_short() {
 fn rgb_hex_code_3_long() {
     let text = "#abcd";
     let scanner = AtmaScanner::new();
-    let lexer = Lexer::new(scanner, text, Lf);
+    let lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
 
     let failure = rgb_hex_code
         (lexer)
@@ -104,7 +104,7 @@ fn rgb_hex_code_3_long() {
 fn rgb_hex_code_3_whitespace() {
     let text = "# abc";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let failure = rgb_hex_code
@@ -132,7 +132,7 @@ fn rgb_hex_code_3_whitespace() {
 fn rgb_hex_code_6() {
     let text = "#abcdef";
     let scanner = AtmaScanner::new();
-    let lexer = Lexer::new(scanner, text, Lf);
+    let lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
 
     let actual = rgb_hex_code
         (lexer)
@@ -155,7 +155,7 @@ fn rgb_hex_code_6() {
 fn rgb_hex_code_6_short() {
     let text = "#abcde";
     let scanner = AtmaScanner::new();
-    let lexer = Lexer::new(scanner, text, Lf);
+    let lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
 
     let failure = rgb_hex_code
         (lexer)
@@ -181,7 +181,7 @@ fn rgb_hex_code_6_short() {
 fn rgb_hex_code_6_long() {
     let text = "#abcdefa";
     let scanner = AtmaScanner::new();
-    let lexer = Lexer::new(scanner, text, Lf);
+    let lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
 
     let failure = rgb_hex_code
         (lexer)
@@ -208,7 +208,7 @@ fn rgb_hex_code_6_long() {
 fn rgb_hex_code_6_whitespace() {
     let text = "# abcdef";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let failure = rgb_hex_code
@@ -241,7 +241,7 @@ fn rgb_hex_code_6_whitespace() {
 fn function_rgb_u8() {
     let text = "rgb(0,255,127)";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = color_function
@@ -267,7 +267,7 @@ fn function_rgb_u8_newline() {
         255, \n\
         127)";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = color_function
@@ -291,7 +291,7 @@ fn function_rgb_u8_newline() {
 fn function_rgb_u8_wrong_bracket() {
     let text = "rgb[0,255,127]";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let failure = color_function
@@ -318,7 +318,7 @@ fn function_rgb_u8_wrong_bracket() {
 fn function_rgb_u8_out_of_range() {
     let text = "rgb(0, 255, 1270)";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {
@@ -351,7 +351,7 @@ fn function_rgb_u8_out_of_range_newline() {
         255,\n\
         1270)";
     let scanner = AtmaScanner::new();
-    let mut lexer = Lexer::new(scanner, text, Lf);
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     // for tok in &mut lexer {

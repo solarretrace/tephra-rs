@@ -13,7 +13,7 @@ use crate::lexer::Scanner;
 use crate::lexer::Lexer;
 use crate::position::Pos;
 use crate::position::Lf;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,9 +57,9 @@ struct Test;
 impl Scanner for Test {
     type Token = TestToken;
 
-    fn scan<'text, Nl>(&mut self, text: &'text str)
+    fn scan<'text, Cm>(&mut self, text: &'text str)
         -> Option<(Self::Token, Pos)>
-        where Nl: NewLine,
+        where Cm: ColumnMetrics,
     {
         // println!("{:?}", text);
         // println!("{:?}", text.split("\n").collect::<Vec<_>>());
@@ -79,7 +79,7 @@ impl Scanner for Test {
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
             let substr = &text[0..substr_len];
-            let span = Pos::new_from_string::<_, Nl>(substr);
+            let span = Pos::new_from_string::<_, Cm>(substr);
             return Some((TestToken::Ws, span));
         }
         None
@@ -94,7 +94,7 @@ impl Scanner for Test {
 #[test]
 fn empty() {
     let text = "";
-    let mut lexer = Lexer::new(Test, text, Lf);
+    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
 
     assert_eq!(
         lexer.next(),
@@ -107,7 +107,7 @@ fn empty() {
 fn simple() {
     use TestToken::*;
     let text = "aa b";
-    let mut lexer = Lexer::new(Test, text, Lf);
+    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
 
     assert_eq!(
         lexer
@@ -127,7 +127,7 @@ fn simple() {
 fn no_whitespace() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
-    let mut lexer = Lexer::new(Test, text, Lf);
+    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = lexer

@@ -12,7 +12,7 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::position::NewLine;
+use crate::position::ColumnMetrics;
 use crate::span::Span;
 use crate::result::ParseResult;
 use crate::result::Success;
@@ -22,13 +22,13 @@ use crate::result::Success;
 // Control combinators.
 ////////////////////////////////////////////////////////////////////////////////
 /// A combinator which filters tokens during exectution of the given parser.
-pub fn filter<'text, Sc, Nl, F, P, V>(filter_fn: F, mut parser: P)
-    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>
+pub fn filter<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
+    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>
     where
         Sc: Scanner,
-        Nl: NewLine,
+        Cm: ColumnMetrics,
         F: for<'a> Fn(&'a Sc::Token) -> bool + Clone + 'static,
-        P: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+        P: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |mut lexer| {
         let old_filter = lexer.take_filter();
@@ -48,12 +48,12 @@ pub fn filter<'text, Sc, Nl, F, P, V>(filter_fn: F, mut parser: P)
 
 /// A combinator which disables all token filters during exectution of the given
 /// parser.
-pub fn exact<'text, Sc, Nl, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>
+pub fn exact<'text, Sc, Cm, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>
     where
         Sc: Scanner,
-        Nl: NewLine,
-        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+        Cm: ColumnMetrics,
+        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |mut lexer| {
         let filter = lexer.take_filter();
@@ -72,12 +72,12 @@ pub fn exact<'text, Sc, Nl, F, V>(mut parser: F)
 
 /// A combinator which identifies a delimiter or bracket which starts a new
 /// failure span section.
-pub fn section<'text, Sc, Nl, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>
+pub fn section<'text, Sc, Cm, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>
     where
         Sc: Scanner,
-        Nl: NewLine,
-        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+        Cm: ColumnMetrics,
+        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
         match (parser)(lexer.sublexer()) {
@@ -96,12 +96,12 @@ pub fn section<'text, Sc, Nl, F, V>(mut parser: F)
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A combinator which discards a parsed value, replacing it with `()`.
-pub fn discard<'text, Sc, Nl, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, ()>
+pub fn discard<'text, Sc, Cm, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, ()>
     where
         Sc: Scanner,
-        Nl: NewLine,
-        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+        Cm: ColumnMetrics,
+        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
         match (parser)(lexer) {
@@ -118,13 +118,13 @@ pub fn discard<'text, Sc, Nl, F, V>(mut parser: F)
 
 /// A combinator which replaces a parsed value with the source text of the
 /// parsed span.
-pub fn text<'text, Sc, Nl, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Nl>) 
-        -> ParseResult<'text, Sc, Nl, &'text str>
+pub fn text<'text, Sc, Cm, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Cm>) 
+        -> ParseResult<'text, Sc, Cm, &'text str>
     where
         Sc: Scanner,
-        Nl: NewLine,
-        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+        Cm: ColumnMetrics,
+        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
         let start = lexer.end_pos().byte;
@@ -145,13 +145,13 @@ pub fn text<'text, Sc, Nl, F, V>(mut parser: F)
 
 
 /// A combinator which includes the span of the parsed value.
-pub fn with_span<'text, Sc, Nl, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Nl>)
-        -> ParseResult<'text, Sc, Nl, (V, Span<'text, Nl>)>
+pub fn with_span<'text, Sc, Cm, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc, Cm>)
+        -> ParseResult<'text, Sc, Cm, (V, Span<'text, Cm>)>
     where
         Sc: Scanner,
-        Nl: NewLine,
-        F: FnMut(Lexer<'text, Sc, Nl>) -> ParseResult<'text, Sc, Nl, V>,
+        Cm: ColumnMetrics,
+        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
         match (parser)(lexer.sublexer()) {
