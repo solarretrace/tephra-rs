@@ -41,12 +41,12 @@
 // Internal modules.
 #[cfg(test)]
 mod test;
-#[cfg(test)]
-mod atma;
+// #[cfg(test)]
+// mod atma;
 
 // Public modules.
-pub mod lexer;
-pub mod combinator;
-pub mod result;
+// pub mod lexer;
+// pub mod combinator;
+// pub mod result;
 pub mod span;
 pub mod position;

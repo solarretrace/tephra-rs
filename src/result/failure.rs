@@ -26,7 +26,7 @@ pub struct Failure<'text, Sc, Cm> where Sc: Scanner {
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, Sc, Cm>,
     /// The parse error.
-    pub parse_error: ParseError<'text, Cm>,
+    pub parse_error: ParseError<'text>,
     /// The source of the failure.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }

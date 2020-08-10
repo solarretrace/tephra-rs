@@ -147,7 +147,7 @@ pub fn text<'text, Sc, Cm, F, V>(mut parser: F)
 /// A combinator which includes the span of the parsed value.
 pub fn with_span<'text, Sc, Cm, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc, Cm>)
-        -> ParseResult<'text, Sc, Cm, (V, Span<'text, Cm>)>
+        -> ParseResult<'text, Sc, Cm, (V, Span<'text>)>
     where
         Sc: Scanner,
         Cm: ColumnMetrics,

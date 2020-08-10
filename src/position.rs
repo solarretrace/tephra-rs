@@ -13,42 +13,120 @@
 // ColumnMetrics
 ////////////////////////////////////////////////////////////////////////////////
 /// A trait representing the requirements for a Span's line separator.
-pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy + PartialEq + Eq 
-    + PartialOrd + Ord + Default
-{
-    /// THe ColumnMetrics separator string.
-    const STR: &'static str;
+pub trait ColumnMetrics: Clone + Copy {
 
-    /// Returns the byte length of the newline.
-    fn len() -> usize {
-        Self::STR.len()
+    /// Returns the position of the next display column after the start of the
+    /// given text.
+    fn next_column<'text>(&self, text: &'text str) -> Option<Pos>;
+
+    /// Returns the position of the next display column before the end of the
+    /// given text.
+    fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos>;
+
+    /// Returns the position of the start of the next line after the start of
+    /// the given text. If the text ends before a new line is encountered, the
+    /// full width is returned.
+    fn next_line_start<'text>(&self, text: &'text str) -> Pos {
+        let mut end = Pos::ZERO;
+        let mut rest = text;
+
+        while !rest.is_empty() {
+            end += self.next_column(rest)
+                .expect("column position for nonempty text");
+
+            if end.page.column == 0 { break; }
+            rest = &text[end.byte..];
+        }
+        end
+    }
+
+    /// Returns the position of the end of the current line after the start of
+    /// the given text. If the text ends before a new line is encountered, the
+    /// full width is returned.
+    fn next_line_end<'text>(&self, text: &'text str) -> Pos {
+        let mut end = Pos::ZERO;
+        let mut rest = text;
+
+        while !rest.is_empty() {
+            let next = self.next_column(rest)
+                .expect("column position for nonempty text");
+
+            if next.page.column == 0 { break; }
+            end += next;
+            rest = &text[end.byte..];
+        }
+        end
+    }
+
+    /// Returns the position of the end of the next to last line of the given
+    /// text. If the text ends before a new line is encountered, the full width
+    /// is returned.
+    fn next_back_line_start<'text>(&self, text: &'text str) -> Pos {
+        let mut end = Pos::ZERO;
+        let mut rest = text;
+
+        while !rest.is_empty() {
+            let next = self.next_back_column(rest)
+                .expect("column position for nonempty text");
+
+            if next.page.column == 0 { break; }
+            end += next;
+            rest = &text[0..(text.len() - end.byte)];
+        }
+        end
+    }
+
+    /// Returns the position of the start of the last line of the given text.
+    /// If the text ends before a new line is encountered, the full width is
+    /// returned.
+    fn next_back_line_end<'text>(&self, text: &'text str) -> Pos {
+        let mut end = Pos::ZERO;
+        let mut rest = text;
+
+        while !rest.is_empty() {
+            end += dbg!(self.next_back_column(rest))
+                .expect("column position for nonempty text");
+
+            if end.page.column == 0 { break; }
+            rest = &text[0..(text.len() - end.byte)];
+        }
+        end
+    }
+
+    /// Returns the display width of the given text.
+    fn width<'text>(&self, text: &'text str) -> Pos {
+        let mut end = Pos::ZERO;
+        let mut rest = text;
+
+        while !rest.is_empty() {
+            end += self.next_column(rest)
+                .expect("column position for nonempty text");
+            rest = &text[end.byte..];
+        }
+        end
     }
 }
 
-/// Carriage Return (`\r`) newline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Cr {
-    tab_width: u8,
-}
 
-impl Cr {
-    pub fn with_tab_width(tab_width: u8) -> Self {
-        assert!(tab_width > 0);
-        Cr { tab_width }
-    }
-}
 
-impl ColumnMetrics for Cr {
-    const STR: &'static str = "\r";
-}
-
+////////////////////////////////////////////////////////////////////////////////
+// CrLf
+////////////////////////////////////////////////////////////////////////////////
 /// Carriage Return - Line Feed (`\r\n`) newline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrLf {
     tab_width: u8,
 }
 
 impl CrLf {
+    /// Returns a new `CrLf` with the default tab width of 4.
+    pub fn new() -> Self {
+        CrLf {
+            tab_width: 4,
+        }
+    }
+
+    /// Returns a new `CrLf` with the given tab width.
     pub fn with_tab_width(tab_width: u8) -> Self {
         assert!(tab_width > 0);
         CrLf { tab_width }
@@ -56,16 +134,113 @@ impl CrLf {
 }
 
 impl ColumnMetrics for CrLf {
-    const STR: &'static str = "\r\n";
+
+    fn next_column<'text>(&self, text: &'text str) -> Option<Pos> {
+        let mut chars = text.chars();
+        match chars.next() {
+            Some(c) if c == '\r' => match chars.next() {
+                Some(c) if c == '\n' => Some(Pos::new(2, 1, 0)),
+                _                    => Some(Pos::new(1, 0, 1)),
+            }
+            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            None                 => None,
+        }
+    }
+
+    fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos> {
+        let mut chars = text.chars();
+        match chars.next_back() {
+            Some(c) if c == '\n' => match chars.next_back() {
+                Some(c) if c == '\r' => Some(Pos::new(2, 1, 0)),
+                _                    => Some(Pos::new(1, 0, 1)),
+            }
+            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            None                 => None,
+        }
+    }
 }
 
+impl Default for CrLf {
+    fn default() -> Self {
+        CrLf::new()
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Cr
+////////////////////////////////////////////////////////////////////////////////
+/// Carriage Return (`\r`) newline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Cr {
+    tab_width: u8,
+}
+
+impl Cr {
+    /// Returns a new `Cr` with the default tab width of 4.
+    pub fn new() -> Self {
+        Cr {
+            tab_width: 4,
+        }
+    }
+
+    /// Returns a new `Cr` with the given tab width.
+    pub fn with_tab_width(tab_width: u8) -> Self {
+        assert!(tab_width > 0);
+        Cr { tab_width }
+    }
+}
+
+impl ColumnMetrics for Cr {
+
+    fn next_column<'text>(&self, text: &'text str) -> Option<Pos> {
+        let mut chars = text.chars();
+        match chars.next() {
+            Some(c) if c == '\r' => Some(Pos::new(1, 1, 0)),
+            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            None                 => None,
+        }
+    }
+    
+    fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos> {
+        let mut chars = text.chars();
+        match chars.next_back() {
+            Some(c) if c == '\r' => Some(Pos::new(1, 1, 0)),
+            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            None                 => None,
+        }
+    }
+}
+
+impl Default for Cr {
+    fn default() -> Self {
+        Cr::new()
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Lf
+////////////////////////////////////////////////////////////////////////////////
 /// Line Feed (`\n`) newline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Lf {
     tab_width: u8,
 }
 
 impl Lf {
+    /// Returns a new `Lf` with the default tab width of 4.
+    pub fn new() -> Self {
+        Lf {
+            tab_width: 4,
+        }
+    }
+
+    /// Returns a new `Lf` with the given tab width.
     pub fn with_tab_width(tab_width: u8) -> Self {
         assert!(tab_width > 0);
         Lf { tab_width }
@@ -73,7 +248,32 @@ impl Lf {
 }
 
 impl ColumnMetrics for Lf {
-    const STR: &'static str = "\n";
+    fn next_column<'text>(&self, text: &'text str) -> Option<Pos> {
+        let mut chars = text.chars();
+        match chars.next() {
+            Some(c) if c == '\n' => Some(Pos::new(1, 1, 0)),
+            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            None                 => None,
+        }
+    }
+
+    fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos> {
+        let mut chars = text.chars();
+        match chars.next_back() {
+            Some(c) if c == '\n' => Some(Pos::new(1, 1, 0)),
+            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            None                 => None,
+        }
+    }
+}
+
+
+impl Default for Lf {
+    fn default() -> Self {
+        Lf::new()
+    }
 }
 
 
@@ -107,17 +307,9 @@ impl Pos {
         self == Pos::ZERO
     }
 
-    /// Constructs the end position from the given string.
-    pub fn new_from_string<S, Cm>(text: S) -> Self
-        where
-            S: AsRef<str>,
-            Cm: ColumnMetrics,
-    {
-        let text = text.as_ref();
-        Pos {
-            byte: text.len(),
-            page: Page::ZERO.advance::<Cm>(text.as_ref()),
-        }
+    /// Return true if the span position is the start of a new line.
+    pub fn is_line_start(self) -> bool {
+        self.page.is_line_start()
     }
 }
 
@@ -170,25 +362,9 @@ impl Page {
     /// The start position.
     pub const ZERO: Page = Page { line: 0, column: 0 };
 
-    /// Advances the Page by the contents of the given text.
-    pub fn advance<'t, Cm>(mut self, text: &'t str) -> Self
-        where Cm: ColumnMetrics,
-    {
-        let mut chars = text.chars();
-        loop {
-            // Skip past newline chars.
-            if chars.as_str().starts_with(Cm::STR) {
-                self.line += 1;
-                self.column = 0;
-                let _ = chars.nth(Cm::len() - 1);
-                continue;
-            }
-
-            if chars.next().is_none() { break; }
-            self.column += 1;
-        }
-
-        self
+    /// Return true if the page position is the start of a new line.
+    pub fn is_line_start(self) -> bool {
+        self.column == 0
     }
 }
 
@@ -198,10 +374,10 @@ impl std::ops::Add for Page {
     fn add(self, other: Self) -> Self {
         Page {
             line: self.line + other.line,
-            column: if other.line == 0 { 
-                self.column + other.column
-            } else {
+            column: if other.is_line_start() { 
                 other.column
+            } else {
+                self.column + other.column
             },
         }
     }
@@ -210,10 +386,10 @@ impl std::ops::Add for Page {
 impl std::ops::AddAssign for Page {
     fn add_assign(&mut self, other: Self) {
         self.line += other.line;
-        if other.line == 0 {
-            self.column += other.column;
-        } else {
+        if other.is_line_start() {
             self.column = other.column;
+        } else {
+            self.column += other.column;
         }
     }
 }

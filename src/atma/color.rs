@@ -129,7 +129,7 @@ pub fn color_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 
 fn rgb_from_args<'text, Cm>(
     lexer: Lexer<'text, AtmaScanner, Cm>,
-    args: Vec<(FnArg, Span<'text, Cm>)>)
+    args: Vec<(FnArg, Span<'text>)>)
     -> ParseResult<'text, AtmaScanner, Cm, Rgb>
     where Cm: ColumnMetrics,
 {

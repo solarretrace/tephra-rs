@@ -230,7 +230,7 @@ pub enum CellSelector<'name> {
 #[derive(Debug)]
 pub struct FnCall<'text, Cm> {
     pub name: &'text str,
-    pub args: Vec<(FnArg, Span<'text, Cm>)>,
+    pub args: Vec<(FnArg, Span<'text>)>,
 }
 
 #[derive(Debug)]

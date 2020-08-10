@@ -166,28 +166,28 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
 
     /// Returns the full span (including filtered text) back to the last
     /// consumed position.
-    pub fn full_span(&self) -> Span<'text, Cm> {
+    pub fn full_span(&self) -> Span<'text> {
         Span::new_enclosing(self.full, self.end, self.source)
     }
 
     /// Returns the span (excluding filtered text) back to the last consumed
     /// position.
-    pub fn span(&self) -> Span<'text, Cm> {
+    pub fn span(&self) -> Span<'text> {
         Span::new_enclosing(self.start, self.end, self.source)
     }
 
     /// Returns the span (including filtered text) of the last lexed token.
-    pub fn last_full_span(&self) -> Span<'text, Cm> {
+    pub fn last_full_span(&self) -> Span<'text> {
         Span::new_enclosing(self.last_full, self.end, self.source)
     }
 
     /// Returns the span (excluding filtered text) of the last lexed token.
-    pub fn last_span(&self) -> Span<'text, Cm> {
+    pub fn last_span(&self) -> Span<'text> {
         Span::new_enclosing(self.last, self.end, self.source)
     }
 
     /// Returns the span of the end of the lexed text.
-    pub fn end_span(&self) -> Span<'text, Cm> {
+    pub fn end_span(&self) -> Span<'text> {
         Span::new_from(self.end, self.source)
     }
 
@@ -291,7 +291,7 @@ impl<'text, 'l, Sc, Cm> Iterator for IterWithSpans<'text, 'l, Sc, Cm>
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
-    type Item = (Sc::Token, Span<'text, Cm>);
+    type Item = (Sc::Token, Span<'text>);
     
     fn next(&mut self) -> Option<Self::Item> {
         self.lexer.next().map(|t| {
