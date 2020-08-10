@@ -8,6 +8,7 @@
 //! Character positioning.
 ////////////////////////////////////////////////////////////////////////////////
 
+use unicode_width::UnicodeWidthChar;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ColumnMetrics
@@ -22,6 +23,19 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
     /// Returns the position of the next display column before the end of the
     /// given text.
     fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos>;
+
+    /// Returns the display width of the given text.
+    fn width<'text>(&self, text: &'text str) -> Pos {
+        let mut end = Pos::ZERO;
+        let mut rest = text;
+
+        while !rest.is_empty() {
+            end += self.next_column(rest)
+                .expect("column position for nonempty text");
+            rest = &text[end.byte..];
+        }
+        end
+    }
 
     /// Returns the position of the start of the next line after the start of
     /// the given text. If the text ends before a new line is encountered, the
@@ -52,6 +66,26 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
                 .expect("column position for nonempty text");
 
             if next.page.column == 0 { break; }
+            end += next;
+            rest = &text[end.byte..];
+        }
+        end
+    }
+
+    /// Returns the position up to first display column for which the given
+    /// predicate fails from the start of the given text.
+    fn next_until<'text, F>(&self, text: &'text str, mut pred: F) -> Pos 
+        where F: for<'a> FnMut(&'a str, Pos) -> bool,
+    {
+        let mut end = Pos::ZERO;
+        let mut rest = text;
+
+        while !rest.is_empty() {
+            let next = self.next_column(rest)
+                .expect("column position for nonempty text");
+
+            if pred(&text[end.byte .. end.byte + next.byte], next) { break; }
+
             end += next;
             rest = &text[end.byte..];
         }
@@ -93,14 +127,22 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
         end
     }
 
-    /// Returns the display width of the given text.
-    fn width<'text>(&self, text: &'text str) -> Pos {
+    /// Returns the position up to first display column for which the given
+    /// predicate fails from the end of the given text.
+    fn next_back_until<'text, F>(&self, text: &'text str, mut pred: F) -> Pos 
+        where F: for<'a> FnMut(&'a str, Pos) -> bool,
+    {
         let mut end = Pos::ZERO;
         let mut rest = text;
 
         while !rest.is_empty() {
-            end += self.next_column(rest)
+            let next = self.next_back_column(rest)
                 .expect("column position for nonempty text");
+
+            let start = text.len() - end.byte;
+            if pred(&text[start .. start + next.byte], next) { break; }
+
+            end += next;
             rest = &text[end.byte..];
         }
         end
@@ -152,7 +194,10 @@ impl ColumnMetrics for CrLf {
                 _                    => Some(Pos::new(1, 0, 1)),
             }
             Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
-            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            Some(c)              => Some(Pos::new(
+                c.len_utf8(),
+                0,
+                UnicodeWidthChar::width(c).unwrap_or(0))),
             None                 => None,
         }
     }
@@ -165,7 +210,10 @@ impl ColumnMetrics for CrLf {
                 _                    => Some(Pos::new(1, 0, 1)),
             }
             Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
-            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            Some(c)              => Some(Pos::new(
+                c.len_utf8(),
+                0,
+                UnicodeWidthChar::width(c).unwrap_or(0))),
             None                 => None,
         }
     }
@@ -209,7 +257,10 @@ impl ColumnMetrics for Cr {
         match chars.next() {
             Some(c) if c == '\r' => Some(Pos::new(1, 1, 0)),
             Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
-            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            Some(c)              => Some(Pos::new(
+                c.len_utf8(),
+                0,
+                UnicodeWidthChar::width(c).unwrap_or(0))),
             None                 => None,
         }
     }
@@ -219,7 +270,10 @@ impl ColumnMetrics for Cr {
         match chars.next_back() {
             Some(c) if c == '\r' => Some(Pos::new(1, 1, 0)),
             Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
-            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            Some(c)              => Some(Pos::new(
+                c.len_utf8(),
+                0,
+                UnicodeWidthChar::width(c).unwrap_or(0))),
             None                 => None,
         }
     }
@@ -262,7 +316,10 @@ impl ColumnMetrics for Lf {
         match chars.next() {
             Some(c) if c == '\n' => Some(Pos::new(1, 1, 0)),
             Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
-            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            Some(c)              => Some(Pos::new(
+                c.len_utf8(),
+                0,
+                UnicodeWidthChar::width(c).unwrap_or(0))),
             None                 => None,
         }
     }
@@ -272,7 +329,10 @@ impl ColumnMetrics for Lf {
         match chars.next_back() {
             Some(c) if c == '\n' => Some(Pos::new(1, 1, 0)),
             Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
-            Some(c)              => Some(Pos::new(c.len_utf8(), 0, 1)),
+            Some(c)              => Some(Pos::new(
+                c.len_utf8(),
+                0,
+                UnicodeWidthChar::width(c).unwrap_or(0))),
             None                 => None,
         }
     }
