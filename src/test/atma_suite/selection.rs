@@ -42,9 +42,9 @@ fn cell_ref_index() {
     assert_eq!(actual, expected);
 }
 
-/// Tests `cell_ref` with an index value out of range.
+/// Tests `cell_ref` with an index value overflow.
 #[test]
-fn cell_ref_index_out_of_range() {
+fn cell_ref_index_overflow() {
     let text = ":0x100000000";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
@@ -97,9 +97,9 @@ fn cell_ref_position() {
     assert_eq!(actual, expected);
 }
 
-/// Tests `cell_ref` with an position value out of range.
+/// Tests `cell_ref` with an position value overflow.
 #[test]
-fn cell_ref_position_out_of_range() {
+fn cell_ref_position_overflow() {
     let text = ":0xFFFF.0x10000.0xFFFF";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
@@ -176,9 +176,9 @@ fn cell_ref_group() {
     assert_eq!(actual, expected);
 }
 
-/// Tests `cell_ref` with an group value out of range.
+/// Tests `cell_ref` with an group value overflow.
 #[test]
-fn cell_ref_group_out_of_range() {
+fn cell_ref_group_overflow() {
     let text = "'abcd':0x1_0000_0000";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
@@ -264,9 +264,9 @@ fn cell_selector_index() {
     assert_eq!(actual, expected);
 }
 
-/// Tests `cell_selector` with an Index value out of range.
+/// Tests `cell_selector` with an Index value overflow.
 #[test]
-fn cell_selector_index_out_of_range() {
+fn cell_selector_index_overflow() {
     let text = ":0x1_0000_0000";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
@@ -328,9 +328,9 @@ fn cell_selector_index_range() {
     assert_eq!(actual, expected);
 }
 
-/// Tests `cell_selector` with an IndexRange value out of range.
+/// Tests `cell_selector` with an IndexRange value overflow.
 #[test]
-fn cell_selector_index_range_out_of_range() {
+fn cell_selector_index_range_overflow() {
     let text = ":0-:0x1_0000_0000";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
@@ -423,9 +423,9 @@ fn cell_selector_position_selector() {
     assert_eq!(actual, expected);
 }
 
-/// Tests `cell_selector` with a PositionSelector value out of range.
+/// Tests `cell_selector` with a PositionSelector value overflow.
 #[test]
-fn cell_selector_position_selector_out_of_range() {
+fn cell_selector_position_selector_overflow() {
     let text = ":0x1_0000.*.0";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
@@ -485,9 +485,9 @@ fn cell_selector_position_range() {
     assert_eq!(actual, expected);
 }
 
-/// Tests `cell_selector` with a PositionRange value out of range.
+/// Tests `cell_selector` with a PositionRange value overflow.
 #[test]
-fn cell_selector_position_range_out_of_range() {
+fn cell_selector_position_range_overflow() {
     let text = ":0xFFFF.0.0 - :0xFFFF.0x1_0000.3";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));

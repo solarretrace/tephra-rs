@@ -542,11 +542,15 @@ impl<'text, Cm> Iterator for SplitLines<'text, Cm> where Cm: ColumnMetrics {
 
         let adv = self.metrics.next_line_end(&self.text);
         span.extend_by(adv);
-        
-        let adv = self.metrics.next_line_start(&self.text);
         self.base += adv;
         self.text = &self.text[adv.byte..];
-
+        if self.text.is_empty() {
+            self.base.page.line = self.max_line + 1;
+        } else {
+            let adv = self.metrics.next_line_start(&self.text);
+            self.base += adv;
+            self.text = &self.text[adv.byte..];
+        }
         Some(span)
     }
 }

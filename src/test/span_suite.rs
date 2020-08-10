@@ -122,10 +122,10 @@ fn widen_empty_to_line() {
 fn widen_full_to_line() {
     let text = " \n  abcd  \n ";
     let mut span = Span::new(text);
-    span.extend_by(dbg!(Lf::new().width(text)));
+    span.extend_by(Lf::new().width(text));
 
     assert_eq!(
-        format!("{}", dbg!(span).widen_to_line(Lf::new())),
+        format!("{}", span.widen_to_line(Lf::new())),
         "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)");
 }
 
@@ -161,6 +161,29 @@ fn split_lines() {
         "\" def \" (5:0-5:5, bytes 11-16)".to_owned(),
         "\"ghi\" (6:0-6:3, bytes 17-20)".to_owned(),
         "\"\" (7:0-7:0, bytes 21-21)".to_owned(),
+    ];
+
+    for (i, act) in actual.iter().enumerate() {
+        println!("{:?}", act);
+        println!("{:?}", expected[i]);
+        println!();
+    }
+    assert_eq!(actual, expected);
+}
+
+
+/// Tests `Span::split_lines` with no line breaks.
+#[test]
+fn split_lines_no_breaks() {
+    let text = "abcd";
+    let span = Span::full(text, Lf::new());
+
+    let actual = span
+        .split_lines(Lf::new())
+        .map(|v| format!("{}", v))
+        .collect::<Vec<_>>();
+    let expected = vec![
+        "\"abcd\" (0:0-0:4, bytes 0-4)".to_owned(),
     ];
 
     for (i, act) in actual.iter().enumerate() {

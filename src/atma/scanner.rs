@@ -439,7 +439,7 @@ impl AtmaScanner {
             }
         }
 
-        None
+        Some((AtmaToken::StringText, pos))
     }
 
     /// Parses a Whitespace token.
