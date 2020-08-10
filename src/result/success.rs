@@ -20,7 +20,11 @@ use crate::position::ColumnMetrics;
 /// The result of a successful parse.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Success<'text, Sc, Cm, V> where Sc: Scanner {
+pub struct Success<'text, Sc, Cm, V>
+    where
+        Sc: Scanner,
+        Cm: ColumnMetrics,
+{
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, Sc, Cm>,
     /// The parsed value.

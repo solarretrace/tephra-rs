@@ -33,7 +33,7 @@ use crate::position::ColumnMetrics;
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn fn_call<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-    -> ParseResult<'text, AtmaScanner, Cm, FnCall<'text, Cm>>
+    -> ParseResult<'text, AtmaScanner, Cm, FnCall<'text>>
     where Cm: ColumnMetrics,
 {
     both(
@@ -60,8 +60,7 @@ pub fn fn_arg<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         Err(Some(fail)) => return Err(fail),
         Err(None)       => (),
     }
-
-
+    
     uint::<_, u32>
         (lexer)
         .map_value(FnArg::U32)

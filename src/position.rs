@@ -92,7 +92,7 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
         }
         end
     }
-
+    
     /// Returns the display width of the given text.
     fn width<'text>(&self, text: &'text str) -> Pos {
         let mut end = Pos::ZERO;

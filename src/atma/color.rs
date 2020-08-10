@@ -92,7 +92,8 @@ pub fn rgb_hex_code<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
                 .with_span(
                     format!("3 or 6 digits required, {} provided",
                         val.len() - 1),
-                    succ.lexer.last_span()),
+                    succ.lexer.last_span(),
+                    succ.lexer.column_metrics()),
             lexer: succ.lexer,
             source: None,
         })
@@ -120,7 +121,10 @@ pub fn color_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 
     Err(Failure {
         parse_error: ParseError::new("invalid color")
-            .with_span("not a recognized color form", succ.lexer.full_span()),
+            .with_span(
+                "not a recognized color form",
+                succ.lexer.full_span(),
+                succ.lexer.column_metrics()),
         lexer: lexer.join(succ.lexer),
         source: None,
     })
@@ -139,7 +143,8 @@ fn rgb_from_args<'text, Cm>(
                 .with_span(
                     format!("RGB color requires 3 arguments, {} provided",
                         args.len()),
-                    lexer.last_span()),
+                    lexer.last_span(),
+                    lexer.column_metrics()),
             lexer,
             source: None,
         });
@@ -152,7 +157,9 @@ fn rgb_from_args<'text, Cm>(
                 Err(Failure {
                     parse_error: ParseError::new("invalid RGB color")
                         .with_span(
-                            "red value out of allowed range [0.0, 1.0]", *rs),
+                            "red value out of allowed range [0.0, 1.0]",
+                            *rs,
+                            lexer.column_metrics()),
                     lexer,
                     source: None,
                 })
@@ -160,7 +167,9 @@ fn rgb_from_args<'text, Cm>(
                 Err(Failure {
                     parse_error: ParseError::new("invalid RGB color")
                         .with_span(
-                            "green value out of allowed range [0.0, 1.0]", *gs),
+                            "green value out of allowed range [0.0, 1.0]",
+                            *gs,
+                            lexer.column_metrics()),
                     lexer,
                     source: None,
                 })
@@ -168,7 +177,9 @@ fn rgb_from_args<'text, Cm>(
                 Err(Failure {
                     parse_error: ParseError::new("invalid RGB color")
                         .with_span(
-                            "blue value out of allowed range [0.0, 1.0]", *bs),
+                            "blue value out of allowed range [0.0, 1.0]",
+                            *bs,
+                            lexer.column_metrics()),
                     lexer,
                     source: None,
                 })
@@ -193,19 +204,28 @@ fn rgb_from_args<'text, Cm>(
 
             (Ok(r), Ok(g), Err(e)) => Err(Failure {
                 parse_error: ParseError::new("invalid RGB color")
-                    .with_span("blue octet out of range [0-255]", *bs),
+                    .with_span(
+                        "blue octet out of range [0-255]",
+                        *bs,
+                        lexer.column_metrics()),
                 lexer,
                 source: Some(Box::new(e)),
             }),
             (Ok(r), Err(e),     _) => Err(Failure {
                 parse_error: ParseError::new("invalid RGB color")
-                    .with_span("green octet out of range [0-255]", *gs),
+                    .with_span(
+                        "green octet out of range [0-255]",
+                        *gs,
+                        lexer.column_metrics()),
                 lexer,
                 source: Some(Box::new(e)),
             }),
             (Err(e),     _,     _) => Err(Failure {
                 parse_error: ParseError::new("invalid RGB color")
-                    .with_span("red octet out of range [0-255]", *rs),
+                    .with_span(
+                        "red octet out of range [0-255]",
+                        *rs,
+                        lexer.column_metrics()),
                 lexer,
                 source: Some(Box::new(e)),
             }),
@@ -214,7 +234,10 @@ fn rgb_from_args<'text, Cm>(
         ((U32(_), _), (U32(_), _), (F32(_), s)) |
         ((U32(_), _), (F32(_), s), _          ) => Err(Failure {
             parse_error: ParseError::new("invalid RGB color")
-                .with_span("expected u8 value here", *s),
+                .with_span(
+                    "expected u8 value here",
+                    *s,
+                    lexer.column_metrics()),
             lexer,
             source: None,
         }),
@@ -222,7 +245,10 @@ fn rgb_from_args<'text, Cm>(
         ((F32(_), _), (F32(_), _), (U32(_), s)) |
         ((F32(_), _), (U32(_), s), _          ) => Err(Failure {
             parse_error: ParseError::new("invalid RGB color")
-                .with_span("expected f32 value here", *s),
+                .with_span(
+                    "expected f32 value here",
+                    *s,
+                    lexer.column_metrics()),
             lexer,
             source: None,
         }),

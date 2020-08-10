@@ -170,27 +170,32 @@ impl AtmaScanner {
         }
     }
 
-    /// Parses a OpenParen token.
-    fn parse_char(&mut self, text: &str, c: char, token: AtmaToken)
+    /// Parses a string.
+    fn parse_str<Cm>(
+        &mut self,
+        text: &str,
+        metrics: Cm,
+        s: &str,
+        token: AtmaToken)
         -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
     {
-        if text.starts_with(c) {
-            Some((token, Pos::new(c.len_utf8(), 0, 1)))
+        if text.starts_with(s) {
+            Some((token, metrics.width(s)))
         } else {
             None
         }
     }
 
     /// Parses a Ident token.
-    fn parse_ident(&mut self, text: &str)
+    fn parse_ident<Cm>(&mut self, text: &str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
     {
         let mut bytes = 0;
-        let mut cols = 0;
         let mut chars = text.chars();
         match chars.next() {
             Some(c) if c.is_alphabetic() || c == '_' => {
-                cols += 1;
                 bytes += c.len_utf8();
             },
             _ => return None,
@@ -198,19 +203,19 @@ impl AtmaScanner {
 
         while let Some(c) = chars.next() {
             if c.is_alphanumeric() || c == '_' {
-                cols += 1;
                 bytes += c.len_utf8();
             } else {
                 break;
             }
         }
 
-        Some((AtmaToken::Ident, Pos::new(bytes, 0, cols)))
+        Some((AtmaToken::Ident, metrics.width(&text[..bytes])))
     }
 
     /// Parses an Uint token.
-    fn parse_uint(&mut self, mut text: &str)
+    fn parse_uint<Cm>(&mut self, mut text: &str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
     {
         let radix = if text.starts_with("0b") {
             text = &text[2..];
@@ -241,8 +246,9 @@ impl AtmaScanner {
     }
 
     /// Parses an HexDigits token.
-    fn parse_hex_digits(&mut self, mut text: &str)
+    fn parse_hex_digits<Cm>(&mut self, mut text: &str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
     {
         let rest = text
             .trim_start_matches(|c: char| c.is_digit(16));
@@ -256,8 +262,9 @@ impl AtmaScanner {
     }
 
     /// Parses a Float token.
-    fn parse_float(&mut self, text: &str)
+    fn parse_float<Cm>(&mut self, text: &str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
     {
         if text.starts_with("inf") {
             return Some((AtmaToken::Float, Pos::new(3, 0, 3)));
@@ -308,8 +315,9 @@ impl AtmaScanner {
     }
 
     /// Parses a RawStringOpen token.
-    fn parse_raw_string_open(&mut self, text: &str)
+    fn parse_raw_string_open<Cm>(&mut self, text: &str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
     {
         let mut pos = Pos::ZERO;
         let mut chars = text.chars();
@@ -336,8 +344,9 @@ impl AtmaScanner {
     }
 
     /// Parses a RawStringClose token.
-    fn parse_raw_string_close(&mut self, text: &str)
+    fn parse_raw_string_close<Cm>(&mut self, text: &str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
     {
         let mut raw_count = 0;
         let mut pos = Pos::ZERO;
@@ -367,7 +376,7 @@ impl AtmaScanner {
     }
 
     /// Parses a RawStringText token.
-    fn parse_raw_string_text<Cm>(&mut self, text: &str)
+    fn parse_raw_string_text<Cm>(&mut self, text: &str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
@@ -375,7 +384,9 @@ impl AtmaScanner {
         let mut chars = text.chars();
         while let Some(c) = chars.next() {
             if c == '"' {
-                if self.parse_raw_string_close(&text[pos.byte..]).is_some() {
+                if self.parse_raw_string_close(&text[pos.byte..], metrics)
+                    .is_some()
+                {
                     self.open = Some(AtmaToken::RawStringText);
                     return Some((AtmaToken::RawStringText, pos));
                 }
@@ -392,7 +403,11 @@ impl AtmaScanner {
     }
 
     /// Parses a StringText token.
-    fn parse_string_text<Cm>(&mut self, text: &str, open: AtmaToken)
+    fn parse_string_text<Cm>(
+        &mut self,
+        text: &str,
+        metrics: Cm,
+        open: AtmaToken)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
@@ -441,7 +456,7 @@ impl AtmaScanner {
     }
 
     /// Parses a Whitespace token.
-    fn parse_whitespace<Cm>(&mut self, text: &str)
+    fn parse_whitespace<Cm>(&mut self, text: &str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
@@ -459,7 +474,7 @@ impl AtmaScanner {
 impl Scanner for AtmaScanner {
     type Token = AtmaToken;
 
-    fn scan<'text, Cm>(&mut self, text: &'text str)
+    fn scan<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
         -> Option<(Self::Token, Pos)>
         where Cm: ColumnMetrics,
     {
@@ -477,18 +492,18 @@ impl Scanner for AtmaScanner {
                 Some((RawStringClose, Pos::new(byte, 0, byte)))
             },
             Some(RawStringOpen) => {
-                if let Some(parse) = self.parse_raw_string_close(text) {
+                if let Some(parse) = self.parse_raw_string_close(text, metrics) {
                     self.depth = 0;
                     return Some(parse);
                 }
-                return_if_some!(self.parse_raw_string_text::<Cm>(text));
+                return_if_some!(self.parse_raw_string_text::<Cm>(text, metrics));
                 None
             },
 
             Some(StringOpenSingle) => {
-                return_if_some!(self.parse_char(text, '\'', StringCloseSingle));
+                return_if_some!(self.parse_str(text, metrics, "\'", StringCloseSingle));
                 if let Some(parse) = self
-                    .parse_string_text::<Cm>(text, StringOpenSingle)
+                    .parse_string_text::<Cm>(text, metrics, StringOpenSingle)
                 {
                     self.open = Some(StringOpenSingle);
                     return Some(parse);
@@ -496,9 +511,9 @@ impl Scanner for AtmaScanner {
                 None
             },
             Some(StringOpenDouble) => {
-                return_if_some!(self.parse_char(text, '\"', StringCloseDouble));
+                return_if_some!(self.parse_str(text, metrics, "\"", StringCloseDouble));
                 if let Some(parse) = self
-                    .parse_string_text::<Cm>(text, StringOpenDouble)
+                    .parse_string_text::<Cm>(text, metrics, StringOpenDouble)
                 {
                     self.open = Some(StringOpenDouble);
                     return Some(parse);
@@ -507,56 +522,56 @@ impl Scanner for AtmaScanner {
             },
 
             Some(Hash) => {
-                return_if_some!(self.parse_hex_digits(text));
-                self.scan::<Cm>(text)
+                return_if_some!(self.parse_hex_digits(text, metrics));
+                self.scan::<Cm>(text, metrics)
             },
 
             None => {
-                return_if_some!(self.parse_whitespace::<Cm>(text));
-                return_if_some!(self.parse_char(text, '(', OpenParen));
-                return_if_some!(self.parse_char(text, ')', CloseParen));
-                return_if_some!(self.parse_char(text, '[', OpenBracket));
-                return_if_some!(self.parse_char(text, ']', CloseBracket));
-                return_if_some!(self.parse_char(text, '{', OpenBrace));
-                return_if_some!(self.parse_char(text, '}', CloseBrace));
+                return_if_some!(self.parse_whitespace::<Cm>(text, metrics));
+                return_if_some!(self.parse_str(text, metrics, "(", OpenParen));
+                return_if_some!(self.parse_str(text, metrics, ")", CloseParen));
+                return_if_some!(self.parse_str(text, metrics, "[", OpenBracket));
+                return_if_some!(self.parse_str(text, metrics, "]", CloseBracket));
+                return_if_some!(self.parse_str(text, metrics, "{", OpenBrace));
+                return_if_some!(self.parse_str(text, metrics, "}", CloseBrace));
 
                 // RawStringOpen must be parsed before Hash.
-                if let Some(parse) = self.parse_raw_string_open(text) {
+                if let Some(parse) = self.parse_raw_string_open(text, metrics) {
                     self.open = Some(RawStringOpen);
                     return Some(parse);
                 }
                 if let Some(parse) = self
-                    .parse_char(text, '\'', StringOpenSingle)
+                    .parse_str(text, metrics, "\'", StringOpenSingle)
                 {
                     self.open = Some(StringOpenSingle);
                     return Some(parse);
                 }
                 if let Some(parse) = self
-                    .parse_char(text, '\"', StringOpenDouble)
+                    .parse_str(text, metrics, "\"", StringOpenDouble)
                 {
                     self.open = Some(StringOpenDouble);
                     return Some(parse);
                 }
 
-                return_if_some!(self.parse_char(text, ':', Colon));
-                return_if_some!(self.parse_char(text, ',', Comma));
-                if let Some(parse) = self.parse_char(text, '#', Hash) {
+                return_if_some!(self.parse_str(text, metrics, ":", Colon));
+                return_if_some!(self.parse_str(text, metrics, ",", Comma));
+                if let Some(parse) = self.parse_str(text, metrics, "#", Hash) {
                     self.open = Some(Hash);
                     return Some(parse);
                 }
 
-                return_if_some!(self.parse_char(text, '*', Mult));
-                return_if_some!(self.parse_char(text, '+', Plus));
-                return_if_some!(self.parse_char(text, '-', Minus));
+                return_if_some!(self.parse_str(text, metrics, "*", Mult));
+                return_if_some!(self.parse_str(text, metrics, "+", Plus));
+                return_if_some!(self.parse_str(text, metrics, "-", Minus));
                 
                 // Float must be parsed before Uint and Decimal.
-                return_if_some!(self.parse_float(text));
-                return_if_some!(self.parse_char(text, '.', Decimal));
-                return_if_some!(self.parse_uint(text));
+                return_if_some!(self.parse_float(text, metrics));
+                return_if_some!(self.parse_str(text, metrics, ".", Decimal));
+                return_if_some!(self.parse_uint(text, metrics));
 
                 // Ident must be parsed before Underscore.
-                return_if_some!(self.parse_ident(text));
-                return_if_some!(self.parse_char(text, '_', Underscore));
+                return_if_some!(self.parse_ident(text, metrics));
+                return_if_some!(self.parse_str(text, metrics, "_", Underscore));
                 
                 None
             },

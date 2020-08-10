@@ -62,7 +62,9 @@ pub fn end_of_text<'text, Sc, Cm, F, V>(lexer: Lexer<'text, Sc, Cm>)
         })
     } else {
         Err(Failure {
-            parse_error: ParseError::unexpected_text(lexer.end_span()),
+            parse_error: ParseError::unexpected_text(
+                lexer.end_span(),
+                lexer.column_metrics()),
             lexer,
             source: None,
         })
@@ -87,7 +89,8 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
             // Unexpected End-of-text.
             return Err(Failure {
                 parse_error: ParseError::unexpected_end_of_text(
-                    lexer.end_span()),
+                    lexer.end_span(),
+                    lexer.column_metrics()),
                 lexer,
                 source: None,
             });
@@ -99,7 +102,8 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
                 // println!(" -> unrecognized {}", lexer.last_span());
                 Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.end_span()),
+                        lexer.end_span(),
+                        lexer.column_metrics()),
                     lexer,
                     source: None,
                 })
@@ -120,7 +124,8 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
                 Err(Failure {
                     parse_error: ParseError::unexpected_token(
                         lexer.last_span(),
-                        &token),
+                        &token,
+                        lexer.column_metrics()),
                     lexer,
                     source: None,
                 })
@@ -147,7 +152,8 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
                 // Lexer error.
                 None => return Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.last_span()),
+                        lexer.last_span(),
+                        lexer.column_metrics()),
                     lexer,
                     source: None,
                 }),
@@ -168,7 +174,8 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
         Err(Failure {
             parse_error: ParseError::unexpected_token(
                 lexer.last_span(),
-                format!("one of {}", DisplayList(&tokens[..]))),
+                format!("one of {}", DisplayList(&tokens[..])),
+                lexer.column_metrics()),
             lexer,
             source: None,
         })
@@ -211,7 +218,8 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
                 // Unexpected End-of-text.
                 return Err(Failure {
                     parse_error: ParseError::unexpected_end_of_text(
-                        lexer.end_span()),
+                        lexer.end_span(),
+                        lexer.column_metrics()),
                     lexer,
                     source: None,
                 });
@@ -221,7 +229,8 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
                 // Lexer error.
                 None => return Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.last_span()),
+                        lexer.last_span(),
+                        lexer.column_metrics()),
                     lexer,
                     source: None,
                 }),
@@ -233,7 +242,8 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
                 Some(_) => return Err(Failure {
                     parse_error: ParseError::unexpected_token(
                         lexer.last_span(),
-                        &token),
+                        &token,
+                        lexer.column_metrics()),
                     lexer,
                     source: None,
                 }),

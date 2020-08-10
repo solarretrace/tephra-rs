@@ -29,7 +29,9 @@ pub type ParseResult<'text, Sc, Cm, V>
 ////////////////////////////////////////////////////////////////////////////////
 /// Extension trait for `ParseResult`s.
 pub trait ParseResultExt<'text, Sc, Cm, V> 
-    where Sc: Scanner,
+    where
+        Sc: Scanner,
+        Cm: ColumnMetrics,
 {
     /// Converts the ParseResult into a Result containing the parsed value,
     /// discarding any associated spans or lexer state.

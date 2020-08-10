@@ -117,6 +117,11 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         self.source
     }
 
+    /// Returns the column metrics for the source.
+    pub fn column_metrics(&self) -> Cm {
+        self.metrics
+    }
+
     /// Returns the lexer's start position.
     pub fn start_pos(&self) -> Pos {
         self.end
@@ -247,7 +252,6 @@ impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm>
     where
         Sc: Scanner,
         Cm: ColumnMetrics,
-
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Lexer")
@@ -265,6 +269,23 @@ impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm>
     }
 }
 
+impl<'text, Sc, Cm> PartialEq for Lexer<'text, Sc, Cm>
+    where
+        Sc: Scanner,
+        Cm: ColumnMetrics,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.source == other.source &&
+        self.scanner == other.scanner &&
+        self.filter.is_some() == other.filter.is_some() &&
+        self.full == other.full &&
+        self.start == other.start &&
+        self.last_full == other.last_full &&
+        self.last == other.last &&
+        self.end == other.end && 
+        self.start_fixed == other.start_fixed
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // IterWithSpans
