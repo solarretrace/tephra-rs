@@ -175,13 +175,13 @@ impl AtmaScanner {
         &mut self,
         text: &str,
         metrics: Cm,
-        s: &str,
+        pattern: &str,
         token: AtmaToken)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        if text.starts_with(s) {
-            Some((token, metrics.width(s)))
+        if text.starts_with(pattern) {
+            Some((token, metrics.width(pattern)))
         } else {
             None
         }
@@ -192,24 +192,27 @@ impl AtmaScanner {
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        let mut bytes = 0;
-        let mut chars = text.chars();
-        match chars.next() {
-            Some(c) if c.is_alphabetic() || c == '_' => {
-                bytes += c.len_utf8();
-            },
+        let mut pos = Pos::ZERO;
+        let mut col_iter = metrics.iter_columns(text);
+        match col_iter.next() {
+            Some((next, adv)) if next
+                .chars()
+                .all(|c| c.is_alphabetic() || c == '_') =>
+            {
+                pos += adv;
+            }
             _ => return None,
         }
 
-        while let Some(c) = chars.next() {
-            if c.is_alphanumeric() || c == '_' {
-                bytes += c.len_utf8();
+        while let Some((next, adv)) = col_iter.next() {
+            if next.chars().all(char::is_alphabetic) {
+                pos += adv;
             } else {
                 break;
             }
         }
 
-        Some((AtmaToken::Ident, metrics.width(&text[..bytes])))
+        Some((AtmaToken::Ident, pos))
     }
 
     /// Parses an Uint token.
@@ -412,43 +415,27 @@ impl AtmaScanner {
         where Cm: ColumnMetrics,
     {
         let mut pos = Pos::ZERO;
-        let mut chars = text.chars();
-        
-        loop {
-            // Skip past newline chars.
-            if chars.as_str().starts_with(Cm::STR) {
-                pos += Pos::new(Cm::len(), 1, 0);
-                let _ = chars.nth(Cm::len() - 1);
-                continue;
-            }
+        let mut col_iter = metrics.iter_columns(text);
 
-            if let Some(c) = chars.next() {
-                if c == '\\' {
-                    match chars.next() {
-                        // NOTE: These should all step by column, because
-                        // they're escaped text.
-                        Some('\\') | 
-                        Some('"')  | 
-                        Some('\'') | 
-                        Some('t')  | 
-                        Some('r')  |
-                        Some('n')  => pos += Pos::new(2, 0, 2),
-                        Some('u')  => unimplemented!("unicode escapes unsupported"),
-                        Some(_)    |
-                        None       => return None,
-                    }
-                    continue;
-                }
+        while let Some((next, adv)) = col_iter.next() {
+            match (next, open) {
+                ("\\", _) => match col_iter.next() {
+                    Some(("\\", adv2)) |
+                    Some(("\"", adv2)) |
+                    Some(("'",  adv2)) |
+                    Some(("t",  adv2)) |
+                    Some(("r",  adv2)) |
+                    Some(("n",  adv2)) => pos += (adv + adv2),
+                    Some(("u",  adv2)) => unimplemented!("unicode escapes unsupported"),
+                    _                  => return None,
+                },
+                
+                ("'",  AtmaToken::StringOpenSingle) |
+                ("\"", AtmaToken::StringOpenDouble) => {
+                    return Some((AtmaToken::StringText, pos));
+                },
 
-                match (c, open) {
-                    ('\'', AtmaToken::StringOpenSingle) |
-                    ('"', AtmaToken::StringOpenDouble)  => {
-                        return Some((AtmaToken::StringText, pos));
-                    },
-                    _ => pos += Pos::new(c.len_utf8(), 0, 1),
-                }
-            } else {
-                break;
+                _ => pos += adv,
             }
         }
 
@@ -463,7 +450,7 @@ impl AtmaScanner {
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
-            let span = Pos::new_from_string::<_, Cm>(&text[0..substr_len]);
+            let span = metrics.width(&text[0..substr_len]);
             Some((AtmaToken::Whitespace, span))
         } else {
             None

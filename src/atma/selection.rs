@@ -83,7 +83,7 @@ pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let (idx, idx_succ) = exact(
         right(one(AtmaToken::Colon),
             uint::<_, u32>))
-        (lexer)?
+        (lexer.clone())?
         .take_value();
 
     match exact(

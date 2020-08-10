@@ -92,7 +92,7 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
         }
         end
     }
-    
+
     /// Returns the display width of the given text.
     fn width<'text>(&self, text: &'text str) -> Pos {
         let mut end = Pos::ZERO;
@@ -104,6 +104,15 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
             rest = &text[end.byte..];
         }
         end
+    }
+
+    /// Returns an iterator over the display columns of the given text.
+    fn iter_columns<'text>(&self, text: &'text str) -> IterColumns<'text, Self>
+    {
+        IterColumns {
+            text,
+            metrics: *self,
+        }
     }
 }
 
@@ -405,3 +414,51 @@ impl std::fmt::Display for Page {
         write!(f, "{}:{}", self.line, self.column)
     }
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// IterColumns
+////////////////////////////////////////////////////////////////////////////////
+/// An iterator over the display columns of a source text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct IterColumns<'text, Cm> {
+    /// The source text.
+    text: &'text str,
+    /// The column metrics.
+    metrics: Cm,
+}
+
+impl<'text, Cm> Iterator for IterColumns<'text, Cm>
+    where Cm: ColumnMetrics,
+{
+    type Item = (&'text str, Pos);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.metrics
+            .next_column(self.text)
+            .map(|pos| {
+                let res = (&self.text[..pos.byte], pos);
+                self.text = &self.text[pos.byte..];
+                res
+            })
+    }
+}
+
+impl<'text, Cm> DoubleEndedIterator for IterColumns<'text, Cm>
+    where Cm: ColumnMetrics,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.metrics
+            .next_back_column(self.text)
+            .map(|pos| {
+                let res = (&self.text[pos.byte..], pos);
+                self.text = &self.text[..(self.text.len() - pos.byte)];
+                res
+            })
+    }
+}
+
+impl<'text, Cm> std::iter::FusedIterator for IterColumns<'text, Cm>
+    where Cm: ColumnMetrics,
+{}
