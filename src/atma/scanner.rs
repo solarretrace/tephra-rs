@@ -220,29 +220,27 @@ impl AtmaScanner {
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        let radix = if text.starts_with("0b") {
+        let (radix, adv) = if text.starts_with("0b") {
             text = &text[2..];
-            2
+            (2, Pos::new(2, 0, 2))
         } else if text.starts_with("0o") {
             text = &text[2..];
-            8
+            (8, Pos::new(2, 0, 2))
         } else if text.starts_with("0x") {
             text = &text[2..];
-            16
+            (16, Pos::new(2, 0, 2))
         } else {
             // Unprefixed uints can't start with '_'.
             if text.starts_with('_') { return None; }
-            10
+            (10, Pos::ZERO)
         };
-
 
         let rest = text
             .trim_start_matches(|c: char| c.is_digit(radix) || c == '_');
+        let substr = &text[..text.len() - rest.len()];
         
-        let mut cols = text.len() - rest.len();
-        if radix != 10 { cols += 2 }
-        if cols > 0 {
-            return Some((AtmaToken::Uint, Pos::new(cols, 0, cols)));
+        if !substr.is_empty() {
+            return Some((AtmaToken::Uint, adv + metrics.width(substr)));
         } else {
             None
         }
@@ -255,10 +253,10 @@ impl AtmaScanner {
     {
         let rest = text
             .trim_start_matches(|c: char| c.is_digit(16));
+        let substr = &text[..text.len() - rest.len()];
         
-        let cols = text.len() - rest.len();
-        if cols > 0 {
-            return Some((AtmaToken::HexDigits, Pos::new(cols, 0, cols)));
+        if !substr.is_empty() {
+            return Some((AtmaToken::HexDigits, metrics.width(substr)));
         } else {
             None
         }
@@ -384,25 +382,21 @@ impl AtmaScanner {
         where Cm: ColumnMetrics,
     {
         let mut pos = Pos::ZERO;
-        let mut chars = text.chars();
-        while let Some(c) = chars.next() {
-            if c == '"' {
-                if self.parse_raw_string_close(&text[pos.byte..], metrics)
-                    .is_some()
-                {
-                    self.open = Some(AtmaToken::RawStringText);
-                    return Some((AtmaToken::RawStringText, pos));
-                }
-            }
+        let mut col_iter = metrics.iter_columns(text);
 
-            if c == '\n' {
-                pos += Pos::new(1, 1, 0);
+        while let Some((next, adv)) = col_iter.next() {
+            if next == "\"" && self
+                .parse_raw_string_close(&text[pos.byte..], metrics)
+                .is_some()
+            {
+                self.open = Some(AtmaToken::RawStringText);
+                return Some((AtmaToken::RawStringText, pos));
             } else {
-                pos += Pos::new(c.len_utf8(), 0, 1);
+                pos += adv;
             }
         }
 
-        None
+        Some((AtmaToken::RawStringText, pos))
     }
 
     /// Parses a StringText token.
@@ -449,9 +443,8 @@ impl AtmaScanner {
     {
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
-            let substr_len = text.len() - rest.len();
-            let span = metrics.width(&text[0..substr_len]);
-            Some((AtmaToken::Whitespace, span))
+            let substr = &text[..text.len() - rest.len()];
+            Some((AtmaToken::Whitespace, metrics.width(substr)))
         } else {
             None
         }

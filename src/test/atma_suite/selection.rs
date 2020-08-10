@@ -362,7 +362,7 @@ fn cell_selector_index_range_overflow() {
 /// Tests `cell_selector` with an IndexRange value out of order.
 #[test]
 fn cell_selector_index_range_out_of_order() {
-    let text = ":0xFF - :0b10";
+    let text = ":0xFF -\t:0b10";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
@@ -381,7 +381,7 @@ fn cell_selector_index_range_out_of_order() {
 
     let expected = (
         "invalid index range",
-        "\":0xFF - :0b10\" (0:0-0:13, bytes 0-13)".to_owned());
+        "\":0xFF -\t:0b10\" (0:0-0:16, bytes 0-13)".to_owned());
 
     println!("{:?}", actual);
     println!("{:?}", expected);
