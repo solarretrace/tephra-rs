@@ -32,7 +32,7 @@ pub trait Scanner: Debug + Clone + PartialEq {
     /// length of the consumed text should be returned. When the parse fails,
     /// the length of the text to skip before resuming should be returned. If no
     /// further progress is possible, 0 should be returned instead.
-    fn scan<'text, Cm>(&mut self, text: &'text str)
+    fn scan<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
         -> Option<(Self::Token, Pos)>
         where Cm: ColumnMetrics;
 }
@@ -46,7 +46,7 @@ pub trait Scanner: Debug + Clone + PartialEq {
 pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
     source: &'text str,
     scanner: Sc,
-    newline: Cm,
+    metrics: Cm,
     filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
     full: Pos,
     start: Pos,
@@ -62,12 +62,12 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
-    /// Constructs a new Lexer for the given text and span newlines.
-    pub fn new(scanner: Sc, source: &'text str, newline: Cm) -> Self {
+    /// Constructs a new Lexer for the given text and column metrics.
+    pub fn new(scanner: Sc, source: &'text str, metrics: Cm) -> Self {
         Lexer {
             source,
             scanner,
-            newline,
+            metrics,
             filter: None,
             full: Pos::ZERO,
             start: Pos::ZERO,
@@ -209,7 +209,10 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
     
     fn next(&mut self) -> Option<Self::Item> {
         while self.end.byte < self.source.len() {
-            match self.scanner.scan::<Cm>(&self.source[self.end.byte..]) {
+            match self.scanner.scan(
+                &self.source[self.end.byte..],
+                self.metrics)
+            {
                 Some((token, adv)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
@@ -232,9 +235,6 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
 
                 None => {
                     self.last_full = self.end;
-                    // self.end += adv;
-                    // if adv.is_zero() { self.end.byte = self.source.len() }
-                    
                     return None;
                 },
             }
@@ -243,11 +243,17 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
     }
 }
 
-impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm> where Sc: Scanner {
+impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm>
+    where
+        Sc: Scanner,
+        Cm: ColumnMetrics,
+
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Lexer")
             .field("source_len", &self.source.len())
             .field("scanner", &self.scanner)
+            .field("metrics", &self.metrics)
             .field("filter_set", &self.filter.is_some())
             .field("full", &self.full)
             .field("start", &self.start)
@@ -259,20 +265,6 @@ impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm> where Sc: Scanner {
     }
 }
 
-impl<'text, Sc, Cm> PartialEq for Lexer<'text, Sc, Cm> where Sc: Scanner {
-    fn eq(&self, other: &Self) -> bool {
-        self.source == other.source &&
-        self.scanner == other.scanner &&
-        self.filter.is_some() == other.filter.is_some() &&
-        self.full == other.full &&
-        self.start == other.start &&
-        self.last_full == other.last_full &&
-        self.last == other.last &&
-        self.end == other.end && 
-        self.start_fixed == other.start_fixed
-    }
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // IterWithSpans
@@ -281,7 +273,9 @@ impl<'text, Sc, Cm> PartialEq for Lexer<'text, Sc, Cm> where Sc: Scanner {
 /// `Lexer::iter_with_spans` method.
 #[derive(Debug)]
 pub struct IterWithSpans<'text, 'l, Sc, Cm> 
-    where Sc: Scanner,
+    where
+        Sc: Scanner,
+        Cm: ColumnMetrics,
 {
     lexer: &'l mut Lexer<'text, Sc, Cm>
 }

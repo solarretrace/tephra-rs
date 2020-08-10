@@ -45,7 +45,7 @@ mod test;
 // mod atma;
 
 // Public modules.
-// pub mod lexer;
+pub mod lexer;
 // pub mod combinator;
 // pub mod result;
 pub mod span;

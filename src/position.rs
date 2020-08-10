@@ -13,7 +13,7 @@
 // ColumnMetrics
 ////////////////////////////////////////////////////////////////////////////////
 /// A trait representing the requirements for a Span's line separator.
-pub trait ColumnMetrics: Clone + Copy {
+pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
 
     /// Returns the position of the next display column after the start of the
     /// given text.
@@ -374,7 +374,7 @@ impl std::ops::Add for Page {
     fn add(self, other: Self) -> Self {
         Page {
             line: self.line + other.line,
-            column: if other.is_line_start() { 
+            column: if other.is_line_start() || other.line > 0 { 
                 other.column
             } else {
                 self.column + other.column
@@ -386,7 +386,7 @@ impl std::ops::Add for Page {
 impl std::ops::AddAssign for Page {
     fn add_assign(&mut self, other: Self) {
         self.line += other.line;
-        if other.is_line_start() {
+        if other.is_line_start() || other.line > 0 {
             self.column = other.column;
         } else {
             self.column += other.column;

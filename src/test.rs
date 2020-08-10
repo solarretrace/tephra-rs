@@ -10,5 +10,5 @@
 
 // Internal modules.
 // mod atma_suite;
-// mod lexer_suite;
+mod lexer_suite;
 mod span_suite;

@@ -20,16 +20,6 @@ use crate::position::ColumnMetrics;
 // Token parser.
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct TokenError(&'static str);
-impl std::error::Error for TokenError {}
-
-impl std::fmt::Display for TokenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TestToken {
     Aa,
     A,
@@ -57,30 +47,29 @@ struct Test;
 impl Scanner for Test {
     type Token = TestToken;
 
-    fn scan<'text, Cm>(&mut self, text: &'text str)
+    fn scan<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
         -> Option<(Self::Token, Pos)>
         where Cm: ColumnMetrics,
     {
         // println!("{:?}", text);
         // println!("{:?}", text.split("\n").collect::<Vec<_>>());
         if text.starts_with("aa") {
-            return Some((TestToken::Aa, Pos::new(2, 0, 2)));
+            return Some((TestToken::Aa, metrics.width(&text[..2])));
         }
         if text.starts_with('a') {
-            return Some((TestToken::A, Pos::new(1, 0, 1)));
+            return Some((TestToken::A, metrics.width(&text[..1])));
         }
         if text.starts_with('b') {
-            return Some((TestToken::B, Pos::new(1, 0, 1)));
+            return Some((TestToken::B, metrics.width(&text[..1])));
         }
         if text.starts_with("def") {
-            return Some((TestToken::Def, Pos::new(3, 0, 3)));
+            return Some((TestToken::Def, metrics.width(&text[..3])));
         }
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
             let substr_len = text.len() - rest.len();
             let substr = &text[0..substr_len];
-            let span = Pos::new_from_string::<_, Cm>(substr);
-            return Some((TestToken::Ws, span));
+            return Some((TestToken::Ws, metrics.width(substr)));
         }
         None
     }
