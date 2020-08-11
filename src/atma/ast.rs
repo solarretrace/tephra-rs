@@ -38,7 +38,7 @@ pub fn ast_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, AstExpr<'text>>
     where Cm: ColumnMetrics,
 {
-    println!("Parsing ast_expr");
+    // println!("Parsing ast_expr");
     unary_expr
         (lexer)
         .map_value(AstExpr::Unary)
@@ -48,7 +48,7 @@ pub fn unary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, UnaryExpr<'text>>
     where Cm: ColumnMetrics,
 {
-    println!("Parsing unary_expr");
+    // println!("Parsing unary_expr");
     use AtmaToken::*;
     match lexer.peek() {
         Some(Minus) => right(
@@ -75,7 +75,7 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, CallExpr<'text>>
     where Cm: ColumnMetrics,
 {
-    println!("Parsing call_expr");
+    // println!("Parsing call_expr");
     use AtmaToken::*;
     both(
         primary_expr,
@@ -97,9 +97,9 @@ pub fn primary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, PrimaryExpr<'text>>
     where Cm: ColumnMetrics,
 {
-    println!("Parsing primary_expr");
+    // println!("Parsing primary_expr");
     use AtmaToken::*;
-    match dbg!(lexer.peek()) {
+    match lexer.peek() {
         Some(Ident) => text(one(Ident))
             (lexer)
             .map_value(PrimaryExpr::Ident),

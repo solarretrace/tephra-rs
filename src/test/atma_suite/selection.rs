@@ -423,36 +423,36 @@ fn cell_selector_position_selector() {
     assert_eq!(actual, expected);
 }
 
-// /// Tests `cell_selector` with a PositionSelector value overflow.
-// #[test]
-// fn cell_selector_position_selector_overflow() {
-//     let text = ":0x1_0000.*.0";
-//     let scanner = AtmaScanner::new();
-//     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
-//     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+/// Tests `cell_selector` with a PositionSelector value overflow.
+#[test]
+fn cell_selector_position_selector_overflow() {
+    let text = ":0x1_0000.*.0";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
-//     // for tok in &mut lexer {
-//     //     println!("{:?}", tok);
-//     // }
+    // for tok in &mut lexer {
+    //     println!("{:?}", tok);
+    // }
 
-//     let failure = cell_selector
-//         (lexer)
-//         .err()
-//         .unwrap();
-//     println!("{}", failure);
+    let failure = cell_selector
+        (lexer)
+        .err()
+        .unwrap();
+    println!("{}", failure);
 
-//     let actual = failure.error_span_display();
+    let actual = failure.error_span_display();
 
-//     let expected = (
-//         "invalid integer value",
-//         "\":0x1_0000\" (0:0-0:9, bytes 0-9)".to_owned());
+    let expected = (
+        "invalid integer value",
+        "\":0x1_0000\" (0:0-0:9, bytes 0-9)".to_owned());
 
-//     println!("{:?}", actual);
-//     println!("{:?}", expected);
-//     println!("");
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
 
-//     assert_eq!(actual, expected);
-// }
+    assert_eq!(actual, expected);
+}
 
 /// Tests `cell_selector` with a PositionRange value.
 #[test]
