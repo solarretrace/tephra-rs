@@ -11,6 +11,7 @@
 // Internal modules.
 mod ast;
 mod color;
+mod color_expr;
 mod common;
 mod expr;
 mod function;
@@ -19,6 +20,7 @@ mod selection;
 
 // Exports.
 pub use ast::*;
+pub use color_expr::*;
 pub use common::*;
 pub use expr::*;
 pub use function::*;

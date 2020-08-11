@@ -250,7 +250,7 @@ pub enum FnArg {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstExpr<'text> {
     /// A unary expression.
-    Unary(UnaryExpr<'text>),
+    Unary(Spanned<'text, UnaryExpr<'text>>),
 }
 
 /// A unary AST expression. Has lower precedence than CallExpr.
@@ -258,36 +258,38 @@ pub enum AstExpr<'text> {
 #[allow(variant_size_differences)]
 pub enum UnaryExpr<'text> {
     /// A numerical negation expression.
-    Minus(Box<UnaryExpr<'text>>),
+    Minus(Box<Spanned<'text, UnaryExpr<'text>>>),
     /// A function call expression.
-    Call(CallExpr<'text>),
+    Call(Spanned<'text, CallExpr<'text>>),
 }
 
 /// A function call AST expression. Has lower precedence than PrimaryExpr.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallExpr<'text> {
     /// A function call expression.
-    Call(PrimaryExpr<'text>, Vec<AstExpr<'text>>),
+    Call(
+        Spanned<'text, PrimaryExpr<'text>>, 
+        Spanned<'text, Vec<Spanned<'text, AstExpr<'text>>>>),
     /// A primary expression.
-    Primary(PrimaryExpr<'text>),
+    Primary(Spanned<'text, PrimaryExpr<'text>>),
 }
 
 /// A primitive or grouped AST expression. Has the highest precedence.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PrimaryExpr<'text> {
     /// An identifier.
-    Ident(&'text str),
+    Ident(Spanned<'text, &'text str>),
     /// An integral value.
-    Uint(&'text str),
+    Uint(Spanned<'text, &'text str>),
     /// A floating point value.
-    Float(&'text str),
+    Float(Spanned<'text, &'text str>),
     /// A Color value.
-    Color(Color),
+    Color(Spanned<'text, Color>),
     /// A CellRef value.
-    CellRef(CellRef<'text>),
+    CellRef(Spanned<'text, CellRef<'text>>),
     /// A bracketted group of values.
-    Array(Vec<AstExpr<'text>>),
+    Array(Spanned<'text, Vec<Spanned<'text, AstExpr<'text>>>>),
     /// A parenthesized group of values.
-    Tuple(Vec<AstExpr<'text>>),
+    Tuple(Spanned<'text, Vec<Spanned<'text, AstExpr<'text>>>>),
 }
 

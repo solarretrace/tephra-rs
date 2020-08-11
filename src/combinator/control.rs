@@ -8,7 +8,6 @@
 //! Parser control combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
@@ -21,6 +20,7 @@ use crate::result::Spanned;
 ////////////////////////////////////////////////////////////////////////////////
 // Control combinators.
 ////////////////////////////////////////////////////////////////////////////////
+
 /// A combinator which filters tokens during exectution of the given parser.
 pub fn filter<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
     -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>
@@ -167,4 +167,3 @@ pub fn spanned<'text, Sc, Cm, F, V>(mut parser: F)
         }
     }
 }
-
