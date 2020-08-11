@@ -8,12 +8,15 @@
 //! Character positioning.
 ////////////////////////////////////////////////////////////////////////////////
 
+// External library imports.
+// TODO: Use the unicode-segmentation crate instead?
 use unicode_width::UnicodeWidthChar;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // ColumnMetrics
 ////////////////////////////////////////////////////////////////////////////////
-/// A trait representing the requirements for a Span's line separator.
+/// A trait providing column positioning measurements.
 pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
 
     /// Returns the position of the next display column after the start of the

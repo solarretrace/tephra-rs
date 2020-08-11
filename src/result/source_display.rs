@@ -294,15 +294,15 @@ impl MessageType {
         }
     }
 
-    /// Returns the underline char associated with the message type.
-    pub fn underline(&self) -> char {
+    /// Returns the underline associated with the message type.
+    pub fn underline(&self) -> &'static str {
         use MessageType::*;
         match self {
-            Info    => '-',
-            Error   => '^',
-            Warning => '^',
-            Note    => '-',
-            Help    => '~',
+            Info    => "-",
+            Error   => "^",
+            Warning => "^",
+            Note    => "-",
+            Help    => "~",
         }
     }
 }
@@ -335,8 +335,6 @@ pub struct Highlight<'text, 'msg> {
     end_message: Option<Cow<'msg, str>>,
     /// The message type.
     message_type: MessageType,
-    /// The underline style.
-    underline: char,
     /// Whether to allow line omissions within the highlighted span.
     allow_omissions: bool,
 }
@@ -352,7 +350,6 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
             start_message: None,
             end_message: Some(message.into()),
             message_type: MessageType::Info,
-            underline: '^',
             allow_omissions: true,
         }
     }
@@ -450,16 +447,21 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
         line: usize)
         -> std::fmt::Result
     {
-
         if self.span.start().page.line == line
             && self.span.end().page.line == line
         {
             for _ in 0..self.span.start().page.column {
                 write!(f, " ")?;
             }
-            for _ in self.span.start().page.column..self.span.end().page.column
-            {
-                write!(f, "{}", "^".color(self.message_type.color()))?;
+            let underline_count = std::cmp::max(
+                self.span.end().page.column
+                    .checked_sub(self.span.start().page.column)
+                    .unwrap_or(0),
+                1);
+            for _ in 0..underline_count {
+                write!(f, "{}", self.message_type
+                    .underline()
+                    .color(self.message_type.color()))?;
             }
             match (&self.start_message, &self.end_message) {
                 (Some(msg), None)      | 

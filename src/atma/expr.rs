@@ -5,7 +5,7 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Atma expression and selection types.
+//! Atma color expressions and selection types.
 ////////////////////////////////////////////////////////////////////////////////
 // TODO: This module is currently under development.
 #![allow(unused)]
@@ -25,7 +25,7 @@ use ::color::Color;
 // Expr types
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Empty,
     Color(Color),
@@ -34,7 +34,7 @@ pub enum Expr {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum InsertExpr {
     Ramp {
         count: u8,
@@ -48,27 +48,27 @@ pub enum InsertExpr {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlendExpr {
     pub blend_fn: BlendFunction,
     pub interpolate: Interpolate,
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BlendFunction {
     Unary(UnaryBlendFunction),
     Binary(BinaryBlendFunction),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnaryBlendFunction {
     pub blend_method: UnaryBlendMethod,
     pub value: f32,
     pub arg: CellRef<'static>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UnaryBlendMethod {
     SetRed,
     SetGreen,
@@ -82,7 +82,7 @@ pub enum UnaryBlendMethod {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BinaryBlendFunction {
     pub color_space: ColorSpace,
     pub blend_method: BinaryBlendMethod,
@@ -90,7 +90,7 @@ pub struct BinaryBlendFunction {
     pub arg_2: CellRef<'static>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BinaryBlendMethod {
     Blend,
     Multiply,
@@ -109,14 +109,14 @@ pub enum BinaryBlendMethod {
     LinearLight,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ColorSpace {
     Rgb,
 }
 
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Interpolate {
     pub color_space: ColorSpace,
     pub interpolate_fn: InterpolateFunction,
@@ -125,7 +125,7 @@ pub struct Interpolate {
 
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct InterpolateRange {
     pub color_space: ColorSpace,
     pub interpolate_fn: InterpolateFunction,
@@ -134,7 +134,7 @@ pub struct InterpolateRange {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum InterpolateFunction {
     Linear,
     Cubic(f32, f32),
@@ -144,7 +144,7 @@ pub enum InterpolateFunction {
 // Selection types
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CellRef<'name> {
     Index(u32),
     Position(Position),
@@ -164,20 +164,20 @@ impl<'name> From<PositionOrIndex> for CellRef<'name> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Position {
     pub page: u16,
     pub line: u16,
     pub column: u16,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PositionOrIndex {
     Index(u32),
     Position(Position),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PositionSelector {
     pub page: Option<u16>,
     pub line: Option<u16>,
@@ -194,10 +194,10 @@ impl From<Position> for PositionSelector {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CellSelection<'name>(pub Vec<CellSelector<'name>>);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CellSelector<'name> {
     All,
     Index(u32),
@@ -227,14 +227,66 @@ pub enum CellSelector<'name> {
 ////////////////////////////////////////////////////////////////////////////////
 // Function calls
 ////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FnCall<'text> {
     pub name: &'text str,
     pub args: Vec<(FnArg, Span<'text>)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FnArg {
     U32(u32),
     F32(f32),
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// AstExpr
+////////////////////////////////////////////////////////////////////////////////
+
+/// The top-level AST expression. Has the lowest precedence.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AstExpr<'text> {
+    /// A unary expression.
+    Unary(UnaryExpr<'text>),
+}
+
+/// A unary AST expression. Has lower precedence than CallExpr.
+#[derive(Debug, Clone, PartialEq)]
+#[allow(variant_size_differences)]
+pub enum UnaryExpr<'text> {
+    /// A numerical negation expression.
+    Minus(Box<UnaryExpr<'text>>),
+    /// A function call expression.
+    Call(CallExpr<'text>),
+}
+
+/// A function call AST expression. Has lower precedence than PrimaryExpr.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CallExpr<'text> {
+    /// A function call expression.
+    Call(PrimaryExpr<'text>, Vec<AstExpr<'text>>),
+    /// A primary expression.
+    Primary(PrimaryExpr<'text>),
+}
+
+/// A primitive or grouped AST expression. Has the highest precedence.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PrimaryExpr<'text> {
+    /// An identifier.
+    Ident(&'text str),
+    /// An integral value.
+    Uint(&'text str),
+    /// A floating point value.
+    Float(&'text str),
+    /// A Color value.
+    Color(Color),
+    /// A CellRef value.
+    CellRef(CellRef<'text>),
+    /// A bracketted group of values.
+    Array(Vec<AstExpr<'text>>),
+    /// A parenthesized group of values.
+    Tuple(Vec<AstExpr<'text>>),
+}
+

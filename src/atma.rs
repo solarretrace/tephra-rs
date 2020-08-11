@@ -9,6 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
+mod ast;
 mod color;
 mod common;
 mod expr;
@@ -17,6 +18,7 @@ mod scanner;
 mod selection;
 
 // Exports.
+pub use ast::*;
 pub use common::*;
 pub use expr::*;
 pub use function::*;

@@ -283,7 +283,7 @@ impl AtmaScanner {
                 return None;
             }
 
-            let next = text.trim_start_matches(|c: char| c.is_digit(10));
+            let next = rest.trim_start_matches(|c: char| c.is_digit(10));
             if next.len() != rest.len() {
                 rest = next;
 
@@ -476,14 +476,14 @@ impl Scanner for AtmaScanner {
                     self.depth = 0;
                     return Some(parse);
                 }
-                return_if_some!(self.parse_raw_string_text::<Cm>(text, metrics));
+                return_if_some!(self.parse_raw_string_text(text, metrics));
                 None
             },
 
             Some(StringOpenSingle) => {
                 return_if_some!(self.parse_str(text, metrics, "\'", StringCloseSingle));
                 if let Some(parse) = self
-                    .parse_string_text::<Cm>(text, metrics, StringOpenSingle)
+                    .parse_string_text(text, metrics, StringOpenSingle)
                 {
                     self.open = Some(StringOpenSingle);
                     return Some(parse);
@@ -493,7 +493,7 @@ impl Scanner for AtmaScanner {
             Some(StringOpenDouble) => {
                 return_if_some!(self.parse_str(text, metrics, "\"", StringCloseDouble));
                 if let Some(parse) = self
-                    .parse_string_text::<Cm>(text, metrics, StringOpenDouble)
+                    .parse_string_text(text, metrics, StringOpenDouble)
                 {
                     self.open = Some(StringOpenDouble);
                     return Some(parse);
@@ -502,12 +502,28 @@ impl Scanner for AtmaScanner {
             },
 
             Some(Hash) => {
+                // HexDigits can only come after Hash.
                 return_if_some!(self.parse_hex_digits(text, metrics));
-                self.scan::<Cm>(text, metrics)
+                self.scan(text, metrics)
+            },
+
+            Some(Colon) => {
+                // Colon will make Position parts a priority until something
+                // else is seen. It is important to have uint before float to
+                // avoid swallowing them up with decimals.
+                self.open = Some(Colon);
+                return_if_some!(self.parse_uint(text, metrics));
+                return_if_some!(self.parse_str(text, metrics, ".", Decimal));
+                return_if_some!(self.parse_str(text, metrics, "*", Mult));
+                return_if_some!(self.parse_str(text, metrics, "+", Plus));
+                return_if_some!(self.parse_str(text, metrics, "-", Minus));
+
+                self.open = None;
+                self.scan(text, metrics)
             },
 
             None => {
-                return_if_some!(self.parse_whitespace::<Cm>(text, metrics));
+                return_if_some!(self.parse_whitespace(text, metrics));
                 return_if_some!(self.parse_str(text, metrics, "(", OpenParen));
                 return_if_some!(self.parse_str(text, metrics, ")", CloseParen));
                 return_if_some!(self.parse_str(text, metrics, "[", OpenBracket));
@@ -533,7 +549,10 @@ impl Scanner for AtmaScanner {
                     return Some(parse);
                 }
 
-                return_if_some!(self.parse_str(text, metrics, ":", Colon));
+                if let Some(parse) = self.parse_str(text, metrics, ":", Colon) {
+                    self.open = Some(Colon);
+                    return Some(parse);
+                }
                 return_if_some!(self.parse_str(text, metrics, ",", Comma));
                 if let Some(parse) = self.parse_str(text, metrics, "#", Hash) {
                     self.open = Some(Hash);

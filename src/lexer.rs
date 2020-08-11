@@ -142,7 +142,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     /// Creates a sublexer starting at the current lex position.
     pub fn sublexer(&self) -> Self {
         let mut sub = self.clone();
-        sub.next_filtered();
+        sub.filter_next();
         sub.consume_current();
         sub
     }
@@ -197,12 +197,36 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     }
 
     /// Skips past any filtered tokens at the lex position.
-    pub fn next_filtered(&mut self) {
+    pub fn filter_next(&mut self) {
         let _ = self.next();
         // Move back to the start of last unfiltered token.
         self.end = self.last;
     }
 
+    /// Returns the next token that would be returned by the `next` method
+    /// without advancing the lexer position, assuming the lexer state is
+    /// unchanged by the time `next` is called.
+    pub fn peek(&self) -> Option<Sc::Token> {
+        let mut scanner = self.scanner.clone();
+        let mut end_byte = self.end.byte;
+        while end_byte < self.source.len() {
+            match scanner.scan(
+                &self.source[end_byte..],
+                self.metrics)
+            {
+                Some((token, adv)) if self.filter
+                    .as_ref()
+                    .map_or(false, |f| !(f)(&token)) => 
+                {
+                    end_byte += adv.byte;
+                },
+
+                Some((token, _)) => return Some(token),
+                None             => return None,
+            }
+        }
+        None
+    }
 }
 
 impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>

@@ -51,17 +51,20 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         }
 
         let mut vals = Vec::with_capacity(4);
+        // println!("vals len: {}", vals.len());
 
         let (val, mut succ) = (&mut parser)
             (lexer)?
             .take_value();
         vals.push(val);
+        // println!("vals len: {}", vals.len());
 
         while vals.len() < low {
             let (val, next) = right(&mut inter_parser, &mut parser)
                 (succ.lexer)?
                 .take_value();
             vals.push(val);
+            // println!("vals len: {}", vals.len());
             succ = next;
         }
 
@@ -72,6 +75,7 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
                 Ok(next) => {
                     let (val, next) = next.take_value();
                     vals.push(val);
+                    // println!("vals len: {}", vals.len());
                     succ = next;
                 }
                 Err(_) => break,

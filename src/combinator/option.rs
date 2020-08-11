@@ -31,10 +31,12 @@ pub fn maybe<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
-        match (parser)(lexer.clone()) {
+        let initial = lexer.clone();
+        match parser(lexer) {
             Ok(succ) => Ok(succ.map_value(Some)),
+
             Err(_)   => Ok(Success {
-                lexer,
+                lexer: initial,
                 value: None,
             }),
         }
@@ -51,14 +53,19 @@ pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
         Sc: Scanner,
         Cm: ColumnMetrics,
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
+        V: std::fmt::Debug
 {
-    move |lexer| {
-        let end = lexer.last_span().end();
-        match (parser)(lexer.clone()) {
+    move |mut lexer| {
+        let initial = lexer.clone();
+        lexer.filter_next();
+        let end = lexer.end_pos();
+        match parser(lexer) {
             Ok(succ) => Ok(succ.map_value(Some)),
-            Err(fail) if fail.lexer.last_span().end() > end => Err(fail),
-            Err(_) => Ok(Success {
-                lexer,
+            
+            Err(fail) if fail.lexer.last_span().start() > end => Err(fail),
+
+            Err(_)   => Ok(Success {
+                lexer: initial,
                 value: None,
             }),
         }
@@ -80,8 +87,8 @@ pub fn require_if<'text, Sc, Cm, P, F, V>(mut pred: P, mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
-        if (pred)() {
-            (parser)(lexer)
+        if pred() {
+            parser(lexer)
                 .map_value(Some)
         } else {
             maybe(&mut parser)(lexer)

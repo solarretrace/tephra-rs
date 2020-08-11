@@ -44,6 +44,32 @@ pub fn empty<'text, Sc, Cm>(lexer: Lexer<'text, Sc, Cm>)
     })
 }
 
+/// Parses any token and fails. Useful for failing if a peeked token doesn't
+/// match any expected tokens.
+pub fn fail<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
+    -> ParseResult<'text, Sc, Cm, ()>
+    where
+        Sc: Scanner,
+        Cm: ColumnMetrics,
+{
+    match lexer.next() {
+        Some(token) => Err(Failure {
+            parse_error: ParseError::unexpected_token(
+                lexer.last_span(),
+                &token,
+                lexer.column_metrics()),
+            lexer,
+            source: None,
+        }),
+        None => Err(Failure {
+            parse_error: ParseError::unexpected_end_of_text(
+                lexer.end_span(),
+                lexer.column_metrics()),
+            lexer,
+            source: None,
+        })
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // end-of-text
@@ -102,7 +128,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
                 // println!(" -> unrecognized {}", lexer.last_span());
                 Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.end_span(),
+                        lexer.last_span(),
                         lexer.column_metrics()),
                     lexer,
                     source: None,

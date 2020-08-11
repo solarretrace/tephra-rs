@@ -13,25 +13,28 @@
 
 
 // Local imports.
-use crate::atma::AtmaToken;
 use crate::atma::AtmaScanner;
+use crate::atma::AtmaToken;
+use crate::combinator::any;
+use crate::combinator::bracket;
+use crate::combinator::bracket_dynamic;
+use crate::combinator::discard;
+use crate::combinator::empty;
+use crate::combinator::exact;
+use crate::combinator::one;
+use crate::combinator::repeat;
+use crate::combinator::right;
+use crate::combinator::text;
 use crate::lexer::Lexer;
 use crate::position::ColumnMetrics;
+use crate::result::Failure;
+use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
-use crate::result::ParseError;
-use crate::result::Failure;
-use crate::combinator::one;
-use crate::combinator::exact;
-use crate::combinator::any;
-use crate::combinator::right;
-use crate::combinator::empty;
-use crate::combinator::bracket_dynamic;
-use crate::combinator::bracket;
-use crate::combinator::text;
 
 // Standard library imports.
 use std::borrow::Cow;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Integer parsing
@@ -43,7 +46,7 @@ pub fn uint<'text, Cm, T>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         Cm: ColumnMetrics,
         T: FromStrRadix + std::fmt::Debug,
 {
-    lexer.next_filtered(); // Remove prefixed tokens.
+    lexer.filter_next(); // Remove prefixed tokens.
     let (mut val, succ) = text(one(AtmaToken::Uint))
         (lexer)?
         .take_value();

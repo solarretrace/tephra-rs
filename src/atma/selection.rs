@@ -13,16 +13,8 @@
     
 
 // Local imports.
-use crate::atma::AtmaScanner;
-use crate::atma::AtmaToken;
-use crate::atma::CellRef;
-use crate::atma::CellSelection;
-use crate::atma::CellSelector;
-use crate::atma::Position;
-use crate::atma::PositionOrIndex;
-use crate::atma::PositionSelector;
-use crate::atma::string;
-use crate::atma::uint;
+use crate::atma::*;
+use crate::combinator::fail;
 use crate::combinator::any;
 use crate::combinator::atomic;
 use crate::combinator::maybe;
@@ -31,6 +23,7 @@ use crate::combinator::filter;
 use crate::combinator::bracket;
 use crate::combinator::bracket_dynamic;
 use crate::combinator::exact;
+use crate::combinator::repeat;
 use crate::combinator::intersperse_collect;
 use crate::combinator::left;
 use crate::combinator::one;
@@ -59,27 +52,30 @@ pub fn cell_ref<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, CellRef<'text>>
     where Cm: ColumnMetrics,
 {
-    match position_or_index
-        (lexer.clone())
-        .filter_lexer_error()
-    {
-        Ok(succ)        => return Ok(succ).map_value(CellRef::from),
-        Err(Some(fail)) => return Err(fail),
-        Err(None)       => (),
-    }
+    use AtmaToken::*;
+    match lexer.peek() {
+        Some(Colon) => position_or_index
+            (lexer)
+            .map_value(CellRef::from),
 
-    group_or_name
-        (lexer)
-        .map_value(|(name, idx)| match idx {
-            Some(idx) => CellRef::Group { group: name, idx },
-            None      => CellRef::Name(name),
-        })
+        Some(RawStringOpen)    |
+        Some(StringOpenSingle) |
+        Some(StringOpenDouble) => group_or_name
+            (lexer)
+            .map_value(|(name, idx)| match idx {
+                Some(idx) => CellRef::Group { group: name, idx },
+                None      => CellRef::Name(name),
+            }),
+
+        _ => unimplemented!(),
+    }
 }
 
 pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, PositionOrIndex>
     where Cm: ColumnMetrics,
 {
+    lexer.filter_next();
     let (idx, idx_succ) = exact(
         right(one(AtmaToken::Colon),
             uint::<_, u32>))
@@ -87,39 +83,43 @@ pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         .take_value();
 
     match exact(
-        both(
-            right(one(AtmaToken::Decimal), uint::<_, u16>),
-            right(one(AtmaToken::Decimal), uint::<_, u16>)))
+        atomic(
+            both(
+                right(one(AtmaToken::Decimal), uint::<_, u16>),
+                right(one(AtmaToken::Decimal), uint::<_, u16>))))
         (idx_succ.lexer.clone())
     {
-        Ok(succ) => match u16::try_from(idx) {
-            Ok(page) => Ok(Success {
-                value: PositionOrIndex::Position(Position {
-                    page, 
-                    line: succ.value.0,
-                    column: succ.value.1,
-                }),
-                lexer: succ.lexer,
-            }),
-            Err(e) => Err(Failure {
-                parse_error: ParseError::new("invalid integer value")
-                    .with_span(format!(
-                        "value ({}) is too large for unsigned 16 bit value",
-                            idx),
-                        idx_succ.lexer.last_span(),
-                        lexer.column_metrics()),
-                lexer: succ.lexer,
-                source: Some(Box::new(e)),
-            }),
+        Ok(succ) => {
+            if succ.value.is_none() {
+                Ok(Success {
+                    value: PositionOrIndex::Index(idx),
+                    lexer: idx_succ.lexer,
+                })
+            } else {
+                let (line, column) = succ.value.unwrap();
+                match u16::try_from(idx) {
+                    Ok(page) => Ok(Success {
+                        value: PositionOrIndex::Position(Position {
+                            page, 
+                            line,
+                            column,
+                        }),
+                        lexer: succ.lexer,
+                    }),
+                    Err(e) => Err(Failure {
+                        parse_error: ParseError::new("invalid integer value")
+                            .with_span(format!(
+                                "value ({}) is too large for unsigned 16 bit value",
+                                    idx),
+                                idx_succ.lexer.last_span(),
+                                lexer.column_metrics()),
+                        lexer: succ.lexer,
+                        source: Some(Box::new(e)),
+                    }),
+                }
+            }
         },
-        Err(fail) => if fail.parse_error.is_lexer_error() {
-            Ok(Success {
-                value: PositionOrIndex::Index(idx),
-                lexer: idx_succ.lexer,
-            })
-        } else {
-            Err(fail)
-        },
+        Err(fail) => Err(fail),
     }
 }
 
@@ -127,6 +127,7 @@ pub fn index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, u32>
     where Cm: ColumnMetrics,
 {
+    lexer.filter_next();
     exact(
         right(one(AtmaToken::Colon),
             uint::<_, u32>))
@@ -137,6 +138,7 @@ pub fn position<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Position>
     where Cm: ColumnMetrics,
 {
+    lexer.filter_next();
     exact(
         right(one(AtmaToken::Colon),
             both(
@@ -185,34 +187,109 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, CellSelector<'text>>
     where Cm: ColumnMetrics,
 {
+    use AtmaToken::*;
     use CellSelector::*;
+    match lexer.peek() {
+        Some(Colon) => {
+            match range(position_or_index)
+                (lexer.clone())
+                .filter_lexer_error()
+            {
+                Ok(succ) => {
+                    let (val, succ) = succ.take_value();
+                    use PositionOrIndex::*;
+                    match val {
+                        (Index(idx),    None) => return Ok(succ)
+                            .map_value(|_| CellSelector::Index(idx)),
 
-    match exact(
-        left(
-            string,
-            seq(&[AtmaToken::Colon, AtmaToken::Mult])))
-        (lexer.clone())
-        .filter_lexer_error()
-    {
-        Ok(succ)        => return Ok(succ).map_value(|name| GroupAll(name)),
-        Err(Some(fail)) => return Err(fail),
-        Err(None)       => (),
-    }
+                        (Index(low),    Some(Index(high))) if low > high => {
+                            return Err(Failure {
+                                parse_error: ParseError::new("invalid index range")
+                                    .with_span(
+                                        "range bounds are in the wrong order", 
+                                        succ.lexer.span(),
+                                        succ.lexer.column_metrics()),
+                                lexer: succ.lexer,
+                                source: None,
+                            })
+                        },
 
-    match range(position_or_index)
-        (lexer.clone())
-        .filter_lexer_error()
-    {
-        Ok(succ) => {
-            let (val, succ) = succ.take_value();
-            use PositionOrIndex::*;
+                        (Index(low),    Some(Index(high))) => return Ok(succ)
+                            .map_value(|_| IndexRange { low, high }),
+
+                        (Position(pos), None) => return Ok(succ)
+                            .map_value(|_| PositionSelector(pos.into())),
+
+                        (Position(low), Some(Position(high))) if low > high => {
+                            return Err(Failure {
+                                parse_error: ParseError::new("invalid position range")
+                                    .with_span(
+                                        "range bounds are in the wrong order", 
+                                        succ.lexer.span(),
+                                        succ.lexer.column_metrics()),
+                                lexer: succ.lexer,
+                                source: None,
+                            })
+                        },
+
+                        (Position(low), Some(Position(high))) => return Ok(succ)
+                            .map_value(|_| PositionRange { low, high }),
+
+                        _ => return Err(Failure {
+                            parse_error: ParseError::new("invalid range")
+                                .with_span(
+                                    "range bounds have incompatable types", 
+                                    succ.lexer.span(),
+                                    succ.lexer.column_metrics()),
+                            lexer: succ.lexer,
+                            source: None,
+                        }),
+                    }
+                },
+                Err(Some(fail)) => return Err(fail),
+                Err(None)       => (),
+            }
+
+            match position_selector
+                (lexer.clone())
+                .filter_lexer_error()
+            {
+                Ok(succ)        => return Ok(succ).map_value(PositionSelector),
+                Err(Some(fail)) => return Err(fail),
+                Err(None)       => (),
+            }
+
+            // All must come after PositionSelector. 
+            exact(
+                seq(&[Colon, Mult]))
+                (lexer.clone())
+                .map_value(|_| All)
+        },
+
+        Some(RawStringOpen)    |
+        Some(StringOpenSingle) |
+        Some(StringOpenDouble) => {
+            match exact(
+                left(
+                    string,
+                    seq(&[Colon, Mult])))
+                (lexer.clone())
+                .filter_lexer_error()
+            {
+                Ok(succ)        => return Ok(succ)
+                    .map_value(|name| GroupAll(name)),
+                Err(Some(fail)) => return Err(fail),
+                Err(None)       => (),
+            }
+
+            // Group and Name must come after GroupAll.
+            let (val, succ) = range(group_or_name)
+                (lexer.clone())?
+                .take_value();
             match val {
-                (Index(idx),    None) => return Ok(succ)
-                    .map_value(|_| CellSelector::Index(idx)),
-
-                (Index(low),    Some(Index(high))) if low > high => {
+                ((l, Some(low)), Some((r, Some(high)))) if low > high => {
                     return Err(Failure {
-                        parse_error: ParseError::new("invalid index range")
+                        parse_error: ParseError::new("invalid group range")
                             .with_span(
                                 "range bounds are in the wrong order", 
                                 succ.lexer.span(),
@@ -222,28 +299,23 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                     })
                 },
 
-                (Index(low),    Some(Index(high))) => return Ok(succ)
-                    .map_value(|_| IndexRange { low, high }),
-
-                (Position(pos), None) => return Ok(succ)
-                    .map_value(|_| PositionSelector(pos.into())),
-
-                (Position(low), Some(Position(high))) if low > high => {
+                ((l, Some(low)), Some((r, Some(high)))) if l != r => {
                     return Err(Failure {
-                        parse_error: ParseError::new("invalid position range")
+                        parse_error: ParseError::new("invalid group range")
                             .with_span(
-                                "range bounds are in the wrong order", 
+                                "range bounds are in different groups", 
                                 succ.lexer.span(),
                                 succ.lexer.column_metrics()),
                         lexer: succ.lexer,
                         source: None,
                     })
                 },
+                
+                ((l, Some(low)), Some((r, Some(high)))) => Ok(succ)
+                    .map_value(|_| GroupRange { group: l, low, high }),
 
-                (Position(low), Some(Position(high))) => return Ok(succ)
-                    .map_value(|_| PositionRange { low, high }),
-
-                _ => return Err(Failure {
+                ((_, None),      Some((_, _)))    |
+                ((_, _),         Some((_, None))) => return Err(Failure {
                     parse_error: ParseError::new("invalid range")
                         .with_span(
                             "range bounds have incompatable types", 
@@ -252,80 +324,18 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                     lexer: succ.lexer,
                     source: None,
                 }),
+                
+                ((l, Some(idx)), None) => Ok(succ)
+                    .map_value(|_| Group { group: l, idx }),
+
+                ((l, None),      None) => Ok(succ)
+                    .map_value(|_| Name(l)),
             }
         },
-        Err(Some(fail)) => return Err(fail),
-        Err(None)       => (),
-    }
 
-    match position_selector
-        (lexer.clone())
-        .filter_lexer_error()
-    {
-        Ok(succ)        => return Ok(succ).map_value(PositionSelector),
-        Err(Some(fail)) => return Err(fail),
-        Err(None)       => (),
-    }
-
-    // All must come after PositionSelector. 
-    match exact(
-            seq(&[AtmaToken::Colon, AtmaToken::Mult]))
-        (lexer.clone())
-        .filter_lexer_error()
-    {
-        Ok(succ)        => return Ok(succ).map_value(|_| All),
-        Err(Some(fail)) => return Err(fail),
-        Err(None)       => (),
-    }
-
-    // Group and Name must come after GroupAll.
-    let (val, succ) = range(group_or_name)
-        (lexer.clone())?
-        .take_value();
-    match val {
-        ((l, Some(low)), Some((r, Some(high)))) if low > high => {
-            return Err(Failure {
-                parse_error: ParseError::new("invalid group range")
-                    .with_span(
-                        "range bounds are in the wrong order", 
-                        succ.lexer.span(),
-                        succ.lexer.column_metrics()),
-                lexer: succ.lexer,
-                source: None,
-            })
-        },
-
-        ((l, Some(low)), Some((r, Some(high)))) if l != r => {
-            return Err(Failure {
-                parse_error: ParseError::new("invalid group range")
-                    .with_span(
-                        "range bounds are in different groups", 
-                        succ.lexer.span(),
-                        succ.lexer.column_metrics()),
-                lexer: succ.lexer,
-                source: None,
-            })
-        },
-        
-        ((l, Some(low)), Some((r, Some(high)))) => Ok(succ)
-            .map_value(|_| GroupRange { group: l, low, high }),
-
-        ((_, None),      Some((_, _)))    |
-        ((_, _),         Some((_, None))) => return Err(Failure {
-            parse_error: ParseError::new("invalid range")
-                .with_span(
-                    "range bounds have incompatable types", 
-                    succ.lexer.span(),
-                    succ.lexer.column_metrics()),
-            lexer: succ.lexer,
-            source: None,
-        }),
-        
-        ((l, Some(idx)), None) => Ok(succ)
-            .map_value(|_| Group { group: l, idx }),
-
-        ((l, None),      None) => Ok(succ)
-            .map_value(|_| Name(l)),
+        _ => fail
+            (lexer)
+            .map_value(|_| unreachable!())
     }
 }
 
@@ -361,7 +371,7 @@ fn uint_16_or_all<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         .map_value(Some)
 }
 
-fn range<'text, Cm, F, V>(mut parser: F)
+fn range<'text, Cm, F, V: std::fmt::Debug>(mut parser: F)
     -> impl FnMut(Lexer<'text, AtmaScanner, Cm>)
         -> ParseResult<'text, AtmaScanner, Cm, (V, Option<V>)>
     where
@@ -376,11 +386,7 @@ fn range<'text, Cm, F, V>(mut parser: F)
 
         atomic(
             right(
-                exact(
-                    bracket(
-                        maybe(one(AtmaToken::Whitespace)),
-                        one(AtmaToken::Minus),
-                        maybe(one(AtmaToken::Whitespace)))),
+                one(AtmaToken::Minus),
                 &mut parser))
             (succ.lexer)
             .map_value(|r| (l, r))
