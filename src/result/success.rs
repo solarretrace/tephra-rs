@@ -12,6 +12,7 @@
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::position::ColumnMetrics;
+use crate::span::Span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,4 +66,17 @@ impl<'text, Sc, Cm, V> Success<'text, Sc, Cm, V>
     pub fn value_span_display(self) -> (V, String) {
         (self.value, format!("{}", self.lexer.span()))
     }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Spanned
+////////////////////////////////////////////////////////////////////////////////
+/// A parsed value with its span.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Spanned<'text, T> {
+    /// The parsed value.
+    pub value: T,
+    /// The span of the value's source text.
+    pub span: Span<'text>,
 }

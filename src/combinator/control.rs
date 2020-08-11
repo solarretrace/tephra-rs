@@ -13,9 +13,9 @@
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::position::ColumnMetrics;
-use crate::span::Span;
 use crate::result::ParseResult;
 use crate::result::Success;
+use crate::result::Spanned;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,11 +143,10 @@ pub fn text<'text, Sc, Cm, F, V>(mut parser: F)
     }
 }
 
-
 /// A combinator which includes the span of the parsed value.
-pub fn with_span<'text, Sc, Cm, F, V>(mut parser: F)
+pub fn spanned<'text, Sc, Cm, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc, Cm>)
-        -> ParseResult<'text, Sc, Cm, (V, Span<'text>)>
+        -> ParseResult<'text, Sc, Cm, Spanned<'text, V>>
     where
         Sc: Scanner,
         Cm: ColumnMetrics,
@@ -157,7 +156,10 @@ pub fn with_span<'text, Sc, Cm, F, V>(mut parser: F)
         match (parser)(lexer.sublexer()) {
             Ok(succ) => {
                 Ok(Success {
-                    value: (succ.value, succ.lexer.full_span()),
+                    value: Spanned {
+                        value: succ.value,
+                        span: succ.lexer.full_span(),
+                    },
                     lexer: lexer.join(succ.lexer),
                 })
             },

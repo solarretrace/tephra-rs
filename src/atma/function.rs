@@ -19,7 +19,7 @@ use crate::combinator::both;
 use crate::combinator::intersperse_collect;
 use crate::combinator::one;
 use crate::combinator::section;
-use crate::combinator::with_span;
+use crate::combinator::spanned;
 use crate::combinator::text;
 use crate::combinator::bracket;
 use crate::lexer::Lexer;
@@ -41,7 +41,7 @@ pub fn fn_call<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         bracket(
             one(AtmaToken::OpenParen),
             intersperse_collect(0, None,
-                section(with_span(fn_arg)),
+                section(spanned(fn_arg)),
                 one(AtmaToken::Comma)),
             one(AtmaToken::CloseParen)))
         (lexer)

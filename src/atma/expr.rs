@@ -13,6 +13,7 @@
 
 // Local imports.
 use crate::span::Span;
+use crate::result::Spanned;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -230,7 +231,7 @@ pub enum CellSelector<'name> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FnCall<'text> {
     pub name: &'text str,
-    pub args: Vec<(FnArg, Span<'text>)>,
+    pub args: Vec<Spanned<'text, FnArg>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
