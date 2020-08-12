@@ -438,7 +438,7 @@ fn ast_expr_cell_ref() {
     let mut lexer = Lexer::new(scanner, text, metrics);
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
-    let actual = Color::match_ast(
+    let actual = Color::match_expr(
         ast_expr
             (lexer)
             .finish()

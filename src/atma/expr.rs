@@ -263,6 +263,15 @@ pub enum AstExpr<'text> {
     Unary(Spanned<'text, UnaryExpr<'text>>),
 }
 
+impl<'text> AstExpr<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        use AstExpr::*;
+        match self {
+            Unary(_) => "expression".into(),
+        }
+    }
+}
+
 /// A unary AST expression. Has lower precedence than CallExpr.
 #[derive(Debug, Clone, PartialEq)]
 #[allow(variant_size_differences)]
@@ -276,6 +285,18 @@ pub enum UnaryExpr<'text> {
     Call(CallExpr<'text>),
 }
 
+impl<'text> UnaryExpr<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        use UnaryExpr::*;
+        match self {
+            Minus { operand, .. } => {
+                format!("negated {}", operand.value.description()).into()
+            },
+            Call(p) => p.description()
+        }
+    }
+}
+
 /// A function call AST expression. Has lower precedence than PrimaryExpr.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallExpr<'text> {
@@ -286,6 +307,16 @@ pub enum CallExpr<'text> {
     },
     /// A primary expression. Defer to higher precedence operators.
     Primary(PrimaryExpr<'text>),
+}
+
+impl<'text> CallExpr<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        use CallExpr::*;
+        match self {
+            Call { .. } => "function call".into(),
+            Primary(p)  => p.description()
+        }
+    }
 }
 
 /// A primitive or grouped AST expression. Has the highest precedence.
@@ -305,4 +336,19 @@ pub enum PrimaryExpr<'text> {
     Array(Vec<AstExpr<'text>>),
     /// A parenthesized group of values.
     Tuple(Vec<AstExpr<'text>>),
+}
+
+impl<'text> PrimaryExpr<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        use PrimaryExpr::*;
+        match self {
+            Ident(_)     => "identifier".into(),
+            Uint(_)      => "integer value".into(),
+            Float(_)     => "float value".into(),
+            Color(_)     => "color value".into(),
+            CellRef(_)   => "cell reference".into(),
+            Array(elems) => format!("{} element array", elems.len()).into(),
+            Tuple(elems) => format!("{} element tuple", elems.len()).into(),
+        }
+    }
 }
