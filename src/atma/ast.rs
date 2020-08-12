@@ -17,7 +17,6 @@ use crate::combinator::bracket;
 use crate::combinator::fail;
 use crate::combinator::intersperse_collect;
 use crate::combinator::one;
-use crate::combinator::right;
 use crate::combinator::section;
 use crate::combinator::spanned;
 use crate::combinator::text;
@@ -48,13 +47,16 @@ pub fn unary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 {
     use AtmaToken::*;
     match lexer.peek() {
-        Some(Minus) => right(
-                one(Minus),
+        Some(Minus) => both(
+                spanned(one(Minus)),
                 spanned(unary_expr))
             (lexer)
-            .map_value(|u| UnaryExpr::Minus(Box::new(u))),
+            .map_value(|(op, u)| UnaryExpr::Minus {
+                op: op.span,
+                operand: Box::new(u)
+            }),
 
-        Some(_) => spanned(call_expr)
+        Some(_) => call_expr
             (lexer)
             .map_value(UnaryExpr::Call),
 
@@ -78,14 +80,17 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         atomic(
             bracket(
                 one(OpenParen),
-                spanned(intersperse_collect(0, None,
-                    section(spanned(ast_expr)),
-                    one(Comma))),
+                intersperse_collect(0, None,
+                    section(ast_expr),
+                    one(Comma)),
                 one(CloseParen))))
         (lexer)
         .map_value(|(l, r)| match r {
-            Some(args) => CallExpr::Call(l, args),
-            None       => CallExpr::Primary(l),
+            Some(args) => CallExpr::Call {
+                target: l,
+                args,
+            },
+            None       => CallExpr::Primary(l.value),
         })
 }
 
@@ -95,37 +100,37 @@ pub fn primary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 {
     use AtmaToken::*;
     match lexer.peek() {
-        Some(Ident) => spanned(text(one(Ident)))
+        Some(Ident) => text(one(Ident))
             (lexer)
             .map_value(PrimaryExpr::Ident),
 
-        Some(Float) => spanned(text(one(Float)))
+        Some(Float) => text(one(Float))
             (lexer)
             .map_value(PrimaryExpr::Float),
 
-        Some(Uint) => spanned(text(one(Uint)))
+        Some(Uint) => text(one(Uint))
             (lexer)
             .map_value(PrimaryExpr::Uint),
 
         Some(OpenParen) => bracket(
                 one(OpenParen),
-                spanned(intersperse_collect(0, None,
-                    section(spanned(ast_expr)),
-                    one(Comma))),
+                intersperse_collect(0, None,
+                    section(ast_expr),
+                    one(Comma)),
                 one(CloseParen))
             (lexer)
             .map_value(PrimaryExpr::Tuple),
 
         Some(OpenBracket) => bracket(
                 one(OpenBracket),
-                spanned(intersperse_collect(0, None,
-                    section(spanned(ast_expr)),
-                    one(Comma))),
+                intersperse_collect(0, None,
+                    section(ast_expr),
+                    one(Comma)),
                 one(CloseBracket))
             (lexer)
             .map_value(PrimaryExpr::Array),
         
-        Some(Hash) => spanned(color)
+        Some(Hash) => color
             (lexer)
             .map_value(PrimaryExpr::Color),
 
@@ -133,7 +138,7 @@ pub fn primary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         Some(Mult)              |
         Some(StringOpenSingle)  |
         Some(StringOpenDouble)  |
-        Some(RawStringOpen)     => spanned(cell_ref)
+        Some(RawStringOpen)     => cell_ref
             (lexer)
             .map_value(PrimaryExpr::CellRef),
 

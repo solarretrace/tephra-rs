@@ -67,7 +67,9 @@ pub fn cell_ref<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                 None      => CellRef::Name(name),
             }),
 
-        _ => unimplemented!(),
+        _ => fail
+            (lexer)
+            .map_value(|_| unreachable!())
     }
 }
 
@@ -79,7 +81,7 @@ pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let (idx, idx_succ) = exact(
         right(one(AtmaToken::Colon),
             uint::<_, u32>))
-        (lexer.clone())?
+        (lexer)?
         .take_value();
 
     match exact(
@@ -112,7 +114,7 @@ pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                                 "value ({}) is too large for unsigned 16 bit value",
                                     idx),
                                 idx_succ.lexer.last_span(),
-                                lexer.column_metrics()),
+                                idx_succ.lexer.column_metrics()),
                         lexer: succ.lexer,
                         source: Some(Box::new(e)),
                     }),

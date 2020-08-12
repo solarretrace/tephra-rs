@@ -134,6 +134,17 @@ pub struct InterpolateRange {
     pub end: f32,
 }
 
+impl Default for InterpolateRange {
+    fn default() -> Self {
+        InterpolateRange {
+            color_space: ColorSpace::Rgb,
+            interpolate_fn: InterpolateFunction::Linear,
+            start: 0.0,
+            end: 1.0,
+        }
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InterpolateFunction {
@@ -241,7 +252,6 @@ pub enum FnArg {
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // AstExpr
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +259,7 @@ pub enum FnArg {
 /// The top-level AST expression. Has the lowest precedence.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstExpr<'text> {
-    /// A unary expression.
+    /// A unary expression.  Defer to higher precedence operators.
     Unary(Spanned<'text, UnaryExpr<'text>>),
 }
 
@@ -258,38 +268,41 @@ pub enum AstExpr<'text> {
 #[allow(variant_size_differences)]
 pub enum UnaryExpr<'text> {
     /// A numerical negation expression.
-    Minus(Box<Spanned<'text, UnaryExpr<'text>>>),
-    /// A function call expression.
-    Call(Spanned<'text, CallExpr<'text>>),
+    Minus {
+        op: Span<'text>,
+        operand: Box<Spanned<'text, UnaryExpr<'text>>>,
+    },
+    /// A function call expression. Defer to higher precedence operators.
+    Call(CallExpr<'text>),
 }
 
 /// A function call AST expression. Has lower precedence than PrimaryExpr.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallExpr<'text> {
     /// A function call expression.
-    Call(
-        Spanned<'text, PrimaryExpr<'text>>, 
-        Spanned<'text, Vec<Spanned<'text, AstExpr<'text>>>>),
-    /// A primary expression.
-    Primary(Spanned<'text, PrimaryExpr<'text>>),
+    Call {
+        target: Spanned<'text, PrimaryExpr<'text>>,
+        args: Vec<AstExpr<'text>>,
+    },
+    /// A primary expression. Defer to higher precedence operators.
+    Primary(PrimaryExpr<'text>),
 }
 
 /// A primitive or grouped AST expression. Has the highest precedence.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PrimaryExpr<'text> {
     /// An identifier.
-    Ident(Spanned<'text, &'text str>),
+    Ident(&'text str),
     /// An integral value.
-    Uint(Spanned<'text, &'text str>),
+    Uint(&'text str),
     /// A floating point value.
-    Float(Spanned<'text, &'text str>),
+    Float(&'text str),
     /// A Color value.
-    Color(Spanned<'text, Color>),
+    Color(Color),
     /// A CellRef value.
-    CellRef(Spanned<'text, CellRef<'text>>),
+    CellRef(CellRef<'text>),
     /// A bracketted group of values.
-    Array(Spanned<'text, Vec<Spanned<'text, AstExpr<'text>>>>),
+    Array(Vec<AstExpr<'text>>),
     /// A parenthesized group of values.
-    Tuple(Spanned<'text, Vec<Spanned<'text, AstExpr<'text>>>>),
+    Tuple(Vec<AstExpr<'text>>),
 }
-
