@@ -118,11 +118,6 @@ pub fn interpolate_range_from_ast_expr<'text, Cm>(
                 metrics)
             {
                 Ok(FunctionCall { target: Ident(i), args }) if i == "cubic" => {
-                    valid_unit_range(args.0, args.1)
-                        .map_err(|e| e.with_span(
-                            "invalid interpolation parameters",
-                            ast_span,
-                            metrics))?;
                     res.interpolate_fn = InterpolateFunction::Cubic(
                         args.0,
                         args.1);
