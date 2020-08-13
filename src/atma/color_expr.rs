@@ -32,7 +32,7 @@ use crate::position::ColumnMetrics;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// primary_expr
+// 
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
@@ -64,6 +64,18 @@ pub fn insert_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 // }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// InterpolateRange
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for InterpolateRange {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        interpolate_range_from_ast_expr(ast_expr, metrics)
+    }
+}
 
 pub fn interpolate_range_from_ast_expr<'text, Cm>(
     ast: AstExpr<'text>,
@@ -80,7 +92,7 @@ pub fn interpolate_range_from_ast_expr<'text, Cm>(
         ),
         Ok(Ident(ident)) if ident == "cubic" => return Ok(
             InterpolateRange {
-                interpolate_fn: InterpolateFunction::Cubic(0.0, 1.0),
+                interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
                 .. Default::default()
             }
         ),
@@ -94,25 +106,41 @@ pub fn interpolate_range_from_ast_expr<'text, Cm>(
         UnaryExpr::Call(CallExpr::Call { target, args }) => {
             let mut res = InterpolateRange::default();
 
-            // Check "cubic" and "linear" targets.
-            match Ident::match_primary_expr(
+            // Check "cubic", "cubic(l, r)" and "linear" targets.
+            match Ident::match_call_expr(
                 target.value.clone(),
                 target.span,
                 metrics)
             {
-                Ok(Ident(i)) if i != "linear" || i != "cubic" => {
+                Ok(Ident(i)) if i != "linear" && i != "cubic" => {
                     return Err(ParseError::new("expected interpolation function")
                         .with_span("expected 'linear' or 'cubic'",
                             target.span,
                             metrics));
                 },
-                Ok(Ident(i)) if i == "cubic" => {
-                    res.interpolate_fn = InterpolateFunction::Cubic(0.0, 1.0);
-                }
+
+                Ok(Ident(i)) if i == "cubic" 
+                    => match <(f32, f32)>::match_primary_expr(
+                        PrimaryExpr::Tuple(args),
+                        target.span,
+                        metrics)
+                {
+                    Ok((l, r)) => {
+                        res.interpolate_fn = InterpolateFunction::Cubic(l, r);
+                        return Ok(res);
+                    },
+
+                    _ => {
+                        res.interpolate_fn = InterpolateFunction::Cubic(
+                            0.0,
+                            1.0);
+                        return Ok(res);
+                    },
+                },
                 _ => (),
             }
 
-            match <FunctionCall<Ident, (f32, f32)>>::match_primary_expr(
+            match <FunctionCall<Ident, (f32, f32)>>::match_call_expr(
                 target.value.clone(),
                 target.span,
                 metrics)
@@ -122,11 +150,13 @@ pub fn interpolate_range_from_ast_expr<'text, Cm>(
                         args.0,
                         args.1);
                 },
-                _ => return Err(ParseError::new(
-                        "expected interpolation function")
-                    .with_span("unrecognized interpolation function",
-                        target.span,
-                        metrics)),
+                Ok(FunctionCall { .. }) => 
+                    return Err(ParseError::new(
+                            "expected interpolation function")
+                        .with_span("unrecognized interpolation function",
+                            target.span,
+                            metrics)),
+                _ => (),
             }
 
             match <(Vec<f32>,)>::match_primary_expr(

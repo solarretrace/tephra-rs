@@ -363,7 +363,7 @@ impl AstExprMatch for Color {
             },
 
             UnaryExpr::Call(CallExpr::Call { target, args }) => {
-                let target = Ident::match_primary_expr(
+                let target = Ident::match_call_expr(
                     target.value,
                     target.span,
                     metrics)?.0;
@@ -468,9 +468,9 @@ impl<T, A> AstExprMatch for FunctionCall<T, A>
 
         match value {
             UnaryExpr::Call(CallExpr::Call { target, args }) => {
-                let Spanned { span, value } = target;
+                let Spanned { span, value } = *target;
                 Ok(FunctionCall {
-                    target: T::match_primary_expr(value, span, metrics)?,
+                    target: T::match_call_expr(value, span, metrics)?,
                     args: A::match_primary_expr(
                         PrimaryExpr::Tuple(args),
                         ast_span,

@@ -19,6 +19,7 @@ use crate::combinator::both;
 use crate::combinator::bracket;
 use crate::combinator::fail;
 use crate::combinator::intersperse_collect;
+use crate::combinator::repeat_collect;
 use crate::combinator::one;
 use crate::combinator::section;
 use crate::combinator::spanned;
@@ -27,6 +28,7 @@ use crate::lexer::Lexer;
 use crate::position::ColumnMetrics;
 use crate::result::Failure;
 use crate::result::ParseError;
+use crate::result::Success;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::span::Span;
@@ -88,7 +90,7 @@ impl<'text> UnaryExpr<'text> {
 pub enum CallExpr<'text> {
     /// A function call expression.
     Call {
-        target: Spanned<'text, PrimaryExpr<'text>>,
+        target: Box<Spanned<'text, CallExpr<'text>>>,
         args: Vec<AstExpr<'text>>,
     },
     /// A primary expression. Defer to higher precedence operators.
@@ -187,23 +189,47 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     where Cm: ColumnMetrics,
 {
     use AtmaToken::*;
-    both(
-        spanned(primary_expr),
-        atomic(
-            bracket(
-                one(OpenParen),
-                intersperse_collect(0, None,
-                    section(ast_expr),
-                    one(Comma)),
-                one(CloseParen))))
-        (lexer)
-        .map_value(|(l, r)| match r {
-            Some(args) => CallExpr::Call {
-                target: l,
-                args,
+
+    let (Spanned { value, mut span }, mut succ) = spanned(primary_expr)
+        (lexer)?
+        .take_value();
+
+    let mut res = CallExpr::Primary(value);
+
+    loop {
+        match atomic(
+                spanned(bracket(
+                    one(OpenParen),
+                    intersperse_collect(0, None,
+                        section(ast_expr),
+                        one(Comma)),
+                    one(CloseParen))))
+            (succ.lexer.clone())
+            .filter_lexer_error()
+        {
+            Ok(args_succ) => match args_succ.value {
+                Some(Spanned { value: args, span: args_span }) => {
+                    res = CallExpr::Call {
+                        target: Box::new(Spanned {
+                            value: res,
+                            span,
+                        }),
+                        args,
+                    };
+                    span = span.enclose(args_span);
+                    succ.lexer = args_succ.lexer;
+                },
+                None => break,
             },
-            None       => CallExpr::Primary(l.value),
-        })
+            Err(None)     => break,
+            Err(Some(e))  => return Err(e),
+        }
+    }
+
+    Ok(Success {
+        value: res,
+        lexer: succ.lexer,
+    })
 }
 
 pub fn primary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)

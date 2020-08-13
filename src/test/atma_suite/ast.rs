@@ -280,13 +280,13 @@ fn call_expr_call() {
 
     let expected = (
         CallExpr::Call {
-            target: Spanned {
-                value: PrimaryExpr::Ident("abcd"),
+            target: Box::new(Spanned {
+                value: CallExpr::Primary(PrimaryExpr::Ident("abcd")),
                 span: Span::new_enclosing(
                     Pos::new(0, 0, 0),
                     Pos::new(4, 0, 4),
                     text),
-            },
+            }),
             args: vec![
                 AstExpr::Unary(Spanned {
                     value: UnaryExpr::Call(
@@ -356,23 +356,25 @@ fn ast_expr_call_negate() {
                 operand: Box::new(Spanned {
                     value: UnaryExpr::Call(
                         CallExpr::Call {
-                            target: Spanned {
-                                value: PrimaryExpr::Tuple(vec![
-                                    AstExpr::Unary(Spanned {
-                                        value: UnaryExpr::Call(
-                                            CallExpr::Primary(
-                                                PrimaryExpr::Ident("abcd"))),
-                                        span: Span::new_enclosing(
-                                            Pos::new(2, 0, 2),
-                                            Pos::new(6, 0, 6),
-                                            text),
-                                    }),
-                                ]),
+                            target: Box::new(Spanned {
+                                value: CallExpr::Primary(
+                                    PrimaryExpr::Tuple(vec![
+                                        AstExpr::Unary(Spanned {
+                                            value: UnaryExpr::Call(
+                                                CallExpr::Primary(
+                                                    PrimaryExpr::Ident("abcd"))),
+                                            span: Span::new_enclosing(
+                                                Pos::new(2, 0, 2),
+                                                Pos::new(6, 0, 6),
+                                                text),
+                                        }),
+                                    ])
+                                ),
                                 span: Span::new_enclosing(
                                     Pos::new(1, 0, 1),
                                     Pos::new(7, 0, 7),
                                     text),
-                            },
+                            }),
                             args: vec![
                                 AstExpr::Unary(Spanned {
                                     value: UnaryExpr::Call(
@@ -447,6 +449,137 @@ fn ast_expr_cell_ref() {
         .unwrap();
 
     let expected = Color::from(Rgb::from([0.3, 0.6, 0.9]));
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Ast InterpolateRange match
+////////////////////////////////////////////////////////////////////////////////
+
+/// Tests `ast_expr` with an InterpolateRange value produced by matching.
+#[test]
+fn ast_interpolate_range_linear() {
+    let text = "linear";
+    let scanner = AtmaScanner::new();
+    let metrics = Lf::with_tab_width(4);
+    let mut lexer = Lexer::new(scanner, text, metrics);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = InterpolateRange::match_expr(
+        ast_expr
+            (lexer)
+            .finish()
+            .unwrap(),
+        metrics)
+        .unwrap();
+
+    let expected = InterpolateRange {
+        color_space: ColorSpace::Rgb,
+        interpolate_fn: InterpolateFunction::Linear,
+        start: 0.0,
+        end: 1.0,
+    };
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+
+/// Tests `ast_expr` with an InterpolateRange value produced by matching.
+#[test]
+fn ast_interpolate_range_cubic() {
+    let text = "cubic";
+    let scanner = AtmaScanner::new();
+    let metrics = Lf::with_tab_width(4);
+    let mut lexer = Lexer::new(scanner, text, metrics);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = InterpolateRange::match_expr(
+        ast_expr
+            (lexer)
+            .finish()
+            .unwrap(),
+        metrics)
+        .unwrap();
+
+    let expected = InterpolateRange {
+        color_space: ColorSpace::Rgb,
+        interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
+        start: 0.0,
+        end: 1.0,
+    };
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `ast_expr` with an InterpolateRange value produced by matching.
+#[test]
+fn ast_interpolate_range_cubic_parameterized() {
+    let text = "cubic(0.3, 4.5)";
+    let scanner = AtmaScanner::new();
+    let metrics = Lf::with_tab_width(4);
+    let mut lexer = Lexer::new(scanner, text, metrics);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = InterpolateRange::match_expr(
+        ast_expr
+            (lexer)
+            .finish()
+            .unwrap(),
+        metrics)
+        .unwrap();
+
+    let expected = InterpolateRange {
+        color_space: ColorSpace::Rgb,
+        interpolate_fn: InterpolateFunction::Cubic(0.3, 4.5),
+        start: 0.0,
+        end: 1.0,
+    };
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+
+/// Tests `ast_expr` with an InterpolateRange value produced by matching.
+#[test]
+fn ast_interpolate_range_cubic_parameterized_ranged() {
+    let text = "cubic(0.3, 4.5)([0.2, 0.8])";
+    let scanner = AtmaScanner::new();
+    let metrics = Lf::with_tab_width(4);
+    let mut lexer = Lexer::new(scanner, text, metrics);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = InterpolateRange::match_expr(
+        dbg!(ast_expr
+            (lexer)
+            .finish()
+            .unwrap()),
+        metrics)
+        .unwrap();
+
+    let expected = InterpolateRange {
+        color_space: ColorSpace::Rgb,
+        interpolate_fn: InterpolateFunction::Cubic(0.3, 4.5),
+        start: 0.2,
+        end: 0.8,
+    };
 
     println!("{:?}", actual);
     println!("{:?}", expected);
