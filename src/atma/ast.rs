@@ -7,6 +7,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Parser combinators for the Atma AST.
 ////////////////////////////////////////////////////////////////////////////////
+// TODO: This module is currently under development.
+#![allow(unused)]
+#![allow(missing_docs)]
 
 // Local imports.
 use crate::atma::*;
@@ -26,10 +29,119 @@ use crate::result::Failure;
 use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
+use crate::span::Span;
+use crate::result::Spanned;
+
+// Standard library imports.
+use std::borrow::Cow;
+
+// External library imports.
+use ::color::Color;
+
+////////////////////////////////////////////////////////////////////////////////
+// AstExpr
+////////////////////////////////////////////////////////////////////////////////
+
+/// The top-level AST expression. Has the lowest precedence.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AstExpr<'text> {
+    /// A unary expression.  Defer to higher precedence operators.
+    Unary(Spanned<'text, UnaryExpr<'text>>),
+}
+
+impl<'text> AstExpr<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        use AstExpr::*;
+        match self {
+            Unary(_) => "expression".into(),
+        }
+    }
+}
+
+/// A unary AST expression. Has lower precedence than CallExpr.
+#[derive(Debug, Clone, PartialEq)]
+#[allow(variant_size_differences)]
+pub enum UnaryExpr<'text> {
+    /// A numerical negation expression.
+    Minus {
+        op: Span<'text>,
+        operand: Box<Spanned<'text, UnaryExpr<'text>>>,
+    },
+    /// A function call expression. Defer to higher precedence operators.
+    Call(CallExpr<'text>),
+}
+
+impl<'text> UnaryExpr<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        use UnaryExpr::*;
+        match self {
+            Minus { operand, .. } => {
+                format!("negated {}", operand.value.description()).into()
+            },
+            Call(p) => p.description()
+        }
+    }
+}
+
+/// A function call AST expression. Has lower precedence than PrimaryExpr.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CallExpr<'text> {
+    /// A function call expression.
+    Call {
+        target: Spanned<'text, PrimaryExpr<'text>>,
+        args: Vec<AstExpr<'text>>,
+    },
+    /// A primary expression. Defer to higher precedence operators.
+    Primary(PrimaryExpr<'text>),
+}
+
+impl<'text> CallExpr<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        use CallExpr::*;
+        match self {
+            Call { .. } => "function call".into(),
+            Primary(p)  => p.description()
+        }
+    }
+}
+
+/// A primitive or grouped AST expression. Has the highest precedence.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PrimaryExpr<'text> {
+    /// An identifier.
+    Ident(&'text str),
+    /// An integral value.
+    Uint(&'text str),
+    /// A floating point value.
+    Float(&'text str),
+    /// A Color value.
+    Color(Color),
+    /// A CellRef value.
+    CellRef(CellRef<'text>),
+    /// A bracketted group of values.
+    Array(Vec<AstExpr<'text>>),
+    /// A parenthesized group of values.
+    Tuple(Vec<AstExpr<'text>>),
+}
+
+impl<'text> PrimaryExpr<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        use PrimaryExpr::*;
+        match self {
+            Ident(_)     => "identifier".into(),
+            Uint(_)      => "integer value".into(),
+            Float(_)     => "float value".into(),
+            Color(_)     => "color value".into(),
+            CellRef(_)   => "cell reference".into(),
+            Array(elems) => format!("{} element array", elems.len()).into(),
+            Tuple(elems) => format!("{} element tuple", elems.len()).into(),
+        }
+    }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// primary_expr
+// Parsers
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn ast_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)

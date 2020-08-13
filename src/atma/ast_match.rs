@@ -88,7 +88,7 @@ impl AstExprMatch for Ident {
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
-        let default_error = ParseError::new("invalid identifier")
+        let default_error = ParseError::new("expected identifier")
             .with_span("not a valid identifier",
                 ast_span,
                 metrics);
@@ -119,7 +119,7 @@ macro_rules! negatable_numeric_matcher {
                 let ast_span = span;
 
                 let default_error = ParseError::new(
-                        concat!("invalid ", $rep, " value"))
+                        concat!("expected ", $rep, " value"))
                     .with_span(concat!("not a valid ", $rep, " value"),
                         ast_span,
                         metrics);
@@ -137,7 +137,7 @@ macro_rules! negatable_numeric_matcher {
                     },
 
                     UnaryExpr::Call(CallExpr::Call { .. }) => Err(
-                        ParseError::new(concat!("invalid ", $rep, " value"))
+                        ParseError::new(concat!("expected ", $rep, " value"))
                             .with_span(concat!($rep, " is not callable"),
                                 ast_span,
                                 metrics)),
@@ -160,14 +160,14 @@ macro_rules! nonnegatable_numeric_matcher {
                 let ast_span = span;
 
                 let default_error = ParseError::new(
-                        concat!("invalid ", $rep, " value"))
+                        concat!("expected ", $rep, " value"))
                     .with_span(concat!("not a valid ", $rep, " value"),
                         ast_span,
                         metrics);
 
                 match value {
                     UnaryExpr::Minus { .. } => Err(
-                        ParseError::new(concat!("invalid ", $rep, " value"))
+                        ParseError::new(concat!("expected ", $rep, " value"))
                             .with_span(concat!($rep, " is not negatable"),
                                 ast_span,
                                 metrics)),
@@ -178,7 +178,7 @@ macro_rules! nonnegatable_numeric_matcher {
                     },
 
                     UnaryExpr::Call(CallExpr::Call { .. }) => Err(
-                        ParseError::new(concat!("invalid ", $rep, " value"))
+                        ParseError::new(concat!("expected ", $rep, " value"))
                             .with_span(concat!($rep, " is not callable"),
                                 ast_span,
                                 metrics)),
@@ -224,7 +224,7 @@ impl AstExprMatch for () {
                 Ok(())
             },
 
-            _ => Err(ParseError::new("invalid unit value")
+            _ => Err(ParseError::new("expected unit value")
                 .with_span("not a valid unit value",
                     ast_span,
                     metrics)),
@@ -252,7 +252,7 @@ macro_rules! tuple_impls {
                         {
                             let res = ($({
                                 if tuple.is_empty() {
-                                    return Err(ParseError::new("invalid tuple value")
+                                    return Err(ParseError::new("expected tuple value")
                                         .with_span("not a valid tuple value",
                                             ast_span,
                                             metrics));
@@ -265,14 +265,14 @@ macro_rules! tuple_impls {
                             if tuple.is_empty() {
                                 Ok(res)
                             } else {
-                                Err(ParseError::new("invalid tuple value")
+                                Err(ParseError::new("expected tuple value")
                                     .with_span("not a valid tuple value",
                                         ast_span,
                                         metrics))
                             }
                         },
 
-                        _ => Err(ParseError::new("invalid tuple value")
+                        _ => Err(ParseError::new("expected tuple value")
                             .with_span("not a valid tuple value",
                                 ast_span,
                                 metrics)),
@@ -330,7 +330,7 @@ impl<T> AstExprMatch for Vec<T> where T: AstExprMatch {
                 Ok(res)
             },
 
-            _ => Err(ParseError::new("invalid array value")
+            _ => Err(ParseError::new("expected array value")
                 .with_span("not a valid array value",
                     ast_span,
                     metrics)),
@@ -352,7 +352,7 @@ impl AstExprMatch for Color {
         let ast_span = span;
 
         let default_error = ParseError::new(
-                concat!("invalid color"))
+                concat!("expected color"))
             .with_span(concat!("not a valid color"),
                 ast_span,
                 metrics);
@@ -406,6 +406,77 @@ impl AstExprMatch for Color {
                     _      => Err(default_error)
                 }
             }
+
+            _ => Err(default_error),
+        }
+    }    
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// CellRef matcher
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for CellRef<'static> {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let AstExpr::Unary(Spanned { span, value }) = ast_expr;
+        let ast_span = span;
+
+        let default_error = ParseError::new("expected cell reference")
+            .with_span("not a valid cell reference",
+                ast_span,
+                metrics);
+
+        match value {
+            UnaryExpr::Call(CallExpr::Primary(PrimaryExpr::CellRef(cell_ref))) => {
+                Ok(cell_ref.into_static())
+            },
+
+            _ => Err(default_error),
+        }
+    }    
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Ident matcher
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct FunctionCall<T, A> where T: AstExprMatch, A: AstExprMatch {
+    pub target: T,
+    pub args: A,
+}
+
+
+impl<T, A> AstExprMatch for FunctionCall<T, A> 
+    where T: AstExprMatch, A: AstExprMatch
+{
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let AstExpr::Unary(Spanned { span, value }) = ast_expr;
+        let ast_span = span;
+
+        let default_error = ParseError::new("expected function call expression")
+            .with_span("not a valid function call expression",
+                ast_span,
+                metrics);
+
+        match value {
+            UnaryExpr::Call(CallExpr::Call { target, args }) => {
+                let Spanned { span, value } = target;
+                Ok(FunctionCall {
+                    target: T::match_primary_expr(value, span, metrics)?,
+                    args: A::match_primary_expr(
+                        PrimaryExpr::Tuple(args),
+                        ast_span,
+                        metrics)?,
+                })
+            },
 
             _ => Err(default_error),
         }

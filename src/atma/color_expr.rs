@@ -65,68 +65,145 @@ pub fn insert_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 
 
 
-// pub fn interpolate_range_from_ast<'text, Cm>(ast: AstExpr<'text>, metrics: Cm)
-//     -> Result<InterpolateRange, ParseError<'text, Cm>>
-//     where Cm: ColumnMetrics,
-// {
-//     let AstExpr::Unary(Spanned { span, value }) = ast;
-//     let ast_span = span;
-//     match value {
-//         UnaryExpr::Minus { op, .. } => Err(
-//             ParseError::new("invalid interpolation function")
-//                 .with_span("interpolation function cannot be negated",
-//                     op,
-//                     metrics)),
-
-//         UnaryExpr::Call(CallExpr::Call { target, args }) => unimplemented!(),
-
-//         UnaryExpr::Call(CallExpr::Primary(primary)) => match primary {
-//             PrimaryExpr::Ident(ident) if ident == "linear" => Ok(
-//                 InterpolateRange {
-//                     interpolate_fn: InterpolateFunction::Linear,
-//                     .. Default::default()
-//                 }
-//             ),
-//             PrimaryExpr::Ident(ident) if ident == "cubic" => Ok(
-//                 InterpolateRange {
-//                     interpolate_fn: InterpolateFunction::Cubic(0.0, 1.0),
-//                     .. Default::default()
-//                 }
-//             ),
-//             _ => Err(ParseError::new("invalid interpolation function")
-//                 .with_span("expected 'linear' or 'cubic'",
-//                     ast_span,
-//                     metrics)),
-//         }
-//     }
-// }
-
-// pub fn unit_range_from_ast<'text, Cm>(ast: AstExpr<'text>, metrics: Cm)
-//     -> Result<(f32, f32), ParseError<'text, Cm>>
-//     where Cm: ColumnMetrics,
-// {
-//     let AstExpr::Unary(Spanned { span, value }) = ast;
-//     let ast_span = span;
+pub fn interpolate_range_from_ast_expr<'text, Cm>(
+    ast: AstExpr<'text>,
+    metrics: Cm)
+    -> Result<InterpolateRange, ParseError<'text, Cm>>
+    where Cm: ColumnMetrics,
+{
+    match Ident::match_expr(ast.clone(), metrics) {
+        Ok(Ident(ident)) if ident == "linear" => return Ok(
+            InterpolateRange {
+                interpolate_fn: InterpolateFunction::Linear,
+                .. Default::default()
+            }
+        ),
+        Ok(Ident(ident)) if ident == "cubic" => return Ok(
+            InterpolateRange {
+                interpolate_fn: InterpolateFunction::Cubic(0.0, 1.0),
+                .. Default::default()
+            }
+        ),
+        _ => (),
+    }
 
 
-//     match value {
-//         UnaryExpr::Minus { op, .. } => Err(
-//             ParseError::new("invalid range")
-//                 .with_span("range cannot be negated",
-//                     op,
-//                     metrics)),
+    let AstExpr::Unary(Spanned { span, value }) = ast;
+    let ast_span = span;
+    match value {
+        UnaryExpr::Call(CallExpr::Call { target, args }) => {
+            let mut res = InterpolateRange::default();
 
-//         UnaryExpr::Call(CallExpr::Call { target, args }) => Err(
-//             ParseError::new("invalid range")
-//                 .with_span("range cannot be called",
-//                     ast_span,
-//                     metrics)),
+            // Check "cubic" and "linear" targets.
+            match Ident::match_primary_expr(
+                target.value.clone(),
+                target.span,
+                metrics)
+            {
+                Ok(Ident(i)) if i != "linear" || i != "cubic" => {
+                    return Err(ParseError::new("expected interpolation function")
+                        .with_span("expected 'linear' or 'cubic'",
+                            target.span,
+                            metrics));
+                },
+                Ok(Ident(i)) if i == "cubic" => {
+                    res.interpolate_fn = InterpolateFunction::Cubic(0.0, 1.0);
+                }
+                _ => (),
+            }
 
-//         UnaryExpr::Call(CallExpr::Primary(primary)) => match primary {
-//             PrimaryExpr::Tuple(tuple) => unimplemented!(),
-//             _ => Err(
-//                 ParseError::new("invalid range")
-//                     .with_span("expected tuple",
-//                         ast_span,
-//                         metrics)),
-// }
+            match <FunctionCall<Ident, (f32, f32)>>::match_primary_expr(
+                target.value.clone(),
+                target.span,
+                metrics)
+            {
+                Ok(FunctionCall { target: Ident(i), args }) if i == "cubic" => {
+                    // TODO: Check args order.
+                    res.interpolate_fn = InterpolateFunction::Cubic(
+                        args.0,
+                        args.1);
+                },
+                _ => return Err(ParseError::new(
+                        "expected interpolation function")
+                    .with_span("unrecognized interpolation function",
+                        target.span,
+                        metrics)),
+            }
+
+            match <(Vec<f32>,)>::match_primary_expr(
+                PrimaryExpr::Tuple(args.clone()),
+                ast_span,
+                metrics)
+            {
+                Ok((args,)) if args.len() != 2 => return Err(
+                    ParseError::new(
+                        "expected [f32, f32] for interpolation range")
+                        .with_span("invalid range value",
+                            target.span,
+                            metrics)),
+                Ok((args,)) => {
+                    // TODO: Check args order.
+                    res.start = args[0];
+                    res.end = args[1];
+                },
+                _ => (),
+            }
+
+            match <(Vec<f32>, Ident)>::match_primary_expr(
+                PrimaryExpr::Tuple(args.clone()),
+                ast_span,
+                metrics)
+            {
+                Ok((args, _)) if args.len() != 2 => return Err(
+                    ParseError::new(
+                        "expected [f32, f32] for interpolation range")
+                        .with_span("invalid range value",
+                            target.span,
+                            metrics)),
+                Ok((_, Ident(i))) if i != "rgb" => return Err(
+                    ParseError::new(
+                        "expected color space keyword")
+                    .with_span("unrecognized color space",
+                        target.span,
+                        metrics)),
+                Ok((args, Ident(i))) => {
+                    // TODO: Check args order.
+                    res.start = args[0];
+                    res.end = args[1];
+                    match i.as_ref() {
+                        "rgb" => res.color_space = ColorSpace::Rgb,
+                        _ => unreachable!(),
+                    }
+                },
+                _ => (),
+            }
+
+            match <(Ident, )>::match_primary_expr(
+                PrimaryExpr::Tuple(args),
+                ast_span,
+                metrics)
+            {
+                Ok((Ident(i),)) if i != "rgb" => return Err(
+                    ParseError::new(
+                        "expected color space keyword")
+                    .with_span("unrecognized color space",
+                        target.span,
+                        metrics)),
+
+                Ok((Ident(i),)) => match i.as_ref() {
+                    "rgb" => res.color_space = ColorSpace::Rgb,
+                    _ => unreachable!(),
+                },
+                _ => (),
+            }
+
+            Ok(res)
+        },
+
+        _ => Err(ParseError::new("expected interpolation function")
+            .with_span("unrecognized interpolation function",
+                ast_span,
+                metrics)),
+        
+    }
+}
