@@ -58,6 +58,12 @@ impl<'text> AstExpr<'text> {
             Unary(_) => "expression".into(),
         }
     }
+
+    pub fn span(&self) -> Span<'text> {
+        match self {
+            AstExpr::Unary(Spanned { span, .. }) => *span,
+        }
+    }
 }
 
 /// A unary AST expression. Has lower precedence than CallExpr.
@@ -90,7 +96,7 @@ impl<'text> UnaryExpr<'text> {
 pub enum CallExpr<'text> {
     /// A function call expression.
     Call {
-        target: Box<Spanned<'text, CallExpr<'text>>>,
+        operand: Box<Spanned<'text, CallExpr<'text>>>,
         args: Vec<AstExpr<'text>>,
     },
     /// A primary expression. Defer to higher precedence operators.
@@ -210,7 +216,7 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
             Ok(args_succ) => match args_succ.value {
                 Some(Spanned { value: args, span: args_span }) => {
                     res = CallExpr::Call {
-                        target: Box::new(Spanned {
+                        operand: Box::new(Spanned {
                             value: res,
                             span,
                         }),

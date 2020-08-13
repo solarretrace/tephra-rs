@@ -362,12 +362,12 @@ impl AstExprMatch for Color {
                 Ok(color)
             },
 
-            UnaryExpr::Call(CallExpr::Call { target, args }) => {
-                let target = Ident::match_call_expr(
-                    target.value,
-                    target.span,
+            UnaryExpr::Call(CallExpr::Call { operand, args }) => {
+                let operand = Ident::match_call_expr(
+                    operand.value,
+                    operand.span,
                     metrics)?.0;
-                match target.as_ref() {
+                match operand.as_ref() {
                     "rgb"  => {
                         let (r, g, b) = <(f32, f32, f32)>::match_primary_expr(
                             PrimaryExpr::Tuple(args),
@@ -446,7 +446,7 @@ impl AstExprMatch for CellRef<'static> {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct FunctionCall<T, A> where T: AstExprMatch, A: AstExprMatch {
-    pub target: T,
+    pub operand: T,
     pub args: A,
 }
 
@@ -467,10 +467,10 @@ impl<T, A> AstExprMatch for FunctionCall<T, A>
                 metrics);
 
         match value {
-            UnaryExpr::Call(CallExpr::Call { target, args }) => {
-                let Spanned { span, value } = *target;
+            UnaryExpr::Call(CallExpr::Call { operand, args }) => {
+                let Spanned { span, value } = *operand;
                 Ok(FunctionCall {
-                    target: T::match_call_expr(value, span, metrics)?,
+                    operand: T::match_call_expr(value, span, metrics)?,
                     args: A::match_primary_expr(
                         PrimaryExpr::Tuple(args),
                         ast_span,

@@ -280,7 +280,7 @@ fn call_expr_call() {
 
     let expected = (
         CallExpr::Call {
-            target: Box::new(Spanned {
+            operand: Box::new(Spanned {
                 value: CallExpr::Primary(PrimaryExpr::Ident("abcd")),
                 span: Span::new_enclosing(
                     Pos::new(0, 0, 0),
@@ -356,7 +356,7 @@ fn ast_expr_call_negate() {
                 operand: Box::new(Spanned {
                     value: UnaryExpr::Call(
                         CallExpr::Call {
-                            target: Box::new(Spanned {
+                            operand: Box::new(Spanned {
                                 value: CallExpr::Primary(
                                     PrimaryExpr::Tuple(vec![
                                         AstExpr::Unary(Spanned {
@@ -567,16 +567,79 @@ fn ast_interpolate_range_cubic_parameterized_ranged() {
     lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
     let actual = InterpolateRange::match_expr(
-        dbg!(ast_expr
+        ast_expr
             (lexer)
             .finish()
-            .unwrap()),
+            .unwrap(),
         metrics)
         .unwrap();
 
     let expected = InterpolateRange {
         color_space: ColorSpace::Rgb,
         interpolate_fn: InterpolateFunction::Cubic(0.3, 4.5),
+        start: 0.2,
+        end: 0.8,
+    };
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+
+/// Tests `ast_expr` with an InterpolateRange value produced by matching.
+#[test]
+fn ast_interpolate_range_cubic_ranged() {
+    let text = "cubic([0.2, 0.8])";
+    let scanner = AtmaScanner::new();
+    let metrics = Lf::with_tab_width(4);
+    let mut lexer = Lexer::new(scanner, text, metrics);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = InterpolateRange::match_expr(
+        ast_expr
+            (lexer)
+            .finish()
+            .unwrap(),
+        metrics)
+        .unwrap();
+
+    let expected = InterpolateRange {
+        color_space: ColorSpace::Rgb,
+        interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
+        start: 0.2,
+        end: 0.8,
+    };
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `ast_expr` with an InterpolateRange value produced by matching.
+#[test]
+fn ast_interpolate_range_cubic_ranged_rgb() {
+    let text = "cubic([0.2, 0.8], rgb)";
+    let scanner = AtmaScanner::new();
+    let metrics = Lf::with_tab_width(4);
+    let mut lexer = Lexer::new(scanner, text, metrics);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = InterpolateRange::match_expr(
+        ast_expr
+            (lexer)
+            .finish()
+            .unwrap(),
+        metrics)
+        .unwrap();
+
+    let expected = InterpolateRange {
+        color_space: ColorSpace::Rgb,
+        interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
         start: 0.2,
         end: 0.8,
     };
