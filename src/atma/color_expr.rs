@@ -118,7 +118,11 @@ pub fn interpolate_range_from_ast_expr<'text, Cm>(
                 metrics)
             {
                 Ok(FunctionCall { target: Ident(i), args }) if i == "cubic" => {
-                    // TODO: Check args order.
+                    valid_unit_range(args.0, args.1)
+                        .map_err(|e| e.with_span(
+                            "invalid interpolation parameters",
+                            ast_span,
+                            metrics))?;
                     res.interpolate_fn = InterpolateFunction::Cubic(
                         args.0,
                         args.1);
@@ -142,7 +146,10 @@ pub fn interpolate_range_from_ast_expr<'text, Cm>(
                             target.span,
                             metrics)),
                 Ok((args,)) => {
-                    // TODO: Check args order.
+                    valid_unit_range(args[0], args[1])
+                        .map_err(|e| e.with_span("invalid range value",
+                            ast_span,
+                            metrics))?;
                     res.start = args[0];
                     res.end = args[1];
                 },
@@ -167,7 +174,11 @@ pub fn interpolate_range_from_ast_expr<'text, Cm>(
                         target.span,
                         metrics)),
                 Ok((args, Ident(i))) => {
-                    // TODO: Check args order.
+                    valid_unit_range(args[0], args[1])
+                        .map_err(|e| e.with_span("invalid range value",
+                            ast_span,
+                            metrics))?;
+
                     res.start = args[0];
                     res.end = args[1];
                     match i.as_ref() {
@@ -205,5 +216,17 @@ pub fn interpolate_range_from_ast_expr<'text, Cm>(
                 ast_span,
                 metrics)),
         
+    }
+}
+
+
+fn valid_unit_range<'text, Cm>(l: f32, r: f32)
+    -> Result<(), ParseError<'text, Cm>>
+    where Cm: ColumnMetrics,
+{
+    if l < 0.0 || l > 1.0 || r < 0.0 || r > 1.0 || r < l {
+        Err(ParseError::new("value must lie in the range [0.0, 1.0]"))
+    } else {
+        Ok(())
     }
 }
