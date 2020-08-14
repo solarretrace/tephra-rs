@@ -205,7 +205,7 @@ impl AtmaScanner {
         }
 
         while let Some((next, adv)) = col_iter.next() {
-            if next.chars().all(char::is_alphabetic) {
+            if next.chars().all(|c| c.is_alphanumeric() || c == '_') {
                 pos += adv;
             } else {
                 break;

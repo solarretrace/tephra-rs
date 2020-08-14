@@ -650,3 +650,48 @@ fn ast_interpolate_range_cubic_ranged_rgb() {
 
     assert_eq!(actual, expected);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Ast BlendExpr match
+////////////////////////////////////////////////////////////////////////////////
+
+/// Tests `ast_expr` with an BlendExpr value produced by matching.
+#[test]
+fn ast_blend_expr_set_red() {
+    let text = "set_red(:0, 2.3)";
+    let scanner = AtmaScanner::new();
+    let metrics = Lf::with_tab_width(4);
+    let mut lexer = Lexer::new(scanner, text, metrics);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    // for tok in lexer.clone() {
+    //     println!("{:?}", tok);
+    // }
+
+    let actual = BlendExpr::match_expr(
+        ast_expr
+            (lexer)
+            .finish()
+            .unwrap(),
+        metrics)
+        .unwrap();
+
+    let expected = BlendExpr {
+        blend_fn: BlendFunction::Unary(UnaryBlendFunction {
+            blend_method: UnaryBlendMethod::SetRed,
+            value: 2.3,
+            arg: CellRef::Index(0),
+        }),
+        interpolate: Interpolate {
+            color_space: ColorSpace::Rgb,
+            interpolate_fn: InterpolateFunction::Linear,
+            amount: 0.0,
+        },
+    };
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}

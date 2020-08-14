@@ -17,6 +17,7 @@ use crate::result::Spanned;
 
 // Standard library imports.
 use std::borrow::Cow;
+use std::str::FromStr;
 
 // External library imports.
 use ::color::Color;
@@ -82,13 +83,32 @@ pub enum UnaryBlendMethod {
     Darken,
 }
 
+impl FromStr for UnaryBlendMethod {
+    type Err = InvalidBlendMethod;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use UnaryBlendMethod::*;
+        match s {
+            "set_red"    => Ok(SetRed),
+            "set_green"  => Ok(SetGreen),
+            "set_blue"   => Ok(SetBlue),
+            "hue_shift"  => Ok(HueShift),
+            "set_hue"    => Ok(SetHue),
+            "saturate"   => Ok(Saturate),
+            "desaturate" => Ok(Desaturate),
+            "lighten"    => Ok(Lighten),
+            "darken"     => Ok(Darken),
+            _            => Err(InvalidBlendMethod)
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinaryBlendFunction {
-    pub color_space: ColorSpace,
     pub blend_method: BinaryBlendMethod,
+    pub color_space: ColorSpace,
+    pub arg_0: CellRef<'static>,
     pub arg_1: CellRef<'static>,
-    pub arg_2: CellRef<'static>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -110,12 +130,38 @@ pub enum BinaryBlendMethod {
     LinearLight,
 }
 
+impl FromStr for BinaryBlendMethod {
+    type Err = InvalidBlendMethod;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use BinaryBlendMethod::*;
+        match s {
+            "blend"        => Ok(Blend),
+            "multiply"     => Ok(Multiply),
+            "divide"       => Ok(Divide),
+            "subtract"     => Ok(Subtract),
+            "difference"   => Ok(Difference),
+            "screen"       => Ok(Screen),
+            "overlay"      => Ok(Overlay),
+            "hard_light"   => Ok(HardLight),
+            "soft_light"   => Ok(SoftLight),
+            "color_dodge"  => Ok(ColorDodge),
+            "color_burn"   => Ok(ColorBurn),
+            "vivid_light"  => Ok(VividLight),
+            "linear_dodge" => Ok(LinearDodge),
+            "linear_burn"  => Ok(LinearBurn),
+            "linear_light" => Ok(LinearLight),
+            _              => Err(InvalidBlendMethod)
+        }
+    }
+}
+
+pub struct InvalidBlendMethod;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ColorSpace {
     Rgb,
 }
-
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Interpolate {
@@ -124,7 +170,15 @@ pub struct Interpolate {
     pub amount: f32,
 }
 
-
+impl Default for Interpolate {
+    fn default() -> Self {
+        Interpolate {
+            color_space: ColorSpace::Rgb,
+            interpolate_fn: InterpolateFunction::Linear,
+            amount: 0.0,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InterpolateRange {
@@ -144,7 +198,6 @@ impl Default for InterpolateRange {
         }
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InterpolateFunction {

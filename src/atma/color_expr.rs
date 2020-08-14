@@ -30,6 +30,8 @@ use crate::result::Spanned;
 use crate::result::ParseResultExt as _;
 use crate::position::ColumnMetrics;
 
+// Standard library imports.
+use std::str::FromStr as _;
 
 ////////////////////////////////////////////////////////////////////////////////
 // 
@@ -49,20 +51,278 @@ pub fn insert_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     unimplemented!()
 }
 
-// pub fn blend_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-//     -> ParseResult<'text, AtmaScanner, Cm, BlendExpr>
-//     where Cm: ColumnMetrics,
-// {
-//     unimplemented!()
-// }
+pub fn blend_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, BlendExpr>
+    where Cm: ColumnMetrics,
+{
+    unimplemented!()
+}
 
-// pub fn blend_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-//     -> ParseResult<'text, AtmaScanner, Cm, BlendFunction>
-//     where Cm: ColumnMetrics,
-// {
-//     unimplemented!()
-// }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// BlendExpr
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for BlendExpr {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = dbg!(&ast_expr).span();
+        
+        match <FunctionCall<UnaryBlendMethod, (
+                CellRef<'static>,
+                f32)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Unary(UnaryBlendFunction {
+                        blend_method: operand,
+                        value: args.1,
+                        arg: args.0,
+                    }),
+                    interpolate: Interpolate::default(),
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<UnaryBlendMethod, (
+                CellRef<'static>,
+                f32,
+                Interpolate)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Unary(UnaryBlendFunction {
+                        blend_method: operand,
+                        value: args.1,
+                        arg: args.0,
+                    }),
+                    interpolate: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<BinaryBlendMethod, (
+                CellRef<'static>,
+                CellRef<'static>)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Binary(BinaryBlendFunction {
+                        blend_method: operand,
+                        color_space: ColorSpace::Rgb,
+                        arg_0: args.0,
+                        arg_1: args.1,
+                    }),
+                    interpolate: Interpolate::default(),
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<BinaryBlendMethod, (
+                CellRef<'static>,
+                CellRef<'static>,
+                Interpolate)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Binary(BinaryBlendFunction {
+                        blend_method: operand,
+                        color_space: ColorSpace::Rgb,
+                        arg_0: args.0,
+                        arg_1: args.1,
+                    }),
+                    interpolate: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<BinaryBlendMethod, (
+                CellRef<'static>,
+                CellRef<'static>,
+                Interpolate,
+                ColorSpace)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Binary(BinaryBlendFunction {
+                        blend_method: operand,
+                        color_space: args.3,
+                        arg_0: args.0,
+                        arg_1: args.1,
+                    }),
+                    interpolate: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<BinaryBlendMethod, (
+                CellRef<'static>,
+                CellRef<'static>,
+                ColorSpace)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Binary(BinaryBlendFunction {
+                        blend_method: operand,
+                        color_space: args.2,
+                        arg_0: args.0,
+                        arg_1: args.1,
+                    }),
+                    interpolate: Interpolate::default(),
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BlendMethod
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for UnaryBlendMethod {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        match Ident::match_expr(ast_expr, metrics) {
+            Ok(Ident(i)) => match UnaryBlendMethod::from_str(i.as_ref()) {
+                Ok(blend) => return Ok(blend),
+                Err(_)    => (),
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+impl AstExprMatch for BinaryBlendMethod {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        match Ident::match_expr(ast_expr, metrics) {
+            Ok(Ident(i)) => match BinaryBlendMethod::from_str(i.as_ref()) {
+                Ok(blend) => return Ok(blend),
+                Err(_)    => (),
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Interpolate
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for Interpolate {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+
+        match f32::match_expr(ast_expr.clone(), metrics) {
+            Ok(amount) => {
+                if amount > 1.0 || amount < 0.0 {
+                    return Err(ParseError::new("invalid interpolate value")
+                        .with_span("value must lie in the range [0.0, 1.0]",
+                            ast_span,
+                            metrics));
+                }
+                return Ok(Interpolate {
+                    amount,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<InterpolateFunction, (f32,)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                if args.0 > 1.0 || args.0 < 0.0 {
+                    return Err(ParseError::new("invalid interpolate value")
+                        .with_span("value must lie in the range [0.0, 1.0]",
+                            ast_span,
+                            metrics));
+                }
+                return Ok(Interpolate {
+                    interpolate_fn: operand,
+                    amount: args.0,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<InterpolateFunction, (f32, ColorSpace)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                if args.0 > 1.0 || args.0 < 0.0 {
+                    return Err(ParseError::new("invalid interpolate value")
+                        .with_span("value must lie in the range [0.0, 1.0]",
+                            ast_span,
+                            metrics));
+                }
+                return Ok(Interpolate {
+                    interpolate_fn: operand,
+                    amount: args.0,
+                    color_space: args.1,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("expected interpolate value")
+            .with_span("unrecognized interpolate value", ast_span, metrics))
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // InterpolateRange
@@ -94,9 +354,9 @@ impl AstExprMatch for InterpolateRange {
             },
             Ok(FunctionCall { operand, args }) => {
                 valid_unit_range(args.0[0], args.0[1])
-                        .map_err(|e| e.with_span("invalid range value",
-                            ast_span,
-                            metrics))?;
+                    .map_err(|e| e.with_span("invalid range value",
+                        ast_span,
+                        metrics))?;
                 return Ok(InterpolateRange {
                     interpolate_fn: operand,
                     start: args.0[0],
@@ -117,9 +377,9 @@ impl AstExprMatch for InterpolateRange {
             },
             Ok(FunctionCall { operand, args }) => {
                 valid_unit_range(args.0[0], args.0[1])
-                        .map_err(|e| e.with_span("invalid range value",
-                            ast_span,
-                            metrics))?;
+                    .map_err(|e| e.with_span("invalid range value",
+                        ast_span,
+                        metrics))?;
                 return Ok(InterpolateRange {
                     interpolate_fn: operand,
                     start: args.0[0],
@@ -132,7 +392,7 @@ impl AstExprMatch for InterpolateRange {
         }
 
         match <FunctionCall<InterpolateFunction, (ColorSpace,)>>::match_expr(
-            ast_expr.clone(),
+            ast_expr,
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
@@ -145,8 +405,8 @@ impl AstExprMatch for InterpolateRange {
             _ => (),
         }
 
-        Err(ParseError::new("expected interpolation range")
-            .with_span("unrecognized interpolation range", ast_span, metrics))
+        Err(ParseError::new("expected interpolate range")
+            .with_span("unrecognized interpolate range", ast_span, metrics))
     }
 }
 
@@ -189,8 +449,8 @@ impl AstExprMatch for InterpolateFunction {
             _ => (),
         }
 
-        Err(ParseError::new("expected interpolation function")
-            .with_span("unrecognized interpolation function",
+        Err(ParseError::new("expected interpolate function")
+            .with_span("unrecognized interpolate function",
                 ast_span,
                 metrics))
     }
