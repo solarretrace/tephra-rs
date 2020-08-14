@@ -69,7 +69,7 @@ impl AstExprMatch for BlendExpr {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        let ast_span = dbg!(&ast_expr).span();
+        let ast_span = ast_expr.span();
         
         match <FunctionCall<UnaryBlendMethod, (
                 CellRef<'static>,

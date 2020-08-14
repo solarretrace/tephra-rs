@@ -205,7 +205,7 @@ fn primary_expr_color() {
 
 /// Tests `primary_expr` with an CellRef value.
 #[test]
-fn primary_expr_cell_ref() {
+fn primary_expr_cell_ref_index() {
     let text = ":0";
     let scanner = AtmaScanner::new();
     let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
@@ -219,6 +219,30 @@ fn primary_expr_cell_ref() {
     let expected = (
         PrimaryExpr::CellRef(CellRef::Index(0)),
         "\":0\" (0:0-0:2, bytes 0-2)".to_owned());
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `primary_expr` with an CellRef value.
+#[test]
+fn primary_expr_cell_ref_name() {
+    let text = "'abc'";
+    let scanner = AtmaScanner::new();
+    let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    let actual = primary_expr
+        (lexer)
+        .unwrap()
+        .value_span_display();
+
+    let expected = (
+        PrimaryExpr::CellRef(CellRef::Name("abc".into())),
+        "\"'abc'\" (0:0-0:5, bytes 0-5)".to_owned());
 
     println!("{:?}", actual);
     println!("{:?}", expected);
@@ -686,6 +710,48 @@ fn ast_blend_expr_set_red() {
             color_space: ColorSpace::Rgb,
             interpolate_fn: InterpolateFunction::Linear,
             amount: 0.0,
+        },
+    };
+
+    println!("{:?}", actual);
+    println!("{:?}", expected);
+    println!("");
+
+    assert_eq!(actual, expected);
+}
+
+
+/// Tests `ast_expr` with an BlendExpr value produced by matching.
+#[test]
+fn ast_blend_expr_desaturate() {
+    let text = "desaturate('abc', 2.3,\n cubic(1.0, 2.0)(0.5, rgb))";
+    let scanner = AtmaScanner::new();
+    let metrics = Lf::with_tab_width(4);
+    let mut lexer = Lexer::new(scanner, text, metrics);
+    lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+    // for tok in lexer.clone() {
+    //     println!("{:?}", tok);
+    // }
+
+    let actual = BlendExpr::match_expr(
+        ast_expr
+            (lexer)
+            .finish()
+            .unwrap(),
+        metrics)
+        .unwrap();
+
+    let expected = BlendExpr {
+        blend_fn: BlendFunction::Unary(UnaryBlendFunction {
+            blend_method: UnaryBlendMethod::Desaturate,
+            value: 2.3,
+            arg: CellRef::Name("abc".into()),
+        }),
+        interpolate: Interpolate {
+            color_space: ColorSpace::Rgb,
+            interpolate_fn: InterpolateFunction::Cubic(1.0, 2.0),
+            amount: 0.5,
         },
     };
 

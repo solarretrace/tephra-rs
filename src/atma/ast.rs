@@ -207,7 +207,7 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
                 spanned(bracket(
                     one(OpenParen),
                     intersperse_collect(0, None,
-                        section(ast_expr),
+                        ast_expr,
                         one(Comma)),
                     one(CloseParen))))
             (succ.lexer.clone())
