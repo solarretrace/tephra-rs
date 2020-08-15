@@ -38,15 +38,18 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InsertExpr {
-    Ramp {
-        count: u8,
-        blend_fn: BlendFunction,
-        interpolate: InterpolateRange,
-    },
+    Ramp(RampExpr),
     Blend(BlendExpr),
     Color(Color),
     Copy(CellRef<'static>),
     Reference(CellRef<'static>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RampExpr {
+    pub count: u8,
+    pub blend_fn: BlendFunction,
+    pub interpolate: InterpolateRange,
 }
 
 

@@ -34,30 +34,53 @@ use crate::position::ColumnMetrics;
 use std::str::FromStr as _;
 
 ////////////////////////////////////////////////////////////////////////////////
-// 
+// RampExpr
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-    -> ParseResult<'text, AtmaScanner, Cm, Expr>
-    where Cm: ColumnMetrics,
-{
-    unimplemented!()
-}
+impl AstExprMatch for RampExpr {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        match <FunctionCall<Ident, (u8, BlendFunction)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand: Ident(i), args }) if i == "ramp" => {
+                return Ok(RampExpr {
+                    count: args.0,
+                    blend_fn: args.1,
+                    interpolate: InterpolateRange::default(),
+                });
+            },
+            _ => (),
+        }
 
-pub fn insert_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-    -> ParseResult<'text, AtmaScanner, Cm, InsertExpr>
-    where Cm: ColumnMetrics,
-{
-    unimplemented!()
-}
+        match <FunctionCall<Ident, (
+                u8,
+                BlendFunction,
+                InterpolateRange)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand: Ident(i), args }) if i == "ramp" => {
+                return Ok(RampExpr {
+                    count: args.0,
+                    blend_fn: args.1,
+                    interpolate: args.2,
+                });
+            },
+            _ => (),
+        }
 
-pub fn blend_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-    -> ParseResult<'text, AtmaScanner, Cm, BlendExpr>
-    where Cm: ColumnMetrics,
-{
-    unimplemented!()
+        Err(ParseError::new("invalid ramp function")
+            .with_span("unrecognized ramp function",
+                ast_span,
+                metrics))
+    }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +225,18 @@ impl AstExprMatch for BlendExpr {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// BlendFunction
+////////////////////////////////////////////////////////////////////////////////
+impl AstExprMatch for BlendFunction {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        unimplemented!()
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // BlendMethod
