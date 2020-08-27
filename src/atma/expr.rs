@@ -166,6 +166,12 @@ pub enum ColorSpace {
     Rgb,
 }
 
+impl Default for ColorSpace {
+    fn default() -> Self {
+        ColorSpace::Rgb
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Interpolate {
     pub color_space: ColorSpace,

@@ -105,10 +105,10 @@ impl AstExprMatch for Ident {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Numeric matchers
+// Float matchers
 ////////////////////////////////////////////////////////////////////////////////
 
-macro_rules! negatable_numeric_matcher {
+macro_rules! float_matcher {
     ($t:ty, $rep:expr) => {
         impl AstExprMatch for $t {
             fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
@@ -149,7 +149,56 @@ macro_rules! negatable_numeric_matcher {
     };
 }
 
-macro_rules! nonnegatable_numeric_matcher {
+float_matcher!(f32, "f32");
+float_matcher!(f64, "f64");
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Integer matchers
+////////////////////////////////////////////////////////////////////////////////
+
+macro_rules! negatable_integer_matcher {
+    ($t:ty, $rep:expr) => {
+        impl AstExprMatch for $t {
+            fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+                -> Result<Self, ParseError<'text, Cm>>
+                where Cm: ColumnMetrics
+            {
+                let AstExpr::Unary(Spanned { span, value }) = ast_expr;
+                let ast_span = span;
+
+                let default_error = ParseError::new(
+                        concat!("expected ", $rep, " value"))
+                    .with_span(concat!("not a valid ", $rep, " value"),
+                        ast_span,
+                        metrics);
+
+                match value {
+                    UnaryExpr::Minus { operand, .. } => {
+                        <$t>::match_expr(AstExpr::Unary(*operand), metrics)
+                            .map(|f| -f)
+                            .map_err(|_| default_error)
+                    },
+
+                    UnaryExpr::Call(CallExpr::Primary(PrimaryExpr::Uint(uint))) => {
+                        <$t>::from_str(uint)
+                            .map_err(|_| default_error)
+                    },
+
+                    UnaryExpr::Call(CallExpr::Call { .. }) => Err(
+                        ParseError::new(concat!("expected ", $rep, " value"))
+                            .with_span(concat!($rep, " is not callable"),
+                                ast_span,
+                                metrics)),
+
+                    _ => Err(default_error),
+                }
+            }    
+        }
+    };
+}
+
+macro_rules! nonnegatable_integer_matcher {
     ($t:ty, $rep:expr) => {
         impl AstExprMatch for $t {
             fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
@@ -172,8 +221,8 @@ macro_rules! nonnegatable_numeric_matcher {
                                 ast_span,
                                 metrics)),
 
-                    UnaryExpr::Call(CallExpr::Primary(PrimaryExpr::Float(float))) => {
-                        <$t>::from_str(float)
+                    UnaryExpr::Call(CallExpr::Primary(PrimaryExpr::Uint(uint))) => {
+                        <$t>::from_str(uint)
                             .map_err(|_| default_error)
                     },
 
@@ -190,20 +239,17 @@ macro_rules! nonnegatable_numeric_matcher {
     };
 }
 
-negatable_numeric_matcher!(f32, "f32");
-negatable_numeric_matcher!(f64, "f64");
+negatable_integer_matcher!(i8, "i8");
+negatable_integer_matcher!(i16, "i16");
+negatable_integer_matcher!(i32, "i32");
+negatable_integer_matcher!(i64, "i64");
+negatable_integer_matcher!(isize, "isize");
 
-negatable_numeric_matcher!(i8, "i8");
-negatable_numeric_matcher!(i16, "i16");
-negatable_numeric_matcher!(i32, "i32");
-negatable_numeric_matcher!(i64, "i64");
-negatable_numeric_matcher!(isize, "isize");
-
-nonnegatable_numeric_matcher!(u8, "u8");
-nonnegatable_numeric_matcher!(u16, "u16");
-nonnegatable_numeric_matcher!(u32, "u32");
-nonnegatable_numeric_matcher!(u64, "u64");
-nonnegatable_numeric_matcher!(usize, "usize");
+nonnegatable_integer_matcher!(u8, "u8");
+nonnegatable_integer_matcher!(u16, "u16");
+nonnegatable_integer_matcher!(u32, "u32");
+nonnegatable_integer_matcher!(u64, "u64");
+nonnegatable_integer_matcher!(usize, "usize");
 
 ////////////////////////////////////////////////////////////////////////////////
 // Tuple matchers
