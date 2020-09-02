@@ -234,9 +234,97 @@ impl AstExprMatch for BlendFunction {
         where Cm: ColumnMetrics
     {
         let ast_span = ast_expr.span();
-        unimplemented!()
+
+        // Unary
+        match <UnaryBlendFunction>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(unary) => return Ok(BlendFunction::Unary(unary)),
+            _ => (),
+        }
+
+        // Binary
+        match <BinaryBlendFunction>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(binary) => return Ok(BlendFunction::Binary(binary)),
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
     }
 }
+
+impl AstExprMatch for UnaryBlendFunction {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+
+        match <FunctionCall<
+                UnaryBlendMethod,
+                (f32, CellRef<'static>)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(UnaryBlendFunction {
+                    blend_method: operand,
+                    value: args.0,
+                    arg: args.1,
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+
+impl AstExprMatch for BinaryBlendFunction {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+
+        let ast_span = ast_expr.span();
+
+        match <FunctionCall<
+                BinaryBlendMethod,
+                (ColorSpace, CellRef<'static>, CellRef<'static>)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BinaryBlendFunction {
+                    blend_method: operand,
+                    color_space: args.0,
+                    arg_0: args.1,
+                    arg_1: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // BlendMethod
