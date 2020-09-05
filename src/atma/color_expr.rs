@@ -316,6 +316,23 @@ impl AstExprMatch for BinaryBlendFunction {
             _ => (),
         }
 
+        match <FunctionCall<
+                BinaryBlendMethod,
+                (CellRef<'static>, CellRef<'static>)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BinaryBlendFunction {
+                    blend_method: operand,
+                    color_space: ColorSpace::default(),
+                    arg_0: args.0,
+                    arg_1: args.1,
+                });
+            },
+            _ => (),
+        }
+
         Err(ParseError::new("invalid blend function")
             .with_span("unrecognized blend function",
                 ast_span,
