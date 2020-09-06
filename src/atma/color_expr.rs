@@ -30,8 +30,66 @@ use crate::result::Spanned;
 use crate::result::ParseResultExt as _;
 use crate::position::ColumnMetrics;
 
+// External library imports.
+use ::color::Color;
+
 // Standard library imports.
 use std::str::FromStr as _;
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// InsertExpr
+////////////////////////////////////////////////////////////////////////////////
+impl AstExprMatch for InsertExpr {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        // Ramp
+        match RampExpr::match_expr(ast_expr.clone(), metrics) {
+            Ok(expr) => return Ok(InsertExpr::Ramp(expr)),
+            Err(_) => (),
+        }
+
+        // Blend
+        match BlendExpr::match_expr(ast_expr.clone(), metrics) {
+            Ok(expr) => return Ok(InsertExpr::Blend(expr)),
+            Err(_) => (),
+        }
+
+        // Color
+        match Color::match_expr(ast_expr.clone(), metrics) {
+            Ok(color) => return Ok(InsertExpr::Color(color)),
+            Err(_) => (),
+        }
+
+        // Copy
+        match <FunctionCall<Ident, (CellRef<'static>,)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand: Ident(i), args }) if i == "copy" => {
+                return Ok(InsertExpr::Copy(args.0));
+            },
+            _ => (),
+        }
+
+        // Reference
+        match <CellRef<'static>>::match_expr(ast_expr.clone(), metrics) {
+            Ok(cell_ref) => return Ok(InsertExpr::Reference(cell_ref)),
+            Err(_) => (),
+        }
+
+        Err(ParseError::new("invalid insert expression")
+            .with_span("unrecognized insert expression",
+                ast_span,
+                metrics))
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // RampExpr
