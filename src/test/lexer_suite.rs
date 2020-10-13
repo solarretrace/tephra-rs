@@ -11,6 +11,10 @@
 // Local imports.
 use crate::lexer::Scanner;
 use crate::lexer::Lexer;
+use crate::result::ParseResultExt as _;
+use crate::combinator::one;
+use crate::combinator::both;
+use crate::combinator::text;
 use crate::position::Pos;
 use crate::position::Lf;
 use crate::position::ColumnMetrics;
@@ -138,6 +142,27 @@ fn no_whitespace() {
         println!("{:?}", expected[i]);
         println!();
     }
+
+    assert_eq!(actual, expected);
+}
+
+
+/// Tests `both` with whitespace filter.
+#[test]
+fn atma_issue_1_both_no_whitespace() {
+    use TestToken::*;
+    let input = "aa b \nbdef\n aaa";
+    let mut lexer = Lexer::new(Test, input, Lf::with_tab_width(4));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = both(
+            text(one(Aa)),
+            text(one(B)))
+        (lexer)
+        .finish()
+        .unwrap();
+
+    let expected = ("aa", "b");
 
     assert_eq!(actual, expected);
 }
