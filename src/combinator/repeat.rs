@@ -19,7 +19,6 @@ use crate::result::ParseResultExt as _;
 use crate::result::Success;
 use crate::position::ColumnMetrics;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Repetition combinators.
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,6 +39,8 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
 {
     move |lexer| {
+        log::debug!("intersperse_collect");
+
         if let Some(h) = high {
             if h < low { panic!("intersperse_collect with high < low") }
             if h == 0 {

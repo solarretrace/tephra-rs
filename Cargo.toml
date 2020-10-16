@@ -25,7 +25,7 @@ name = "tephra"
 few = { version = "0.1.4" }
 colored = { version = "2.0" }
 unicode-width = { version = "0.1" }
-log = { version = "0.4", optional = true }
+log = { version = "0.4" }
 
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]
