@@ -39,7 +39,7 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
 {
     move |lexer| {
-        log::debug!("intersperse_collect: Begin (low = {:?}, high = {:?})",
+        log::debug!("intersperse_collect: > Begin (low = {:?}, high = {:?})",
             low,
             high);
 
@@ -62,10 +62,10 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         {
             Ok(succ) => succ.take_value(),
             Err(fail) => return if low == 0 {
-                log::trace!("intersperse_collect: Ok (0 repetitions)");
+                log::debug!("intersperse_collect: < Ok (0 repetitions)");
                 Ok(Success { lexer: fail.lexer, value: vals })
             } else {
-                log::trace!("intersperse_collect: Fail (0 repetitions)");
+                log::debug!("intersperse_collect: < Fail (0 repetitions)");
                 Err(fail)
             },
         };
@@ -105,7 +105,7 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
             }
         }
 
-        log::trace!("intersperse_collect: Ok ({} repetitions)", vals.len());
+        log::trace!("intersperse_collect: < Ok ({} repetitions)", vals.len());
         Ok(succ.map_value(|_| vals))
     }
 }
