@@ -39,11 +39,14 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
 {
     move |lexer| {
-        log::debug!("intersperse_collect");
+        log::debug!("intersperse_collect: Begin (low = {:?}, high = {:?})",
+            low,
+            high);
 
         if let Some(h) = high {
             if h < low { panic!("intersperse_collect with high < low") }
             if h == 0 {
+                log::trace!("intersperse_collect: End (0 repetitions)");
                 return Ok(Success {
                     lexer,
                     value: Vec::new(),
@@ -59,23 +62,30 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         {
             Ok(succ) => succ.take_value(),
             Err(fail) => return if low == 0 {
+                log::trace!("intersperse_collect: Ok (0 repetitions)");
                 Ok(Success { lexer: fail.lexer, value: vals })
             } else {
+                log::trace!("intersperse_collect: Fail (0 repetitions)");
                 Err(fail)
             },
         };
 
+        
+
         vals.push(val);
-        // println!("vals len: {}", vals.len());
+        log::trace!("intersperse_collect: (1 repetition)");
 
         while vals.len() < low {
             let (val, next) = right(&mut inter_parser, &mut parser)
                 (succ.lexer)?
                 .take_value();
             vals.push(val);
-            // println!("vals len: {}", vals.len());
+            log::trace!("intersperse_collect: ({:?} repetitions)", vals.len());
             succ = next;
+
         }
+
+        log::trace!("intersperse_collect: minimum reps satisfied");
 
         while high.map_or(true, |h| vals.len() < h) {
             match right(&mut inter_parser, &mut parser)
@@ -84,7 +94,7 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
                 Ok(next) => {
                     let (val, next) = next.take_value();
                     vals.push(val);
-                    // println!("vals len: {}", vals.len());
+                    log::trace!("intersperse_collect: ({:?} repetitions)", vals.len());
                     succ = next;
                 }
                 Err(_) => break,
@@ -95,6 +105,7 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
             }
         }
 
+        log::trace!("intersperse_collect: Ok ({} repetitions)", vals.len());
         Ok(succ.map_value(|_| vals))
     }
 }
