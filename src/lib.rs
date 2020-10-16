@@ -50,3 +50,24 @@ pub mod combinator;
 pub mod result;
 pub mod span;
 pub mod position;
+
+
+#[cfg(feature = "log")]
+pub(crate) mod log {
+    pub use ::log::debug;
+    pub use ::log::error;
+    pub use ::log::info;
+    pub use ::log::trace;
+    pub use ::log::warn;
+}
+
+#[cfg(not(feature = "log"))]
+pub(crate) mod log {
+    #![allow(unused)]
+    
+    macro_rules! debug { ($_:tt) => {} }
+    macro_rules! error { ($_:tt) => {} }
+    macro_rules! info { ($_:tt) => {} }
+    macro_rules! trace { ($_:tt) => {} }
+    macro_rules! warn { ($_:tt) => {} }
+}
