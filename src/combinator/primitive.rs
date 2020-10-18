@@ -71,6 +71,7 @@ pub fn fail<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,6 +82,7 @@ pub fn end_of_text<'text, Sc, Cm>(lexer: Lexer<'text, Sc, Cm>)
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
+    lexer.filter_next();
     if lexer.is_empty() {
         Ok(Success {
             lexer,

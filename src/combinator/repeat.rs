@@ -55,7 +55,6 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         }
 
         let mut vals = Vec::with_capacity(4);
-        // println!("vals len: {}", vals.len());
 
         let (val, mut succ) = match (&mut parser)
             (lexer)
@@ -69,8 +68,6 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
                 Err(fail)
             },
         };
-
-        
 
         vals.push(val);
         log::trace!("intersperse_collect: (1 repetition)");
@@ -295,6 +292,7 @@ pub fn repeat<'text, Sc, Cm, F, V>(
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
+        log::debug!("repeat = intersperse_collect");
         intersperse_collect(low, high, 
                 discard(&mut parser),
                 empty)
