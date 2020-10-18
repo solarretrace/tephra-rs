@@ -76,7 +76,7 @@ pub fn fail<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses the end of the text.
-pub fn end_of_text<'text, Sc, Cm>(lexer: Lexer<'text, Sc, Cm>)
+pub fn end_of_text<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
     -> ParseResult<'text, Sc, Cm, ()>
     where
         Sc: Scanner,
