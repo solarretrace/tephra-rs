@@ -311,6 +311,18 @@ impl<'text, Sc, Cm> PartialEq for Lexer<'text, Sc, Cm>
     }
 }
 
+impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
+    where
+        Sc: Scanner,
+        Cm: ColumnMetrics,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Full Span: {:?}", self.full_span())?;
+        writeln!(f, "Last Span (+filtered): {:?}", self.last_full_span())?;
+        writeln!(f, "Last Span: {:?}", self.last_span())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // IterWithSpans
 ////////////////////////////////////////////////////////////////////////////////
