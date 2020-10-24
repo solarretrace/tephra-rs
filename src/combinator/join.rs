@@ -97,13 +97,26 @@ pub fn bracket<'text, Sc, Cm, L, C, R, X, Y, Z>(
 {
     move |lexer| {
         log::debug!("bracket: left");
-        let succ = (left)
-            (lexer)?;
+        let succ = match (left)
+            (lexer)
+        {
+            Ok(succ) => succ,
+            Err(fail) => {
+                log::debug!("bracket: left failed");
+                return Err(fail);
+            }
+        };
 
         log::debug!("bracket: center");
-        let (c, succ) = (center)
-            (succ.lexer)?
-            .take_value();
+        let (c, succ) = match (center)
+            (succ.lexer)
+        {
+            Ok(succ) => succ.take_value(),
+            Err(fail) => {
+                log::debug!("bracket: center failed");
+                return Err(fail);
+            }
+        };
 
         log::debug!("bracket: right");
         (right)
