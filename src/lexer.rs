@@ -196,6 +196,14 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         Span::new_from(self.end, self.source)
     }
 
+    /// Returns the span of the remainder of the unlexed text.
+    pub fn remaining_span(&self) -> Span<'text> {
+        Span::new_enclosing(
+            self.end,
+            self.metrics.width(self.source),
+            self.source)
+    }
+
     /// Skips past any filtered tokens at the lex position.
     pub fn filter_next(&mut self) {
         let _ = self.next();
@@ -321,7 +329,8 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
         writeln!(f, "Full Span: {}", self.full_span())?;
         writeln!(f, "Last Span (+filtered): {}", self.last_full_span())?;
         writeln!(f, "Last Span: {}", self.last_span())?;
-        writeln!(f, "End Span: {}", self.end_span())
+        writeln!(f, "End Span: {}", self.end_span())?;
+        writeln!(f, "Remaining Span: {}", self.remaining_span())
     }
 }
 
