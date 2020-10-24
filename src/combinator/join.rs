@@ -96,13 +96,16 @@ pub fn bracket<'text, Sc, Cm, L, C, R, X, Y, Z>(
         R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Z>,
 {
     move |lexer| {
+        log::debug!("bracket: left");
         let succ = (left)
             (lexer)?;
 
+        log::debug!("bracket: center");
         let (c, succ) = (center)
             (succ.lexer)?
             .take_value();
 
+        log::debug!("bracket: right");
         (right)
             (succ.lexer)
             .map_value(|_| c)
