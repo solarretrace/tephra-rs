@@ -11,7 +11,6 @@
 // Local imports.
 use crate::combinator::both;
 use crate::combinator::one;
-use crate::combinator::section;
 use crate::combinator::text;
 use crate::combinator::text_exact;
 use crate::lexer::Lexer;

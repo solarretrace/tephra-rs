@@ -317,9 +317,11 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
         Cm: ColumnMetrics,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Source len: {:?}", self.source.len())?;
         writeln!(f, "Full Span: {}", self.full_span())?;
         writeln!(f, "Last Span (+filtered): {}", self.last_full_span())?;
-        writeln!(f, "Last Span: {}", self.last_span())
+        writeln!(f, "Last Span: {}", self.last_span())?;
+        writeln!(f, "End Span: {}", self.end_span())
     }
 }
 
