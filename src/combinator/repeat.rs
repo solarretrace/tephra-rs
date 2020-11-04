@@ -57,12 +57,14 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         let mut vals = Vec::with_capacity(4);
 
         let (val, mut succ) = match (&mut parser)
-            (lexer)
+            (lexer.clone())
         {
-            Ok(succ) => succ.take_value(),
+            Ok(Success { value, lexer: succ_lexer }) => {
+                (value, Success { value: (), lexer: succ_lexer })
+            },
             Err(fail) => return if low == 0 {
                 log::debug!("intersperse_collect: < Ok (0 repetitions)");
-                Ok(Success { lexer: fail.lexer, value: vals })
+                Ok(Success { lexer, value: vals })
             } else {
                 log::debug!("intersperse_collect: < Fail (0 repetitions)");
                 Err(fail)

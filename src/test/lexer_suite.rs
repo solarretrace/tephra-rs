@@ -12,6 +12,7 @@
 use crate::combinator::both;
 use crate::combinator::one;
 use crate::combinator::text;
+use crate::combinator::repeat;
 use crate::combinator::text_exact;
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
@@ -184,6 +185,26 @@ fn atma_issue_1_both_no_whitespace_exact() {
         .unwrap();
 
     let expected = ("aa", " b");
+
+    assert_eq!(actual, expected);
+}
+
+/// Tests `repeat` with no successes.
+#[test]
+fn atma_issue_2_both_no_whitespace_exact() {
+    use TestToken::*;
+    let input = "aa aa aa";
+    let mut lexer = Lexer::new(Test, input, Lf::with_tab_width(4));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = both(
+            repeat(0, None, one(B)),
+            repeat(0, None, one(Aa)))
+        (lexer)
+        .finish()
+        .unwrap();
+
+    let expected = (0, 3);
 
     assert_eq!(actual, expected);
 }
