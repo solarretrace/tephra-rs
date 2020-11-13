@@ -16,6 +16,9 @@ use crate::result::ParseResultExt as _;
 use crate::result::Success;
 use crate::position::ColumnMetrics;
 
+// External library imports.
+use tracing::Level;
+use tracing::span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +34,9 @@ pub fn maybe<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "maybe");
+        let _enter = span.enter();
+
         let initial = lexer.clone();
         match parser(lexer) {
             Ok(succ) => Ok(succ.map_value(Some)),
@@ -56,6 +62,9 @@ pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
         V: std::fmt::Debug
 {
     move |mut lexer| {
+        let span = span!(Level::DEBUG, "atomic");
+        let _enter = span.enter();
+
         let initial = lexer.clone();
         lexer.filter_next();
         let end = lexer.end_pos();
@@ -87,6 +96,9 @@ pub fn require_if<'text, Sc, Cm, P, F, V>(mut pred: P, mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "require_if");
+        let _enter = span.enter();
+
         if pred() {
             parser(lexer)
                 .map_value(Some)

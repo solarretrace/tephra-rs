@@ -15,12 +15,17 @@ use crate::position::ColumnMetrics;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 
+// External library imports.
+use tracing::event;
+use tracing::Level;
+use tracing::span;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Parse result selection combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Returns a parser which sequences two parsers wich must both succeed,
+/// Returns a parser which sequences two parsers which must both succeed,
 /// returning the value of the first one.
 pub fn left<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
     -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, X>
@@ -31,6 +36,9 @@ pub fn left<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "left");
+        let _enter = span.enter();
+
         let (l, succ) = (left)
             (lexer)?
             .take_value();
@@ -41,7 +49,7 @@ pub fn left<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
     }
 }
 
-/// Returns a parser which sequences two parsers wich must both succeed,
+/// Returns a parser which sequences two parsers which must both succeed,
 /// returning the value of the second one.
 pub fn right<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
     -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>
@@ -52,6 +60,9 @@ pub fn right<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "right");
+        let _enter = span.enter();
+
         let succ = (left)
             (lexer)?;
 
@@ -60,7 +71,7 @@ pub fn right<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
     }
 }
 
-/// Returns a parser which sequences two parsers wich must both succeed,
+/// Returns a parser which sequences two parsers which must both succeed,
 /// returning their values in a tuple.
 pub fn both<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
     -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, (X, Y)>
@@ -71,6 +82,9 @@ pub fn both<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "both");
+        let _enter = span.enter();
+
         let (l, succ) = (left)
             (lexer)?
             .take_value();
@@ -96,29 +110,32 @@ pub fn bracket<'text, Sc, Cm, L, C, R, X, Y, Z>(
         R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Z>,
 {
     move |lexer| {
-        log::debug!("bracket: left");
+        let span = span!(Level::DEBUG, "bracket");
+        let _enter = span.enter();
+
+        event!(Level::TRACE, "bracket: left");
         let succ = match (left)
             (lexer)
         {
             Ok(succ) => succ,
             Err(fail) => {
-                log::debug!("bracket: left failed");
+                event!(Level::TRACE, "bracket: left failed");
                 return Err(fail);
             }
         };
 
-        log::debug!("bracket: center");
+        event!(Level::TRACE, "bracket: center");
         let (c, succ) = match (center)
             (succ.lexer)
         {
             Ok(succ) => succ.take_value(),
             Err(fail) => {
-                log::debug!("bracket: center failed");
+                event!(Level::TRACE, "bracket: center failed");
                 return Err(fail);
             }
         };
 
-        log::debug!("bracket: right");
+        event!(Level::TRACE, "bracket: right");
         (right)
             (succ.lexer)
             .map_value(|_| c)
@@ -138,6 +155,9 @@ pub fn bracket_symmetric<'text, Sc, Cm, C, B, X, Y>(
         C: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "bracket_symmetric");
+        let _enter = span.enter();
+
         let succ = (&mut bracket)
             (lexer)?;
 
@@ -167,6 +187,9 @@ pub fn bracket_dynamic<'text, Sc, Cm, L, C, R, X, Y, Z>(
         R: FnMut(Lexer<'text, Sc, Cm>, X) -> ParseResult<'text, Sc, Cm, Z>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "bracket_dynamic");
+        let _enter = span.enter();
+
         let (l, succ) = (left)
             (lexer)?
             .take_value();

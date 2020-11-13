@@ -13,6 +13,10 @@ use crate::span::Span;
 use crate::position::ColumnMetrics;
 use crate::position::Pos;
 
+// External library imports.
+use tracing::Level;
+use tracing::span;
+
 // Standard library imports.
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -215,6 +219,9 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     /// without advancing the lexer position, assuming the lexer state is
     /// unchanged by the time `next` is called.
     pub fn peek(&self) -> Option<Sc::Token> {
+        let span = span!(Level::DEBUG, "Lexer::peek");
+        let _enter = span.enter();
+
         let mut scanner = self.scanner.clone();
         let mut end_byte = self.end.byte;
         while end_byte < self.source.len() {
@@ -245,6 +252,9 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
     type Item = Sc::Token;
     
     fn next(&mut self) -> Option<Self::Item> {
+        let span = span!(Level::DEBUG, "Lexer::next");
+        let _enter = span.enter();
+
         while self.end.byte < self.source.len() {
             match self.scanner.scan(
                 &self.source[self.end.byte..],

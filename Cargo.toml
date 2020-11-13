@@ -1,6 +1,6 @@
 [package]
 name = "tephra"
-version = "0.0.94"
+version = "0.0.95"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -22,10 +22,10 @@ name = "tephra"
 
 # Required dependencies
 [dependencies]
-few = { version = "0.1.4" }
 colored = { version = "2.0" }
+few = { version = "0.1.4" }
+tracing = { version = "0.1" }
 unicode-width = { version = "0.1" }
-log = { version = "0.4" }
 
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]

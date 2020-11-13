@@ -16,6 +16,10 @@ use crate::result::ParseResult;
 use crate::result::Success;
 use crate::result::Spanned;
 
+// External library imports.
+use tracing::Level;
+use tracing::span;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Control combinators.
@@ -31,6 +35,9 @@ pub fn filter<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
         P: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |mut lexer| {
+        let span = span!(Level::DEBUG, "filter");
+        let _enter = span.enter();
+
         let old_filter = lexer.take_filter();
         lexer.set_filter_fn(filter_fn.clone());
         match (parser)(lexer) {
@@ -56,6 +63,9 @@ pub fn exact<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |mut lexer| {
+        let span = span!(Level::DEBUG, "exact");
+        let _enter = span.enter();
+
         let filter = lexer.take_filter();
         match (parser)(lexer) {
             Ok(mut succ)  => {
@@ -80,6 +90,9 @@ pub fn section<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "section");
+        let _enter = span.enter();
+
         match (parser)(lexer.sublexer()) {
             Ok(mut succ) => {
                 succ.lexer = lexer.join(succ.lexer);
@@ -104,6 +117,9 @@ pub fn discard<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "discard");
+        let _enter = span.enter();
+
         match (parser)(lexer) {
             Ok(succ) => {
                 Ok(Success {
@@ -127,6 +143,9 @@ pub fn text_exact<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "text_exact");
+        let _enter = span.enter();
+
         let start = lexer.end_pos().byte;
         match (parser)(lexer) {
             Ok(succ) => {
@@ -154,6 +173,9 @@ pub fn text<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |mut lexer| {
+        let span = span!(Level::DEBUG, "text");
+        let _enter = span.enter();
+
         lexer.filter_next();
         let start = lexer.end_pos().byte;
         match (parser)(lexer) {
@@ -182,6 +204,9 @@ pub fn spanned<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "spanned");
+        let _enter = span.enter();
+
         match (parser)(lexer.sublexer()) {
             Ok(succ) => {
                 Ok(Success {

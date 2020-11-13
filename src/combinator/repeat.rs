@@ -19,6 +19,12 @@ use crate::result::ParseResultExt as _;
 use crate::result::Success;
 use crate::position::ColumnMetrics;
 
+// External library imports.
+use tracing::event;
+use tracing::Level;
+use tracing::span;
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Repetition combinators.
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,14 +45,18 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
 {
     move |lexer| {
-        log::debug!("intersperse_collect: > Begin (low = {:?}, high = {:?})",
+        let span = span!(Level::DEBUG, "intersperse_collect");
+        let _enter = span.enter();
+
+        event!(Level::DEBUG,
+            "> Begin (low = {:?}, high = {:?})",
             low,
             high);
 
         if let Some(h) = high {
             if h < low { panic!("intersperse_collect with high < low") }
             if h == 0 {
-                log::trace!("intersperse_collect: End (0 repetitions)");
+                event!(Level::TRACE, "End (0 repetitions)");
                 return Ok(Success {
                     lexer,
                     value: Vec::new(),
@@ -63,28 +73,28 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
                 (value, Success { value: (), lexer: succ_lexer })
             },
             Err(fail) => return if low == 0 {
-                log::debug!("intersperse_collect: < Ok (0 repetitions)");
+                event!(Level::DEBUG, "< Ok (0 repetitions)");
                 Ok(Success { lexer, value: vals })
             } else {
-                log::debug!("intersperse_collect: < Fail (0 repetitions)");
+                event!(Level::DEBUG, "< Fail (0 repetitions)");
                 Err(fail)
             },
         };
 
         vals.push(val);
-        log::trace!("intersperse_collect: (1 repetition)");
+        event!(Level::TRACE, "(1 repetition)");
 
         while vals.len() < low {
             let (val, next) = right(&mut inter_parser, &mut parser)
                 (succ.lexer)?
                 .take_value();
             vals.push(val);
-            log::trace!("intersperse_collect: ({:?} repetitions)", vals.len());
+            event!(Level::TRACE, "({:?} repetitions)", vals.len());
             succ = next;
 
         }
 
-        log::trace!("intersperse_collect: minimum reps satisfied");
+        event!(Level::TRACE, "minimum reps satisfied");
 
         while high.map_or(true, |h| vals.len() < h) {
             match right(&mut inter_parser, &mut parser)
@@ -93,7 +103,7 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
                 Ok(next) => {
                     let (val, next) = next.take_value();
                     vals.push(val);
-                    log::trace!("intersperse_collect: ({:?} repetitions)", vals.len());
+                    event!(Level::TRACE, "({:?} repetitions)", vals.len());
                     succ = next;
                 }
                 Err(_) => break,
@@ -104,7 +114,7 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
             }
         }
 
-        log::trace!("intersperse_collect: < Ok ({} repetitions)", vals.len());
+        event!(Level::TRACE, "< Ok ({} repetitions)", vals.len());
         Ok(succ.map_value(|_| vals))
     }
 }
@@ -128,6 +138,9 @@ pub fn intersperse_collect_until<'text, Sc, Cm, F, G, H, V, U, T>(
         H: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, T>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "intersperse_collect_until");
+        let _enter = span.enter();
+
         if let Some(h) = high {
             if h < low { panic!("intersperse_collect with high < low") }
             if h == 0 {
@@ -201,6 +214,9 @@ pub fn intersperse<'text, Sc, Cm, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "intersperse");
+        let _enter = span.enter();
+
         intersperse_collect(low, high, 
                 discard(&mut parser),
                 &mut inter_parser)
@@ -227,6 +243,9 @@ pub fn intersperse_until<'text, Sc, Cm, F, G, H, V, U, T>(
         H: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, T>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "intersperse_until");
+        let _enter = span.enter();
+
         intersperse_collect_until(low, high, 
                 &mut stop_parser,
                 discard(&mut parser),
@@ -249,6 +268,9 @@ pub fn repeat_collect<'text, Sc, Cm, F, V>(
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "repeat_collect");
+        let _enter = span.enter();
+
         intersperse_collect(low, high,
             &mut parser,
             empty)
@@ -273,6 +295,9 @@ pub fn repeat_collect_until<'text, Sc, Cm, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "repeat_collect_until");
+        let _enter = span.enter();
+
         intersperse_collect_until(low, high, &mut stop_parser,
             &mut parser,
             empty)
@@ -294,7 +319,9 @@ pub fn repeat<'text, Sc, Cm, F, V>(
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
     move |lexer| {
-        log::debug!("repeat = intersperse_collect");
+        let span = span!(Level::DEBUG, "repeat");
+        let _enter = span.enter();
+
         intersperse_collect(low, high, 
                 discard(&mut parser),
                 empty)
@@ -319,6 +346,9 @@ pub fn repeat_until<'text, Sc, Cm, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
 {
     move |lexer| {
+        let span = span!(Level::DEBUG, "repeat_until");
+        let _enter = span.enter();
+
         intersperse_collect_until(low, high, 
                 &mut stop_parser,
                 discard(&mut parser),
