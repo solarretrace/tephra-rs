@@ -20,6 +20,7 @@ use crate::result::Success;
 // External library imports.
 use tracing::Level;
 use tracing::span;
+use tracing::event;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,5 +242,41 @@ pub fn spanned<'text, Sc, Cm, F, V>(mut parser: F)
             },
             Err(fail) => Err(fail),
         }
+    }
+}
+
+
+/// A combinator which counts and inserts page breaks before every invocation of
+/// the given parser.
+pub fn trace_break_count<'text, Sc, Cm, F, V>(
+    mut parser: F,
+    level: Level,
+    id: &'static str)
+    -> impl FnMut(Lexer<'text, Sc, Cm>)
+        -> ParseResult<'text, Sc, Cm, V>
+    where
+        Sc: Scanner,
+        Cm: ColumnMetrics,
+        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
+{
+    let mut count: usize = 0;
+
+    move |lexer| {
+        match level {
+            Level::ERROR
+                => event!(Level::ERROR, "\n-- {} ({}) --\n", id, count),
+            Level::WARN
+                => event!(Level::WARN, "\n-- {} ({}) --\n", id, count),
+            Level::INFO
+                => event!(Level::INFO, "\n-- {} ({}) --\n", id, count),
+            Level::DEBUG
+                => event!(Level::DEBUG, "\n-- {} ({}) --\n", id, count),
+            Level::TRACE
+                => event!(Level::TRACE, "\n-- {} ({}) --\n", id, count),
+        };
+        count += 1;
+
+        parser
+            (lexer)
     }
 }
