@@ -131,7 +131,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
 {
 
     move |mut lexer| {
-        let span = span!(Level::DEBUG, "one");
+        let span = span!(Level::DEBUG, "one", expected = ?token);
         let _enter = span.enter();
 
         if lexer.is_empty() {
@@ -162,7 +162,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
 
             // Matching token.
             Some(lex) if lex == token => {
-                span!(Level::TRACE, "correct token found", ?lex);
+                span!(Level::TRACE, "correct token", found = ?lex);
                 // println!(" -> MATCH {}", lexer.last_span());
                 Ok(Success {
                     lexer,
@@ -172,7 +172,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
 
             // Incorrect token.
             Some(lex) => {
-                span!(Level::TRACE, "incorrect token found", ?lex);
+                span!(Level::TRACE, "incorrect token", found = ?lex);
                 // println!( " -> unexpected {}", lexer.last_span());
                 Err(Failure {
                     parse_error: ParseError::unexpected_token(
@@ -200,7 +200,8 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
 {
     let tokens = tokens.to_vec();
     move |mut lexer| {
-        let span = span!(Level::DEBUG, "any");
+        let span = span!(Level::DEBUG, "any",
+            expected = ?DisplayList(&tokens[..]));
         let _enter = span.enter();
 
         for token in &tokens {
@@ -255,6 +256,23 @@ impl<'a, T> std::fmt::Display for DisplayList<'a, T>
     }
 }
 
+impl<'a, T> std::fmt::Debug for DisplayList<'a, T>
+    where T: std::fmt::Debug
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, val) in self.0.iter().enumerate() {
+            write!(f, "{:?}", val)?;
+            if i < self.0.len() - 1 {
+                write!(f, ", ")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // seq
@@ -269,7 +287,8 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
 {
     let tokens = tokens.to_vec();
     move |mut lexer| {
-        let span = span!(Level::DEBUG, "seq");
+        let span = span!(Level::DEBUG, "seq",
+            expected = ?DisplayList(&tokens[..]));
         let _enter = span.enter();
         
         for token in &tokens {

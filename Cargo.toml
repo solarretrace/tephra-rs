@@ -1,6 +1,6 @@
 [package]
 name = "tephra"
-version = "0.0.101"
+version = "0.0.102"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
