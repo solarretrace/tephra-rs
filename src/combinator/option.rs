@@ -118,4 +118,3 @@ pub fn require_if<'text, Sc, Cm, P, F, V>(mut pred: P, mut parser: F)
         }
     }
 }
-

@@ -90,7 +90,6 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
             vals.push(val);
             event!(Level::TRACE, "{} repetitions...", vals.len());
             succ = next;
-
         }
 
         event!(Level::TRACE, "minimum count satisfied");

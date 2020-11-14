@@ -17,6 +17,10 @@ use crate::result::Success;
 use crate::result::Failure;
 use crate::result::ParseError;
 
+// External library imports.
+use tracing::event;
+use tracing::Level;
+use tracing::span;
 
 ////////////////////////////////////////////////////////////////////////////////
 // empty
@@ -52,22 +56,31 @@ pub fn fail<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "fail");
+    let _enter = span.enter();
+
     match lexer.next() {
-        Some(token) => Err(Failure {
-            parse_error: ParseError::unexpected_token(
-                lexer.last_span(),
-                &token,
-                lexer.column_metrics()),
-            lexer,
-            source: None,
-        }),
-        None => Err(Failure {
-            parse_error: ParseError::unexpected_end_of_text(
-                lexer.end_span(),
-                lexer.column_metrics()),
-            lexer,
-            source: None,
-        })
+        Some(token) => {
+            event!(Level::TRACE, "success converted to failure");
+            Err(Failure {
+                parse_error: ParseError::unexpected_token(
+                    lexer.last_span(),
+                    &token,
+                    lexer.column_metrics()),
+                lexer,
+                source: None,
+            })
+        },
+        None => {
+            event!(Level::TRACE, "no tokens");
+            Err(Failure {
+                parse_error: ParseError::unexpected_end_of_text(
+                    lexer.end_span(),
+                    lexer.column_metrics()),
+                lexer,
+                source: None,
+            })
+        },
     }
 }
 
@@ -82,13 +95,18 @@ pub fn end_of_text<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "end_of_text");
+    let _enter = span.enter();
+
     lexer.filter_next();
     if lexer.is_empty() {
+        event!(Level::TRACE, "end of text found");
         Ok(Success {
             lexer,
             value: (),
         })
     } else {
+        event!(Level::TRACE, "end of text not found");
         Err(Failure {
             parse_error: ParseError::unexpected_text(
                 lexer.end_span(),
@@ -111,9 +129,12 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "one");
+    let _enter = span.enter();
+
     move |mut lexer| {
-        // print!("one({:?})", token);
         if lexer.is_empty() {
+            span!(Level::TRACE, "lexer is empty");
             // Unexpected End-of-text.
             return Err(Failure {
                 parse_error: ParseError::unexpected_end_of_text(
@@ -127,6 +148,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
         match lexer.next() {
             // Lexer error.
             None => {
+                span!(Level::TRACE, "lexer error");
                 // println!(" -> unrecognized {}", lexer.last_span());
                 Err(Failure {
                     parse_error: ParseError::unrecognized_token(
@@ -139,6 +161,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
 
             // Matching token.
             Some(lex) if lex == token => {
+                span!(Level::TRACE, "correct token found", ?lex);
                 // println!(" -> MATCH {}", lexer.last_span());
                 Ok(Success {
                     lexer,
@@ -147,7 +170,8 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
             },
 
             // Incorrect token.
-            Some(_) => {
+            Some(lex) => {
+                span!(Level::TRACE, "incorrect token found", ?lex);
                 // println!( " -> unexpected {}", lexer.last_span());
                 Err(Failure {
                     parse_error: ParseError::unexpected_token(
@@ -173,6 +197,9 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "any");
+    let _enter = span.enter();
+
     let tokens = tokens.to_vec();
     move |mut lexer| {
         for token in &tokens {
@@ -239,6 +266,9 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "seq");
+    let _enter = span.enter();
+
     let tokens = tokens.to_vec();
     move |mut lexer| {
         for token in &tokens {
