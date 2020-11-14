@@ -38,7 +38,11 @@ pub fn maybe<'text, Sc, Cm, F, V>(mut parser: F)
         let _enter = span.enter();
 
         let initial = lexer.clone();
-        match parser(lexer) {
+        
+        match parser
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(succ) => Ok(succ.map_value(Some)),
 
             Err(_)   => Ok(Success {
@@ -68,7 +72,11 @@ pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
         let initial = lexer.clone();
         lexer.filter_next();
         let end = lexer.end_pos();
-        match parser(lexer) {
+
+        match parser
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(succ) => Ok(succ.map_value(Some)),
             
             Err(fail) if fail.lexer.last_span().start() > end => Err(fail),
@@ -101,9 +109,12 @@ pub fn require_if<'text, Sc, Cm, P, F, V>(mut pred: P, mut parser: F)
 
         if pred() {
             parser(lexer)
+                .trace_result(Level::TRACE, "true branch")
                 .map_value(Some)
         } else {
-            maybe(&mut parser)(lexer)
+            maybe(&mut parser)
+                (lexer)
+                .trace_result(Level::TRACE, "false branch")
         }
     }
 }

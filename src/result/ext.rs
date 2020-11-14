@@ -15,6 +15,9 @@ use crate::result::Success;
 use crate::result::Failure;
 use crate::result::FailureOwned;
 
+// External library imports.
+use tracing::Level;
+use tracing::event;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseResult
@@ -46,6 +49,10 @@ pub trait ParseResultExt<'text, Sc, Cm, V>
     /// which will be None if the failure is a lexer error.
     fn filter_lexer_error(self)
         -> Result<Success<'text, Sc, Cm, V>, Option<Failure<'text, Sc, Cm>>>;
+
+    /// Outputs a trace event displaying the parse result.
+    fn trace_result(self, level: Level, label: &'static str)
+        -> Self where Self: Sized;
 }
 
 impl<'text, Sc, Cm, V> ParseResultExt<'text, Sc, Cm, V>
@@ -77,6 +84,39 @@ impl<'text, Sc, Cm, V> ParseResultExt<'text, Sc, Cm, V>
             } else {
                 Some(e)
             })
+    }
+
+    fn trace_result(self, level: Level, label: &'static str)
+        -> Self where Self: Sized
+    {
+        match level {
+            Level::ERROR => event!(Level::ERROR,
+                "{} result {}",
+                label,
+                if self.is_ok() { "Ok" } else { "Err" }),
+            
+            Level::WARN => event!(Level::WARN,
+                "{} result {}",
+                label,
+                if self.is_ok() { "Ok" } else { "Err" }),
+            
+            Level::INFO => event!(Level::INFO,
+                "{} result {}",
+                label,
+                if self.is_ok() { "Ok" } else { "Err" }),
+            
+            Level::DEBUG => event!(Level::DEBUG,
+                "{} result {}",
+                label,
+                if self.is_ok() { "Ok" } else { "Err" }),
+
+            Level::TRACE => event!(Level::TRACE,
+                "{} result {}",
+                label,
+                if self.is_ok() { "Ok" } else { "Err" }),
+        };
+
+        self
     }
 }
 

@@ -16,7 +16,6 @@ use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 
 // External library imports.
-use tracing::event;
 use tracing::Level;
 use tracing::span;
 
@@ -40,11 +39,13 @@ pub fn left<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
         let _enter = span.enter();
 
         let (l, succ) = (left)
-            (lexer)?
+            (lexer)
+            .trace_result(Level::TRACE, "left capture")?
             .take_value();
 
         (right)
             (succ.lexer)
+            .trace_result(Level::TRACE, "right discard")
             .map_value(|_| l)
     }
 }
@@ -64,10 +65,12 @@ pub fn right<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
         let _enter = span.enter();
 
         let succ = (left)
-            (lexer)?;
+            (lexer)
+            .trace_result(Level::TRACE, "left discard")?;
 
         (right)
             (succ.lexer)
+            .trace_result(Level::TRACE, "right capture")
     }
 }
 
@@ -86,11 +89,13 @@ pub fn both<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
         let _enter = span.enter();
 
         let (l, succ) = (left)
-            (lexer)?
+            (lexer)
+            .trace_result(Level::TRACE, "left capture")?
             .take_value();
 
         (right)
             (succ.lexer)
+            .trace_result(Level::TRACE, "right capture")
             .map_value(|r| (l, r))
     }
 }
@@ -113,31 +118,25 @@ pub fn bracket<'text, Sc, Cm, L, C, R, X, Y, Z>(
         let span = span!(Level::DEBUG, "bracket");
         let _enter = span.enter();
 
-        event!(Level::TRACE, "bracket: left");
         let succ = match (left)
             (lexer)
+            .trace_result(Level::TRACE, "left discard")
         {
             Ok(succ) => succ,
-            Err(fail) => {
-                event!(Level::TRACE, "bracket: left failed");
-                return Err(fail);
-            }
+            Err(fail) => return Err(fail),
         };
 
-        event!(Level::TRACE, "bracket: center");
         let (c, succ) = match (center)
             (succ.lexer)
+            .trace_result(Level::TRACE, "center capture")
         {
             Ok(succ) => succ.take_value(),
-            Err(fail) => {
-                event!(Level::TRACE, "bracket: center failed");
-                return Err(fail);
-            }
+            Err(fail) => return Err(fail),
         };
 
-        event!(Level::TRACE, "bracket: right");
         (right)
             (succ.lexer)
+            .trace_result(Level::TRACE, "right discard")
             .map_value(|_| c)
     }
 }
@@ -159,14 +158,17 @@ pub fn bracket_symmetric<'text, Sc, Cm, C, B, X, Y>(
         let _enter = span.enter();
 
         let succ = (&mut bracket)
-            (lexer)?;
+            (lexer)
+            .trace_result(Level::TRACE, "left discard")?;
 
         let (c, succ) = (center)
-            (succ.lexer)?
+            (succ.lexer)
+            .trace_result(Level::TRACE, "center capture")?
             .take_value();
 
         (&mut bracket)
             (succ.lexer)
+            .trace_result(Level::TRACE, "right discard")
             .map_value(|_| c)
     }
 }
@@ -191,15 +193,18 @@ pub fn bracket_dynamic<'text, Sc, Cm, L, C, R, X, Y, Z>(
         let _enter = span.enter();
 
         let (l, succ) = (left)
-            (lexer)?
+            (lexer)
+            .trace_result(Level::TRACE, "left discard")?
             .take_value();
 
         let (c, succ) = (center)
-            (succ.lexer)?
+            (succ.lexer)
+            .trace_result(Level::TRACE, "center capture")?
             .take_value();
 
         (right)
             (succ.lexer, l)
+            .trace_result(Level::TRACE, "right discard")
             .map_value(|_| c)
     }
 }

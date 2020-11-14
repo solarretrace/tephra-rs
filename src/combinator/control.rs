@@ -13,8 +13,9 @@ use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::position::ColumnMetrics;
 use crate::result::ParseResult;
-use crate::result::Success;
+use crate::result::ParseResultExt as _;
 use crate::result::Spanned;
+use crate::result::Success;
 
 // External library imports.
 use tracing::Level;
@@ -40,7 +41,10 @@ pub fn filter<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
 
         let old_filter = lexer.take_filter();
         lexer.set_filter_fn(filter_fn.clone());
-        match (parser)(lexer) {
+        match (parser)
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(mut succ)  => {
                 succ.lexer.set_filter(old_filter);
                 Ok(succ)
@@ -67,7 +71,10 @@ pub fn exact<'text, Sc, Cm, F, V>(mut parser: F)
         let _enter = span.enter();
 
         let filter = lexer.take_filter();
-        match (parser)(lexer) {
+        match (parser)
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(mut succ)  => {
                 succ.lexer.set_filter(filter);
                 Ok(succ)
@@ -93,7 +100,10 @@ pub fn section<'text, Sc, Cm, F, V>(mut parser: F)
         let span = span!(Level::DEBUG, "section");
         let _enter = span.enter();
 
-        match (parser)(lexer.sublexer()) {
+        match (parser)
+            (lexer.sublexer())
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(mut succ) => {
                 succ.lexer = lexer.join(succ.lexer);
                 Ok(succ)
@@ -120,7 +130,10 @@ pub fn discard<'text, Sc, Cm, F, V>(mut parser: F)
         let span = span!(Level::DEBUG, "discard");
         let _enter = span.enter();
 
-        match (parser)(lexer) {
+        match (parser)
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(succ) => {
                 Ok(Success {
                     lexer: succ.lexer,
@@ -147,7 +160,10 @@ pub fn text_exact<'text, Sc, Cm, F, V>(mut parser: F)
         let _enter = span.enter();
 
         let start = lexer.end_pos().byte;
-        match (parser)(lexer) {
+        match (parser)
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(succ) => {
                 let end = succ.lexer.end_pos().byte;
                 let value = &succ.lexer.source()[start..end];
@@ -178,7 +194,10 @@ pub fn text<'text, Sc, Cm, F, V>(mut parser: F)
 
         lexer.filter_next();
         let start = lexer.end_pos().byte;
-        match (parser)(lexer) {
+        match (parser)
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(succ) => {
                 let end = succ.lexer.end_pos().byte;
                 let value = &succ.lexer.source()[start..end];
@@ -207,7 +226,10 @@ pub fn spanned<'text, Sc, Cm, F, V>(mut parser: F)
         let span = span!(Level::DEBUG, "spanned");
         let _enter = span.enter();
 
-        match (parser)(lexer.sublexer()) {
+        match (parser)
+            (lexer.sublexer())
+            .trace_result(Level::TRACE, "subparse")
+        {
             Ok(succ) => {
                 Ok(Success {
                     value: Spanned {
