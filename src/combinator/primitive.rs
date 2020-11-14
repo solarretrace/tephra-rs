@@ -129,10 +129,11 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
-    let span = span!(Level::DEBUG, "one");
-    let _enter = span.enter();
 
     move |mut lexer| {
+        let span = span!(Level::DEBUG, "one");
+        let _enter = span.enter();
+
         if lexer.is_empty() {
             span!(Level::TRACE, "lexer is empty");
             // Unexpected End-of-text.
@@ -197,11 +198,11 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
-    let span = span!(Level::DEBUG, "any");
-    let _enter = span.enter();
-
     let tokens = tokens.to_vec();
     move |mut lexer| {
+        let span = span!(Level::DEBUG, "any");
+        let _enter = span.enter();
+
         for token in &tokens {
             match lexer.next() {
                 // Lexer error.
@@ -266,11 +267,11 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
-    let span = span!(Level::DEBUG, "seq");
-    let _enter = span.enter();
-
     let tokens = tokens.to_vec();
     move |mut lexer| {
+        let span = span!(Level::DEBUG, "seq");
+        let _enter = span.enter();
+        
         for token in &tokens {
             if lexer.is_empty() {
                 // Unexpected End-of-text.
