@@ -9,9 +9,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::span::Span;
 use crate::position::ColumnMetrics;
 use crate::position::Pos;
+use crate::result::SourceDisplay;
+use crate::result::SourceSpan;
+use crate::span::Span;
 
 // External library imports.
 use tracing::Level;
@@ -335,12 +337,18 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
         Cm: ColumnMetrics,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Source len: {:?}", self.source.len())?;
-        writeln!(f, "Full Span: {}", self.full_span())?;
-        writeln!(f, "Last Span (+filtered): {}", self.last_full_span())?;
-        writeln!(f, "Last Span: {}", self.last_span())?;
-        writeln!(f, "End Span: {}", self.end_span())?;
-        writeln!(f, "Remaining Span: {}", self.remaining_span())
+        // writeln!(f, "Source len: {:?}", self.source.len())?;
+        // writeln!(f, "Full Span: {}", self.full_span())?;
+        // writeln!(f, "Last Span (+filtered): {}", self.last_full_span())?;
+        // writeln!(f, "Last Span: {}", self.last_span())?;
+        // writeln!(f, "End Span: {}", self.end_span())?;
+        // writeln!(f, "Remaining Span: {}", self.remaining_span())
+
+        writeln!(f, "{}", 
+            SourceDisplay::new("lexer state")
+                .with_note_type()
+                .with_source_span(
+                    SourceSpan::new(self.full_span(), self.metrics)))
     }
 }
 

@@ -110,10 +110,12 @@ impl<'text, Sc, Cm, V> ParseResultExt<'text, Sc, Cm, V>
                 label,
                 if self.is_ok() { "Ok" } else { "Err" }),
 
-            Level::TRACE => event!(Level::TRACE,
-                "{} {}",
-                label,
-                if self.is_ok() { "Ok" } else { "Err" }),
+            Level::TRACE => match self.as_ref() {
+                Ok(succ)
+                    => event!(Level::TRACE, "{} Ok {}", label, succ.lexer),
+                Err(fail)
+                    => event!(Level::TRACE, "{} Ok {}", label, fail.lexer),
+            }
         };
 
         self
