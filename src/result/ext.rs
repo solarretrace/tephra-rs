@@ -38,7 +38,7 @@ pub trait ParseResultExt<'text, Sc, Cm, V>
 {
     /// Converts the ParseResult into a Result containing the parsed value,
     /// discarding any associated spans or lexer state.
-    fn finish(self) -> Result<V, FailureOwned>;
+    fn finish(self) -> Result<V, FailureOwned<Cm>>;
 
     /// Converts ParseResult<'_, _, _, V> into a ParseResult<'_, _, _, U> by
     /// applying the given closure.
@@ -61,7 +61,7 @@ impl<'text, Sc, Cm, V> ParseResultExt<'text, Sc, Cm, V>
         Sc: Scanner,
         Cm: ColumnMetrics,
 {
-    fn finish(self) -> Result<V, FailureOwned> {
+    fn finish(self) -> Result<V, FailureOwned<Cm>> {
         self
             .map(Success::into_value)
             .map_err(FailureOwned::from)
@@ -91,27 +91,27 @@ impl<'text, Sc, Cm, V> ParseResultExt<'text, Sc, Cm, V>
     {
         match level {
             Level::ERROR => event!(Level::ERROR,
-                "{} result {}",
+                "{} {}",
                 label,
                 if self.is_ok() { "Ok" } else { "Err" }),
             
             Level::WARN => event!(Level::WARN,
-                "{} result {}",
+                "{} {}",
                 label,
                 if self.is_ok() { "Ok" } else { "Err" }),
             
             Level::INFO => event!(Level::INFO,
-                "{} result {}",
+                "{} {}",
                 label,
                 if self.is_ok() { "Ok" } else { "Err" }),
             
             Level::DEBUG => event!(Level::DEBUG,
-                "{} result {}",
+                "{} {}",
                 label,
                 if self.is_ok() { "Ok" } else { "Err" }),
 
             Level::TRACE => event!(Level::TRACE,
-                "{} result {}",
+                "{} {}",
                 label,
                 if self.is_ok() { "Ok" } else { "Err" }),
         };

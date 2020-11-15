@@ -299,8 +299,8 @@ impl<'text> std::fmt::Display for Span<'text> {
     }
 }
 
-impl<'text> From<&'text OwnedSpan> for Span<'text> {
-    fn from(owned: &'text OwnedSpan) -> Self {
+impl<'text> From<&'text SpanOwned> for Span<'text> {
+    fn from(owned: &'text SpanOwned) -> Self {
         Span {
             source: &*owned.source,
             byte: owned.byte,
@@ -382,12 +382,12 @@ impl std::fmt::Display for PageSpan {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// OwnedSpan
+// SpanOwned
 ////////////////////////////////////////////////////////////////////////////////
 /// A specific section of the source text.
 // NOTE: Span methods must maintain an invariant: span.start() < span.end().
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct OwnedSpan {
+pub struct SpanOwned {
     /// The source text.
     source: Box<str>,
     /// The byte range of the captured section within the source.
@@ -401,7 +401,7 @@ pub struct OwnedSpan {
 }
 
 
-impl OwnedSpan {
+impl SpanOwned {
 
     /// Returns the spanned text.
     pub fn text(&self) -> &str {
@@ -505,9 +505,22 @@ impl OwnedSpan {
     }
 }
 
-impl std::fmt::Display for OwnedSpan {
+impl std::fmt::Display for SpanOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\"{}\" ({}, bytes {})", self.text(), self.page, self.byte)
+    }
+}
+
+impl<'text> From<Span<'text>> for SpanOwned {
+    fn from(span: Span<'text>) -> Self {
+        let full_span = Span::new_from(Pos::ZERO, span.source);
+        SpanOwned {
+            source: span.source.to_owned().into(),
+            full_byte: full_span.byte,
+            full_page: full_span.page,
+            byte: span.byte,
+            page: span.page,
+        }
     }
 }
 

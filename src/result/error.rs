@@ -13,6 +13,7 @@
 
 // Local imports.
 use crate::span::Span;
+use crate::span::SpanOwned;
 use crate::position::ColumnMetrics;
 use crate::result::SourceDisplay;
 use crate::result::SourceSpan;
@@ -98,10 +99,11 @@ impl<'text, Cm> ParseError<'text, Cm> {
 impl<'text, Cm> ParseError<'text, Cm> 
     where Cm: ColumnMetrics,
 {
-    pub fn into_owned(self) -> ParseErrorOwned 
+    pub fn into_owned(self) -> ParseErrorOwned<Cm> 
     {
         ParseErrorOwned {
-            display: format!("{}", self),
+            description: self.description,
+            span: self.span.map(|(a, b, c)| (a.into(), b, c)),
             is_lexer_error: self.is_lexer_error,
         }
     }
@@ -152,14 +154,39 @@ impl<'text, Cm> From<&'static str> for ParseError<'text, Cm> {
 // ParseErrorOwned
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
-pub struct ParseErrorOwned {
-    display: String,
+pub struct ParseErrorOwned<Cm> {
+    description: &'static str,
+    span: Option<(SpanOwned, String, Cm)>,
     is_lexer_error: bool,
 }
 
+impl<Cm> ParseErrorOwned<Cm> {
+    pub fn description(&self) -> &'static str {
+        self.description
+    }
 
-impl std::fmt::Display for ParseErrorOwned {
+    pub fn is_lexer_error(&self) -> bool {
+        self.is_lexer_error
+    }
+}
+
+
+impl<Cm> std::fmt::Display for ParseErrorOwned<Cm> 
+    where Cm: ColumnMetrics,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.display)
+        if let Some((span, msg, metrics)) = &self.span {
+            let span = span.into();
+            let msg = &*msg;
+            let metrics = *metrics;
+            write!(f, "{}", 
+                SourceDisplay::new(self.description)
+                    .with_error_type()
+                    .with_source_span(
+                        SourceSpan::new_error_highlight(span, msg, metrics)))
+        } else {
+            // TODO: Clean up message.
+            write!(f, "{} NO SPAN", self.description)
+        }
     }
 }

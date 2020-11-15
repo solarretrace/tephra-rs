@@ -104,14 +104,14 @@ impl<'text, Sc, Cm> PartialEq for Failure<'text, Sc, Cm>
 /// [`Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
 /// [`source`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html#method.source
 #[derive(Debug)]
-pub struct FailureOwned {
+pub struct FailureOwned<Cm> {
     /// The parse error.
-    pub parse_error: ParseErrorOwned,
+    pub parse_error: ParseErrorOwned<Cm>,
     /// The source of the failure.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-impl<'text, Sc, Cm> From<Failure<'text, Sc, Cm>> for FailureOwned
+impl<'text, Sc, Cm> From<Failure<'text, Sc, Cm>> for FailureOwned<Cm>
     where
         Sc: Scanner,
         Cm: ColumnMetrics,
@@ -124,13 +124,13 @@ impl<'text, Sc, Cm> From<Failure<'text, Sc, Cm>> for FailureOwned
     }
 }
 
-impl std::fmt::Display for FailureOwned {
+impl<Cm> std::fmt::Display for FailureOwned<Cm> where Cm: ColumnMetrics {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.parse_error)
     }
 }
 
-impl std::error::Error for FailureOwned {
+impl<Cm> std::error::Error for FailureOwned<Cm> where Cm: ColumnMetrics {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source.as_ref().map(|src| {
             // Cast away Send + Sync bounds.
