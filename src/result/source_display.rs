@@ -522,7 +522,7 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
             }
             
         } else if self.span.end().page.line == line {
-            for _ in 0..(self.span.end().page.column - 1) {
+            for _ in 0..self.span.end().page.column {
                 write!(f, "{}", "_".color(self.message_type.color()))?;
             }
             write!(f, "{}", "^".color(self.message_type.color()))?;
