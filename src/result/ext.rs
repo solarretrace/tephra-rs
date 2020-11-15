@@ -112,9 +112,9 @@ impl<'text, Sc, Cm, V> ParseResultExt<'text, Sc, Cm, V>
 
             Level::TRACE => match self.as_ref() {
                 Ok(succ)
-                    => event!(Level::TRACE, "{} Ok {}", label, succ.lexer),
+                    => event!(Level::TRACE, "{} Ok\n{}", label, succ.lexer),
                 Err(fail)
-                    => event!(Level::TRACE, "{} Ok {}", label, fail.lexer),
+                    => event!(Level::TRACE, "{} Ok\n{}", label, fail.lexer),
             }
         };
 
