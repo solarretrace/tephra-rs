@@ -114,7 +114,7 @@ impl<'text, Sc, Cm, V> ParseResultExt<'text, Sc, Cm, V>
                 Ok(succ)
                     => event!(Level::TRACE, "{} Ok\n{}", label, succ.lexer),
                 Err(fail)
-                    => event!(Level::TRACE, "{} Ok\n{}", label, fail.lexer),
+                    => event!(Level::TRACE, "{} Err\n{}", label, fail.lexer),
             }
         };
 
