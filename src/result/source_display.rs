@@ -26,15 +26,20 @@ use std::borrow::Borrow as _;
 use std::fmt::Display;
 
 
-
-fn with_color_override<F>(color_enable: bool, f: F) -> std::fmt::Result
-    where F: FnOnce() -> std::fmt::Result
+////////////////////////////////////////////////////////////////////////////////
+// with_color_override
+////////////////////////////////////////////////////////////////////////////////
+/// Invokes the provided closure with the `colored` override control set to the
+/// given value.
+fn with_color_override<F, R>(color_enable: bool, f: F) -> R
+    where F: FnOnce() -> R
 {
     colored::control::set_override(color_enable);
     let res = (f)();
     colored::control::unset_override();
     res
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // SourceDisplay
@@ -213,6 +218,18 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> {
         where M: Into<Cow<'msg, str>>,
     {
         self.source_name = Some(name.into());
+        self
+    }
+
+    /// Attaches the given Highlight to the source span.
+    pub fn with_highlight(mut self, highlight: Highlight<'text, 'msg>) -> Self {
+        self.highlights.push(highlight);
+        self
+    }
+
+    /// Attaches the given SourceNote to the source span.
+    pub fn with_note(mut self, note: SourceNote<'msg>) -> Self {
+        self.notes.push(note);
         self
     }
 }

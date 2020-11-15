@@ -13,6 +13,7 @@ use crate::position::ColumnMetrics;
 use crate::position::Pos;
 use crate::result::SourceDisplay;
 use crate::result::SourceSpan;
+use crate::result::Highlight;
 use crate::span::Span;
 
 // External library imports.
@@ -343,13 +344,14 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
         // writeln!(f, "Last Span: {}", self.last_span())?;
         // writeln!(f, "End Span: {}", self.end_span())?;
         // writeln!(f, "Remaining Span: {}", self.remaining_span())
-        writeln!(f, "{}", 
-            SourceDisplay::new("lexer state")
-                .with_color(false)
-                .with_note_type()
-                .with_source_span(
-                    SourceSpan::new(self.full_span(), self.metrics)))
+        let source_display = SourceDisplay::new("lexer state")
+            .with_color(false)
+            .with_note_type()
+            .with_source_span(SourceSpan::new(self.full_span(), self.metrics)
+                .with_highlight(Highlight::new(self.span(), "span"))
+                .with_highlight(Highlight::new(self.full_span(), "full span")));
 
+        write!(f, "{}", source_display)
     }
 }
 
