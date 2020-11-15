@@ -176,6 +176,9 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> {
     pub fn new(span: Span<'text>, metrics: Cm) -> Self
         where Cm: ColumnMetrics,
     {
+        let gutter_width = std::cmp::max(
+            (span.end().page.line as f32).log10().ceil() as usize, 1);
+
         SourceSpan {
             source_name: None,
             metrics,
@@ -183,7 +186,7 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> {
             highlights: Vec::with_capacity(2),
             notes: Vec::new(),
             allow_omissions: true,
-            gutter_width: 0,
+            gutter_width,
         }
     }
 
@@ -197,20 +200,9 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> {
             M: Into<Cow<'msg, str>>,
             Cm: ColumnMetrics,
     {
-        let highlight = Highlight::new(span, message)
-            .with_error_type();
-        let gutter_width = std::cmp::max(
-            (span.end().page.line as f32).log10().ceil() as usize, 1);
-
-        SourceSpan {
-            source_name: None,
-            metrics,
-            span: span.widen_to_line(metrics),
-            highlights: vec![highlight],
-            notes: Vec::new(),
-            allow_omissions: true,
-            gutter_width,
-        }
+        SourceSpan::new(span, metrics)
+            .with_highlight(Highlight::new(span, message)
+                .with_error_type())
     }
 
     /// Returns the given SourceSpan with the given source name.
