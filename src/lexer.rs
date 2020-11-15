@@ -343,12 +343,13 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
         // writeln!(f, "Last Span: {}", self.last_span())?;
         // writeln!(f, "End Span: {}", self.end_span())?;
         // writeln!(f, "Remaining Span: {}", self.remaining_span())
-
         writeln!(f, "{}", 
             SourceDisplay::new("lexer state")
+                .with_color(false)
                 .with_note_type()
                 .with_source_span(
                     SourceSpan::new(self.full_span(), self.metrics)))
+
     }
 }
 

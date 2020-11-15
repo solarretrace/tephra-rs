@@ -27,6 +27,15 @@ use std::fmt::Display;
 
 
 
+fn with_color_override<F>(color_enable: bool, f: F) -> std::fmt::Result
+    where F: FnOnce() -> std::fmt::Result
+{
+    colored::control::set_override(color_enable);
+    let res = (f)();
+    colored::control::unset_override();
+    res
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // SourceDisplay
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,6 +50,8 @@ pub struct SourceDisplay<'text, 'msg, Cm> {
     source_spans: Vec<SourceSpan<'text, 'msg, Cm>>,
     /// Notes to append after the displayed spans.
     notes: Vec<SourceNote<'msg>>,
+    /// Whether colors are enabled during writing.
+    color_enabled: bool,
 }
 
 impl<'text, 'msg, Cm> SourceDisplay<'text, 'msg, Cm> {
@@ -53,8 +64,16 @@ impl<'text, 'msg, Cm> SourceDisplay<'text, 'msg, Cm> {
             message_type: MessageType::Info,
             source_spans: Vec::with_capacity(1),
             notes: Vec::new(),
+            color_enabled: true,
         }
     }
+
+    /// Returns the given SourceDisplay with the given color enablement.
+    pub fn with_color(mut self, color_enabled: bool) -> Self {
+        self.color_enabled = color_enabled;
+        self
+    }
+
 
     /// Returns the given SourceDisplay with the error MessageType.
     pub fn with_error_type(mut self) -> Self {
@@ -109,17 +128,19 @@ impl<'text, 'msg, Cm> Display for SourceDisplay<'text, 'msg, Cm>
     where Cm: ColumnMetrics,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}{} {}", 
-            self.message_type,
-            ":".bright_white().bold(),
-            self.message.bright_white().bold())?;
-        for source_span in &self.source_spans {
-            writeln!(f, "{}", source_span)?;
-        }
-        for note in &self.notes {
-            writeln!(f, "{}", note)?;
-        }
-        Ok(())
+        with_color_override(self.color_enabled, || {
+            writeln!(f, "{}{} {}", 
+                self.message_type,
+                ":".bright_white().bold(),
+                self.message.bright_white().bold())?;
+            for source_span in &self.source_spans {
+                writeln!(f, "{}", source_span)?;
+            }
+            for note in &self.notes {
+                writeln!(f, "{}", note)?;
+            }
+            Ok(())
+        })
     }
 }
 
