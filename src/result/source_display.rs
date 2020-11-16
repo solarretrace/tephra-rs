@@ -575,11 +575,9 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
         }
     }
 
-    /// Consumes the
+    /// Consumes the MultiSplitLines and writes all of the contained data.
     fn write_all(mut self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
     {
-        let hl_count = self.highlights.len();
-
         // Write empty line to uncramp the display.
         write_gutter(f, "", self.gutter_width)?;
         writeln!(f, "")?;
@@ -598,18 +596,19 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
             // Write source.
             write_source_line(f, span)?;
 
-            if self.highlights
+            for message_hl in self.highlights
                 .iter()
-                .any(|hl| hl.has_message_for_line(current_line))
+                .filter(|hl| hl.has_message_for_line(current_line))
             {
                 // Write message gutter.
                 write_gutter(f, "", self.gutter_width)?;
                 for hl in self.highlights {
                     // Write message risers.
                     hl.write_riser_for_line(f, current_line, true)?;
-                    // Write message.
-                    hl.write_message_for_line(f, current_line)?;
                 }
+                
+                // Write message.
+                message_hl.write_message_for_line(f, current_line)?;
             }
         }
         Ok(())
