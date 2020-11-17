@@ -199,12 +199,13 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
         Cm: ColumnMetrics,
 {
     let tokens = tokens.to_vec();
-    move |mut lexer| {
+    move |lexer| {
         let span = span!(Level::DEBUG, "any",
             expected = ?DisplayList(&tokens[..]));
         let _enter = span.enter();
 
         for token in &tokens {
+            let mut lexer = lexer.clone();
             match lexer.next() {
                 // Lexer error.
                 None => return Err(Failure {
@@ -225,7 +226,6 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
                 // Unexpected End-of-text.
                 _ => (),
             }
-            lexer.reset();
         }
 
         Err(Failure {

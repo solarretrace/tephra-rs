@@ -223,8 +223,9 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  | ~ span
-  | ~ full span
+  | - last span
+  | - last full span
+  | - span
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -233,8 +234,9 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  | ~~ span
-  | ~~ full span
+  | -- last span
+  | -- last full span
+  | -- span
 ");
 
     assert_eq!(lexer.next(), Some(B));
@@ -243,8 +245,9 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  | ~~~~ span
-  | ~~~~ full span
+  |    - last span
+  |    - last full span
+  | ---- span
 ");
 
     assert_eq!(lexer.next(), Some(B));
@@ -252,10 +255,11 @@ note: lexer state
 note: lexer state
  --> (0:0-1:4, bytes 0-10)
   | 
-0 | // aa b 
-1 | || bdef
-  | ||_^ span
-  |  |_^ full span
+0 | / aa b 
+1 | | bdef
+  | | - last span
+  | | - last full span
+  | |__^ span
 ");
 
     assert_eq!(lexer.next(), Some(Def));
@@ -263,10 +267,11 @@ note: lexer state
 note: lexer state
  --> (0:0-1:4, bytes 0-10)
   | 
-0 | // aa b 
-1 | || bdef
-  | ||____^ span
-  |  |____^ full span
+0 | / aa b 
+1 | | bdef
+  | |  --- last span
+  | |  --- last full span
+  | |_____^ span
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -274,11 +279,12 @@ note: lexer state
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 
-0 | // aa b 
-1 | || bdef
-2 | ||  aaa
-  | ||___^ span
-  |  |___^ full span
+0 | / aa b 
+1 | | bdef
+2 | |  aaa
+  | |  -- last span
+  | |  -- last full span
+  | |____^ span
 ");
 
     assert_eq!(lexer.next(), Some(A));
@@ -286,11 +292,12 @@ note: lexer state
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 
-0 | // aa b 
-1 | || bdef
-2 | ||  aaa
-  | ||____^ span
-  |  |____^ full span
+0 | / aa b 
+1 | | bdef
+2 | |  aaa
+  | |    - last span
+  | |    - last full span
+  | |_____^ span
 ");
 
     assert_eq!(lexer.next(), None);

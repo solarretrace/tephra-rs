@@ -51,17 +51,34 @@ pub trait Scanner: Debug + Clone + PartialEq {
 /// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Clone)]
 pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
+    /// The source text to tokenize.
     source: &'text str,
+    /// The internal user-defined Scanner.
     scanner: Sc,
+    /// The column metrics for handling of newlines and tabs.
     metrics: Cm,
+    /// The token inclusion filter. Any token for which this returns false will
+    /// be skipped automatically.
     filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
+
+    /// The start position of the 'full span' for the current parse which
+    /// includes filtered tokens.
     full: Pos,
+    /// The start position of the 'span' for the current parse which
+    /// excludes filtered tokens.
     start: Pos,
+
+    /// The start position of the 'last full span' for the most recent token
+    /// and any included filtered tokens.
     last_full: Pos,
+    /// The start position of the 'last full span' for the most recent token.
     last: Pos,
+
+    /// The current position of the lexer cursor.
     end: Pos,
+    /// A flag indicating that a non-filtered token was lexed since the start
+    /// of the current parse.
     start_fixed: bool,
-    // TODO: Push/lookahead buffer?
 }
 
 impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
@@ -85,7 +102,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         }
     }
 
-    /// Returns true if the lexed text is empty.
+    /// Returns true if there is no more text available to process.
     pub fn is_empty(&self) -> bool {
         self.end.byte >= self.source.len()
     }
@@ -98,12 +115,12 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         IterWithSpans { lexer: self }
     }
 
-    /// Sets the token filter to a given function. And token for which the
-    /// filter returns `true` will be emitted to parsers.
+    /// Sets the token filter to the given function. Any token for which the
+    /// filter returns `false` will be automatically skipped.
     pub fn set_filter_fn<F>(&mut self, filter: F) 
         where F: for<'a> Fn(&'a Sc::Token) -> bool + 'static
     {
-        self.filter = Some(Arc::new(filter));
+        self.set_filter(Some(Arc::new(filter)));
     }
 
     /// Returns the token filter, removing it from the lexer.
@@ -112,8 +129,9 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         self.filter.take()
     }
 
-    /// Sets the token filter.
-    pub fn set_filter(&mut self,
+    /// Sets the token filter directly.
+    pub fn set_filter(
+        &mut self,
         filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>)
     {
         self.filter = filter;
@@ -129,24 +147,27 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         self.metrics
     }
 
-    /// Returns the lexer's start position.
+    /// Returns the start position for the lexer's current parse.
     pub fn start_pos(&self) -> Pos {
-        self.end
+        self.start
     }
 
-    /// Returns the current lexer position.
+    /// Returns the end position for the lexer's current parse.
     pub fn end_pos(&self) -> Pos {
         self.end
     }
 
-    /// Consumes text from the start of the lexed span up to the current
-    /// position.
+    /// Consumes the text from the start of the current parse up to the current
+    /// position. This ends the 'current parse' and prevents further spans
+    /// from including any previously lexed text.
     fn consume_current(&mut self) {
         self.full = self.end;
         self.start = self.end;
+        self.start_fixed = false;
     }
 
-    /// Creates a sublexer starting at the current lex position.
+    /// Creates a sublexer starting at the current lex position. The returned
+    /// lexer will begin a new parse and advance past any filtered tokens.
     pub fn sublexer(&self) -> Self {
         let mut sub = self.clone();
         sub.filter_next();
@@ -154,8 +175,8 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         sub
     }
 
-    /// Joins the lexers together by unioning their full spans.
-    /// The receiver's scanner state is retained.
+    /// Extends the receiver lexer to include the current parse span of the
+    /// given lexer. (The given lexer's Scanner state will be discarded.)
     pub fn join(mut self, other: Self) -> Self {
         if self.end < other.end {
             self.end = other.end;
@@ -169,13 +190,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         }
         self
     }
-
-    /// Resets any lexed text back to the last consumed position.
-    pub fn reset(&mut self) {
-        self.start = self.full;
-        self.end = self.full;
-    }
-
+    
     /// Returns the full span (including filtered text) back to the last
     /// consumed position.
     pub fn full_span(&self) -> Span<'text> {
@@ -267,12 +282,14 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
                 {
+                    // Parsed a filtered token.
                     self.last_full = self.end;
                     self.end += adv;
                     self.last = self.end;
                 },
 
                 Some((token, adv)) => {
+                    // Parsed a non-filtered token.
                     if !self.start_fixed {
                         self.start = self.end;
                         self.start_fixed = true;
@@ -348,10 +365,9 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
             .with_color(false)
             .with_note_type()
             .with_source_span(SourceSpan::new(self.full_span(), self.metrics)
-                .with_highlight(Highlight::new(self.span(), "span")
-                    .with_help_type())
-                .with_highlight(Highlight::new(self.full_span(), "full span")
-                    .with_help_type()));
+                .with_highlight(Highlight::new(self.last_span(), "last span"))
+                .with_highlight(Highlight::new(self.last_full_span(), "last full span"))
+                .with_highlight(Highlight::new(self.span(), "span")));
 
         write!(f, "{}", source_display)
     }

@@ -491,16 +491,18 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
     fn write_message_for_line(
         &self,
         f: &mut std::fmt::Formatter<'_>,
-        line: usize)
+        line: usize,
+        write_extra_riser_spacer: bool)
         -> std::fmt::Result
     {
         if self.span.start().page.line == line
             && self.span.end().page.line == line
         {
+            if write_extra_riser_spacer { write!(f, " ")?; }
             for _ in 0..self.span.start().page.column {
                 write!(f, " ")?;
             }
-            let underline_count = std::cmp::max(
+            let mut underline_count = std::cmp::max(
                 self.span.end().page.column
                     .checked_sub(self.span.start().page.column)
                     .unwrap_or(0),
@@ -519,6 +521,9 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
             }
 
         }  else if self.span.start().page.line == line {
+            if write_extra_riser_spacer {
+                write!(f, "{}", "_".color(self.message_type.color()))?;
+            }
             for _ in 0..self.span.start().page.column {
                 write!(f, "{}", "_".color(self.message_type.color()))?;
             }
@@ -530,6 +535,9 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
             }
             
         } else if self.span.end().page.line == line {
+            if write_extra_riser_spacer {
+                write!(f, "{}", "_".color(self.message_type.color()))?;
+            }
             for _ in 0..self.span.end().page.column {
                 write!(f, "{}", "_".color(self.message_type.color()))?;
             }
@@ -647,7 +655,10 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
                 }
                 
                 // Write message.
-                message_hl.write_message_for_line(f, current_line)?;
+                message_hl.write_message_for_line(
+                    f,
+                    current_line,
+                    any_multiline)?;
             }
         }
         Ok(())
