@@ -208,3 +208,90 @@ fn atma_issue_2_both_no_whitespace_exact() {
 
     assert_eq!(actual, expected);
 }
+
+
+/// Tests `Lexer` display output formatting.
+#[test]
+fn display_formatting() {
+    use TestToken::*;
+    let text = "aa b \nbdef\n aaa";
+    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    assert_eq!(format!("{}", lexer), "\
+note: lexer state
+ --> (0:0-0:5, bytes 0-5)
+  | 
+0 | aa b 
+  | ~ span
+  | ~ full span
+");
+
+    assert_eq!(lexer.next(), Some(Aa));
+    assert_eq!(format!("{}", lexer), "\
+note: lexer state
+ --> (0:0-0:5, bytes 0-5)
+  | 
+0 | aa b 
+  | ~~ span
+  | ~~ full span
+");
+
+    assert_eq!(lexer.next(), Some(B));
+    assert_eq!(format!("{}", lexer), "\
+note: lexer state
+ --> (0:0-0:5, bytes 0-5)
+  | 
+0 | aa b 
+  | ~~~~ span
+  | ~~~~ full span
+");
+
+    assert_eq!(lexer.next(), Some(B));
+    assert_eq!(format!("{}", lexer), "\
+note: lexer state
+ --> (0:0-1:4, bytes 0-10)
+  | 
+0 | // aa b 
+1 | || bdef
+  | ||_^ span
+  |  |_^ full span
+");
+
+    assert_eq!(lexer.next(), Some(Def));
+    assert_eq!(format!("{}", lexer), "\
+note: lexer state
+ --> (0:0-1:4, bytes 0-10)
+  | 
+0 | // aa b 
+1 | || bdef
+  | ||____^ span
+  |  |____^ full span
+");
+
+    assert_eq!(lexer.next(), Some(Aa));
+    assert_eq!(format!("{}", lexer), "\
+note: lexer state
+ --> (0:0-2:4, bytes 0-15)
+  | 
+0 | // aa b 
+1 | || bdef
+2 | ||  aaa
+  | ||___^ span
+  |  |___^ full span
+");
+
+    assert_eq!(lexer.next(), Some(A));
+    assert_eq!(format!("{}", lexer), "\
+note: lexer state
+ --> (0:0-2:4, bytes 0-15)
+  | 
+0 | // aa b 
+1 | || bdef
+2 | ||  aaa
+  | ||____^ span
+  |  |____^ full span
+");
+
+    assert_eq!(lexer.next(), None);
+}

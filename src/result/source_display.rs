@@ -139,7 +139,7 @@ impl<'text, 'msg, Cm> Display for SourceDisplay<'text, 'msg, Cm>
                 ":".bright_white().bold(),
                 self.message.bright_white().bold())?;
             for source_span in &self.source_spans {
-                writeln!(f, "{}", source_span)?;
+                write!(f, "{}", source_span)?;
             }
             for note in &self.notes {
                 writeln!(f, "{}", note)?;
@@ -441,34 +441,50 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
     fn write_riser_for_line(
         &self,
         f: &mut std::fmt::Formatter<'_>,
-        line: usize,
-        is_message_line: bool)
+        current_line: usize,
+        riser_state: &mut RiserState,
+        is_active_riser: bool)
         -> std::fmt::Result
     {
-        if !self.is_multiline() { return Ok(()) }
-        if self.span.start().page.line == line {
-            if self.span.start().page.column == 0 && !is_message_line {
+        // If the span is not over multiple lines, there is no riser portion.
+        if *riser_state == RiserState::Unused { return Ok(()); }
+
+        match *riser_state {
+            RiserState::Unused  => Ok(()),
+
+            RiserState::Ended   => write!(f, " "),
+
+            RiserState::Waiting => if !is_active_riser 
+                && self.span.start().page.column == 0
+                && !self.has_message_for_line(current_line)
+            {
+                *riser_state = RiserState::Started;
                 write!(f, "{}", "/".color(self.message_type.color()))
-            } else if is_message_line {
-                write!(f, "{}", "|".color(self.message_type.color()))
+
+            } else if self.has_message_for_line(current_line) {
+                *riser_state = RiserState::Started;
+                write!(f, " ")
+
             } else {
                 write!(f, " ")
-            }
+            },
 
-        } else if self.span.start().page.line > line
-            && self.span.end().page.line < line
-        {
-            write!(f, "{}", "|".color(self.message_type.color()))
-
-        } else if self.span.end().page.line == line {
-            if self.span.end().page.column == 0 && !is_message_line {
+            RiserState::Started => if !is_active_riser 
+                && self.span.end().page.column == 0
+                && !self.has_message_for_line(current_line)
+            {
+                *riser_state = RiserState::Ended;
                 write!(f, "{}", "\\".color(self.message_type.color()))
-            } else  {
-                write!(f, "{}", "|".color(self.message_type.color()))
-            }
-        } else {
-            Ok(())
+
+            } else if self.has_message_for_line(current_line) {
+                if is_active_riser { *riser_state = RiserState::Ended; }
+                write!(f, "|")
+
+            } else {
+                write!(f, "|")
+            },
         }
+
     }
 
     /// Writes the message text for the given line number.
@@ -580,31 +596,54 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
     {
         // Write empty line to uncramp the display.
         write_gutter(f, "", self.gutter_width)?;
-        writeln!(f, "")?;
+        writeln!(f)?;
+
+        let mut riser_states = Vec::with_capacity(self.highlights.len());
+        for hl in self.highlights {
+            riser_states
+                .push(if hl.is_multiline() { 
+                    RiserState::Waiting
+                } else {
+                    RiserState::Unused
+                });
+        }
+
 
         for span in self.source_lines {
             let current_line = span.start().page.line;
 
-            // Write source gutter.
+            // Write gutter for source line.
             write_gutter(f, current_line, self.gutter_width)?;
 
-            for hl in self.highlights {
-                // Write source risers.
-                hl.write_riser_for_line(f, current_line, false)?;
+            // Write risers for source line.
+            let mut any_multiline = false;
+            for (idx, hl) in self.highlights.iter().enumerate() {
+                hl.write_riser_for_line(
+                    f,
+                    current_line,
+                    &mut riser_states[idx],
+                    false)?;
+                if hl.is_multiline() { any_multiline = true; }
             }
+            if any_multiline { write!(f, " "); }
 
-            // Write source.
+            // Write source text.
             write_source_line(f, span)?;
 
-            for message_hl in self.highlights
-                .iter()
-                .filter(|hl| hl.has_message_for_line(current_line))
+            for (message_idx, message_hl) in self.highlights.iter().enumerate()
             {
+                if !message_hl.has_message_for_line(current_line) { continue; }
+
                 // Write message gutter.
                 write_gutter(f, "", self.gutter_width)?;
-                for hl in self.highlights {
+                
+                for (idx, hl) in self.highlights.iter().enumerate() {
                     // Write message risers.
-                    hl.write_riser_for_line(f, current_line, true)?;
+                    hl.write_riser_for_line(
+                        f,
+                        current_line,
+                        &mut riser_states[idx],
+                        message_idx == idx)?;
                 }
                 
                 // Write message.
@@ -641,11 +680,19 @@ fn write_gutter_omit<V>(
         width=width)
 }
 
-
 fn write_source_line<'text>(
     f: &mut std::fmt::Formatter<'_>,
     span: Span<'text>)
     -> std::fmt::Result {
     writeln!(f, "{}", span.text())?;
     Ok(())
+}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RiserState {
+    Unused,
+    Waiting,
+    Started,
+    Ended,
 }

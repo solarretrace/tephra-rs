@@ -348,8 +348,10 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
             .with_color(false)
             .with_note_type()
             .with_source_span(SourceSpan::new(self.full_span(), self.metrics)
-                .with_highlight(Highlight::new(self.span(), "span"))
-                .with_highlight(Highlight::new(self.full_span(), "full span")));
+                .with_highlight(Highlight::new(self.span(), "span")
+                    .with_help_type())
+                .with_highlight(Highlight::new(self.full_span(), "full span")
+                    .with_help_type()));
 
         write!(f, "{}", source_display)
     }
