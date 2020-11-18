@@ -61,25 +61,20 @@ pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
     /// be skipped automatically.
     filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
 
-    /// The parse_start position of the 'span' for the current parse which
-    /// excludes filtered tokens.
-    parse_start: Pos,
-
-    /// The parse_start position of the 'parse_unfiltered_start span' for the current parse which
-    /// includes filtered tokens.
-    parse_unfiltered_start: Pos,
-
-    /// The parse_start position of the 'token_start parse_unfiltered_start span' for the most recent token.
+    /// The position of the start of the last lexed token.
     token_start: Pos,
-    /// The parse_start position of the 'token_start parse_unfiltered_start span' for the most recent token
-    /// and any included filtered tokens.
-    token_unfiltered_start: Pos,
-
+    /// The position of the start of the current parse sequence.
+    parse_start: Pos,
+    /// The position of the start of the current parse sequence, including any
+    /// filtered tokens preceding it.
+    parse_unfiltered_start: Pos,
     /// The current position of the lexer cursor.
     end: Pos,
-    /// A flag indicating that a non-filtered token was lexed since the parse_start
-    /// of the current parse.
-    start_fixed: bool,
+
+    /// A flag indicating that the start of the current parse sequence has been
+    /// found, and that any further filtered tokens should be included in the
+    /// current parse sequence.
+    parse_start_found: bool,
 }
 
 impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
@@ -94,12 +89,11 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
             scanner,
             metrics,
             filter: None,
-            parse_unfiltered_start: Pos::ZERO,
-            parse_start: Pos::ZERO,
-            token_unfiltered_start: Pos::ZERO,
             token_start: Pos::ZERO,
+            parse_start: Pos::ZERO,
+            parse_unfiltered_start: Pos::ZERO,
             end: Pos::ZERO,
-            start_fixed: false,
+            parse_start_found: false,
         }
     }
 
@@ -157,9 +151,10 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     /// position. This ends the 'current parse' and prevents further spans
     /// from including any previously lexed text.
     fn consume_current(&mut self) {
-        self.parse_unfiltered_start = self.end;
+        self.token_start = self.end;
         self.parse_start = self.end;
-        self.start_fixed = false;
+        self.parse_unfiltered_start = self.end;
+        self.parse_start_found = false;
     }
 
     /// Creates a sublexer starting at the current lex position. The returned
@@ -177,7 +172,6 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         if self.end < other.end {
             self.end = other.end;
             self.token_start = other.token_start;
-            self.token_unfiltered_start = other.token_unfiltered_start;
         }
 
         if self.parse_unfiltered_start > other.parse_unfiltered_start {
@@ -187,10 +181,9 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         self
     }
     
-    /// Returns the parse_unfiltered_start span (including filtered text) back to the token_start
-    /// consumed position.
-    pub fn parse_span_unfiltered(&self) -> Span<'text> {
-        Span::new_enclosing(self.parse_unfiltered_start, self.end, self.source)
+    /// Returns the span (excluding filtered text) of the token_start lexed token.
+    pub fn token_span(&self) -> Span<'text> {
+        Span::new_enclosing(self.token_start, self.end, self.source)
     }
 
     /// Returns the span (excluding filtered text) back to the token_start consumed
@@ -199,14 +192,10 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         Span::new_enclosing(self.parse_start, self.end, self.source)
     }
 
-    /// Returns the span (including filtered text) of the token_start lexed token.
-    pub fn token_span_unfiltered(&self) -> Span<'text> {
-        Span::new_enclosing(self.token_unfiltered_start, self.end, self.source)
-    }
-
-    /// Returns the span (excluding filtered text) of the token_start lexed token.
-    pub fn token_span(&self) -> Span<'text> {
-        Span::new_enclosing(self.token_start, self.end, self.source)
+    /// Returns the parse_unfiltered_start span (including filtered text) back to the token_start
+    /// consumed position.
+    pub fn parse_span_unfiltered(&self) -> Span<'text> {
+        Span::new_enclosing(self.parse_unfiltered_start, self.end, self.source)
     }
 
     /// Returns the span of the end of the lexed text.
@@ -279,25 +268,23 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
                     .map_or(false, |f| !(f)(&token)) => 
                 {
                     // Parsed a filtered token.
-                    self.token_unfiltered_start = self.end;
                     self.end += adv;
                     self.token_start = self.end;
                 },
 
                 Some((token, adv)) => {
                     // Parsed a non-filtered token.
-                    if !self.start_fixed {
+                    if !self.parse_start_found {
                         self.parse_start = self.end;
-                        self.start_fixed = true;
+                        self.parse_start_found = true;
                     }
-                    self.token_unfiltered_start = self.end;
                     self.token_start = self.end;
                     self.end += adv;
                     return Some(token);
                 },
 
                 None => {
-                    self.token_unfiltered_start = self.end;
+                    self.token_start = self.end;
                     return None;
                 },
             }
@@ -317,12 +304,11 @@ impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm>
             .field("scanner", &self.scanner)
             .field("metrics", &self.metrics)
             .field("filter_set", &self.filter.is_some())
+            .field("token_start", &self.token_start)
             .field("parse_start", &self.parse_start)
             .field("parse_unfiltered_start", &self.parse_unfiltered_start)
-            .field("token_start", &self.token_start)
-            .field("token_unfiltered_start", &self.token_unfiltered_start)
             .field("end", &self.end)
-            .field("start_fixed", &self.start_fixed)
+            .field("parse_start_found", &self.parse_start_found)
             .finish()
     }
 }
@@ -336,12 +322,11 @@ impl<'text, Sc, Cm> PartialEq for Lexer<'text, Sc, Cm>
         self.source == other.source &&
         self.scanner == other.scanner &&
         self.filter.is_some() == other.filter.is_some() &&
+        self.token_start == other.token_start &&
         self.parse_start == other.parse_start &&
         self.parse_unfiltered_start == other.parse_unfiltered_start &&
-        self.token_start == other.token_start &&
-        self.token_unfiltered_start == other.token_unfiltered_start &&
         self.end == other.end && 
-        self.start_fixed == other.start_fixed
+        self.parse_start_found == other.parse_start_found
     }
 }
 
@@ -362,7 +347,6 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
             .with_note_type()
             .with_source_span(SourceSpan::new(self.parse_span_unfiltered(), self.metrics)
                 .with_highlight(Highlight::new(self.token_span(), "token"))
-                .with_highlight(Highlight::new(self.token_span_unfiltered(), "token unfiltered"))
                 .with_highlight(Highlight::new(self.parse_span(), "parse")));
 
         write!(f, "{}", source_display)

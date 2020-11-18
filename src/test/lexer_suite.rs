@@ -224,7 +224,6 @@ note: lexer state
   | 
 0 | aa b 
   | - token
-  | - token unfiltered
   | - parse
 ");
 
@@ -235,7 +234,6 @@ note: lexer state
   | 
 0 | aa b 
   | -- token
-  | -- token unfiltered
   | -- parse
 ");
 
@@ -246,7 +244,6 @@ note: lexer state
   | 
 0 | aa b 
   |    - token
-  |    - token unfiltered
   | ---- parse
 ");
 
@@ -258,7 +255,6 @@ note: lexer state
 0 | / aa b 
 1 | | bdef
   | | - token
-  | | - token unfiltered
   | |__^ parse
 ");
 
@@ -270,7 +266,6 @@ note: lexer state
 0 | / aa b 
 1 | | bdef
   | |  --- token
-  | |  --- token unfiltered
   | |_____^ parse
 ");
 
@@ -283,7 +278,6 @@ note: lexer state
 1 | | bdef
 2 | |  aaa
   | |  -- token
-  | |  -- token unfiltered
   | |____^ parse
 ");
 
@@ -296,7 +290,6 @@ note: lexer state
 1 | | bdef
 2 | |  aaa
   | |    - token
-  | |    - token unfiltered
   | |_____^ parse
 ");
 
