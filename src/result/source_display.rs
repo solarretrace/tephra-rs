@@ -235,27 +235,13 @@ impl<'text, 'msg, Cm> Display for SourceSpan<'text, 'msg, Cm>
             None       => ("", ""),
         };
 
-        if self.span.start() == self.span.end() {
-            writeln!(f, "{:width$}{} {}{}({}, byte {})",
-                "",
-                "-->".bright_blue().bold(),
-                source_name,
-                sep,
-                self.span.start().page,
-                self.span.start().byte,
-                width=self.gutter_width)?;
-        } else {
-            writeln!(f, "{:width$}{} {}{}({}-{}, bytes {}-{})",
-                "",
-                "-->".bright_blue().bold(),
-                source_name,
-                sep,
-                self.span.start().page,
-                self.span.end().page,
-                self.span.start().byte,
-                self.span.end().byte,
-                width=self.gutter_width)?;
-        }
+        writeln!(f, "{:width$}{} {}{}({})",
+            "",
+            "-->".bright_blue().bold(),
+            source_name,
+            sep,
+            self.span,
+            width=self.gutter_width)?;
 
         MultiSplitLines::new(
             self.span,

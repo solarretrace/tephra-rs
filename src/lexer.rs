@@ -336,18 +336,15 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
         Cm: ColumnMetrics,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // writeln!(f, "Source len: {:?}", self.source.len())?;
-        // writeln!(f, "Full Span: {}", self.full_span())?;
-        // writeln!(f, "Last Span (+filtered): {}", self.last_full_span())?;
-        // writeln!(f, "Last Span: {}", self.token_span())?;
-        // writeln!(f, "End Span: {}", self.end_span())?;
-        // writeln!(f, "Remaining Span: {}", self.remaining_span())
         let source_display = SourceDisplay::new("lexer state")
             .with_color(false)
             .with_note_type()
-            .with_source_span(SourceSpan::new(self.parse_span_unfiltered(), self.metrics)
-                .with_highlight(Highlight::new(self.token_span(), "token"))
-                .with_highlight(Highlight::new(self.parse_span(), "parse")));
+            .with_source_span(
+                    SourceSpan::new(self.parse_span_unfiltered(), self.metrics)
+                .with_highlight(Highlight::new(self.token_span(),
+                    format!("token ({})", self.token_span())))
+                .with_highlight(Highlight::new(self.parse_span(),
+                    format!("parse ({})", self.parse_span()))));
 
         write!(f, "{}", source_display)
     }

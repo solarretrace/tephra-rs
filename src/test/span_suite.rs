@@ -29,8 +29,8 @@ fn empty() {
         span.text(),
         "");
     assert_eq!(
-        format!("{}", span),
-        "\"\" (0:0-0:0, bytes 0-0)");
+        format!("{:?}", span),
+        "\"\" (0:0, byte 0)");
 }
 
 /// Tests `Span::extend_by_bytes`.
@@ -41,7 +41,7 @@ fn extend_by_bytes() {
     span.extend_by_bytes(2, Lf::new());
 
     assert_eq!(
-        format!("{}", span),
+        format!("{:?}", span),
         "\"ab\" (0:0-0:2, bytes 0-2)");
 }
 
@@ -53,7 +53,7 @@ fn extend_by_bytes_newline() {
     span.extend_by_bytes(2, Lf::new());
 
     assert_eq!(
-        format!("{}", span),
+        format!("{:?}", span),
         "\"a\n\" (0:0-1:0, bytes 0-2)");
 }
 
@@ -65,7 +65,7 @@ fn extend_by_bytes_newline_split() {
     span.extend_by_bytes(3, Lf::new());
 
     assert_eq!(
-        format!("{}", span),
+        format!("{:?}", span),
         "\"a\nb\" (0:0-1:1, bytes 0-3)");
 }
 
@@ -78,7 +78,7 @@ fn new_from() {
     span.extend_by(Pos::new(4, 0, 4));
 
     assert_eq!(
-        format!("{}", span),
+        format!("{:?}", span),
         "\"abcd\" (1:2-1:6, bytes 4-8)");
 }
 
@@ -89,7 +89,7 @@ fn full() {
     let span = Span::full(text, Lf::new());
 
     assert_eq!(
-        format!("{}", span),
+        format!("{:?}", span),
         "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)");
 }
 
@@ -101,7 +101,7 @@ fn widen_to_line() {
     span.extend_by(Pos::new(4, 0, 4));
 
     assert_eq!(
-        format!("{}", span.widen_to_line(Lf::new())),
+        format!("{:?}", span.widen_to_line(Lf::new())),
         "\"  abcd  \" (1:0-1:8, bytes 2-10)");
 }
 
@@ -112,7 +112,7 @@ fn widen_empty_to_line() {
     let span = Span::new_from(Pos::new(6, 1, 4), text);
 
     assert_eq!(
-        format!("{}", span.widen_to_line(Lf::new())),
+        format!("{:?}", span.widen_to_line(Lf::new())),
         "\"  abcd  \" (1:0-1:8, bytes 2-10)");
 }
 
@@ -125,7 +125,7 @@ fn widen_full_to_line() {
     span.extend_by(Lf::new().width(text));
 
     assert_eq!(
-        format!("{}", span.widen_to_line(Lf::new())),
+        format!("{:?}", span.widen_to_line(Lf::new())),
         "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)");
 }
 
@@ -138,7 +138,7 @@ fn trim() {
     span.extend_by(Pos::new(8, 0, 8));
 
     assert_eq!(
-        format!("{}", span.trim(Lf::new())),
+        format!("{:?}", span.trim(Lf::new())),
         "\"abcd\" (1:2-1:6, bytes 4-8)");
 }
 
@@ -150,17 +150,17 @@ fn split_lines() {
 
     let actual = span
         .split_lines(Lf::new())
-        .map(|v| format!("{}", v))
+        .map(|v| format!("{:?}", v))
         .collect::<Vec<_>>();
     let expected = vec![
-        "\"\" (0:0-0:0, bytes 0-0)".to_owned(),
+        "\"\" (0:0, byte 0)".to_owned(),
         "\" \" (1:0-1:1, bytes 1-2)".to_owned(),
-        "\"\" (2:0-2:0, bytes 3-3)".to_owned(),
+        "\"\" (2:0, byte 3)".to_owned(),
         "\" \" (3:0-3:1, bytes 4-5)".to_owned(),
         "\"abcd\" (4:0-4:4, bytes 6-10)".to_owned(),
         "\" def \" (5:0-5:5, bytes 11-16)".to_owned(),
         "\"ghi\" (6:0-6:3, bytes 17-20)".to_owned(),
-        "\"\" (7:0-7:0, bytes 21-21)".to_owned(),
+        "\"\" (7:0, byte 21)".to_owned(),
     ];
 
     for (i, act) in actual.iter().enumerate() {
@@ -180,7 +180,7 @@ fn split_lines_no_breaks() {
 
     let actual = span
         .split_lines(Lf::new())
-        .map(|v| format!("{}", v))
+        .map(|v| format!("{:?}", v))
         .collect::<Vec<_>>();
     let expected = vec![
         "\"abcd\" (0:0-0:4, bytes 0-4)".to_owned(),
@@ -208,7 +208,7 @@ fn enclose() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", a.enclose(b));
+    let actual = format!("{:?}", a.enclose(b));
     let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
 
     println!("{:?}", actual);
@@ -230,7 +230,7 @@ fn union() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", a.union(b).next().unwrap());
+    let actual = format!("{:?}", a.union(b).next().unwrap());
     let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
 
     println!("{:?}", actual);
@@ -252,7 +252,7 @@ fn intersect() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", a.intersect(b).unwrap());
+    let actual = format!("{:?}", a.intersect(b).unwrap());
     let expected = "\"\nabcd\" (3:1-4:4, bytes 5-10)".to_owned();
 
     println!("{:?}", actual);
@@ -274,7 +274,7 @@ fn minus() {
         Pos::new(20, 6, 3),
         text);
 
-    let actual = format!("{}", a.minus(b).next().unwrap());
+    let actual = format!("{:?}", a.minus(b).next().unwrap());
     let expected = "\"\n \" (2:0-3:1, bytes 3-5)".to_owned();
 
     println!("{:?}", actual);

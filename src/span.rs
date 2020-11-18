@@ -22,7 +22,7 @@ use few::Few;
 ////////////////////////////////////////////////////////////////////////////////
 /// A specific section of the source text.
 // NOTE: Span methods must maintain an invariant: span.start() < span.end().
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Span<'text> {
     /// The source text.
     source: &'text str,
@@ -295,7 +295,23 @@ impl<'text> Span<'text> {
 
 impl<'text> std::fmt::Display for Span<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\"{}\" ({}, bytes {})", self.text(), self.page, self.byte)
+        if self.byte.is_empty() {
+            write!(f, "{}, byte {}", self.page, self.byte)
+        } else {
+            write!(f, "{}, bytes {}", self.page, self.byte)
+        }
+    }
+}
+
+impl<'text> std::fmt::Debug for Span<'text> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.byte.is_empty() {
+            write!(f,
+                "\"{}\" ({}, byte {})", self.text(), self.page, self.byte)
+        } else {
+            write!(f,
+                "\"{}\" ({}, bytes {})", self.text(), self.page, self.byte)
+        }
     }
 }
 
@@ -342,7 +358,11 @@ impl Default for ByteSpan {
 
 impl std::fmt::Display for ByteSpan {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}-{}", self.start, self.end)
+        if self.is_empty() {
+            write!(f, "{}", self.start)
+        } else {
+            write!(f, "{}-{}", self.start, self.end)
+        }
     }
 }
 
@@ -375,7 +395,11 @@ impl Default for PageSpan {
 
 impl std::fmt::Display for PageSpan {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}-{}", self.start, self.end)
+        if self.is_empty() {
+            write!(f, "{}", self.start)
+        } else {
+            write!(f, "{}-{}", self.start, self.end)
+        }
     }
 }
 

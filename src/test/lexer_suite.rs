@@ -107,7 +107,7 @@ fn simple() {
     assert_eq!(
         lexer
             .iter_with_spans()
-            .map(|lex| (lex.0, format!("{}", lex.1)))
+            .map(|lex| (lex.0, format!("{:?}", lex.1)))
             .collect::<Vec<_>>(),
         vec![
             (Aa, "\"aa\" (0:0-0:2, bytes 0-2)".to_string()),
@@ -127,7 +127,7 @@ fn no_whitespace() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|lex| (lex.0, format!("{}", lex.1)))
+        .map(|lex| (lex.0, format!("{:?}", lex.1)))
         .collect::<Vec<_>>();
 
     let expected = vec![
@@ -223,8 +223,8 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  | - token
-  | - parse
+  | - token (0:0, byte 0)
+  | - parse (0:0, byte 0)
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -233,8 +233,8 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  | -- token
-  | -- parse
+  | -- token (0:0-0:2, bytes 0-2)
+  | -- parse (0:0-0:2, bytes 0-2)
 ");
 
     assert_eq!(lexer.next(), Some(B));
@@ -243,8 +243,8 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  |    - token
-  | ---- parse
+  |    - token (0:3-0:4, bytes 3-4)
+  | ---- parse (0:0-0:4, bytes 0-4)
 ");
 
     assert_eq!(lexer.next(), Some(B));
@@ -254,8 +254,8 @@ note: lexer state
   | 
 0 | / aa b 
 1 | | bdef
-  | | - token
-  | |__^ parse
+  | | - token (1:0-1:1, bytes 6-7)
+  | |__^ parse (0:0-1:1, bytes 0-7)
 ");
 
     assert_eq!(lexer.next(), Some(Def));
