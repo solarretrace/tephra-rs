@@ -79,7 +79,7 @@ pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
         {
             Ok(succ) => Ok(succ.map_value(Some)),
             
-            Err(fail) if fail.lexer.last_span().start() > end => Err(fail),
+            Err(fail) if fail.lexer.token_span().start() > end => Err(fail),
 
             Err(_)   => Ok(Success {
                 lexer: initial,

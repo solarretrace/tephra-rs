@@ -64,7 +64,7 @@ pub fn fail<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
             event!(Level::TRACE, "success converted to failure");
             Err(Failure {
                 parse_error: ParseError::unexpected_token(
-                    lexer.last_span(),
+                    lexer.token_span(),
                     &token,
                     lexer.column_metrics()),
                 lexer,
@@ -150,10 +150,10 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
             // Lexer error.
             None => {
                 span!(Level::TRACE, "lexer error");
-                // println!(" -> unrecognized {}", lexer.last_span());
+                // println!(" -> unrecognized {}", lexer.token_span());
                 Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.last_span(),
+                        lexer.token_span(),
                         lexer.column_metrics()),
                     lexer,
                     source: None,
@@ -163,7 +163,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
             // Matching token.
             Some(lex) if lex == token => {
                 span!(Level::TRACE, "correct token", found = ?lex);
-                // println!(" -> MATCH {}", lexer.last_span());
+                // println!(" -> MATCH {}", lexer.token_span());
                 Ok(Success {
                     lexer,
                     value: token.clone(),
@@ -173,10 +173,10 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
             // Incorrect token.
             Some(lex) => {
                 span!(Level::TRACE, "incorrect token", found = ?lex);
-                // println!( " -> unexpected {}", lexer.last_span());
+                // println!( " -> unexpected {}", lexer.token_span());
                 Err(Failure {
                     parse_error: ParseError::unexpected_token(
-                        lexer.last_span(),
+                        lexer.token_span(),
                         &token,
                         lexer.column_metrics()),
                     lexer,
@@ -210,7 +210,7 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
                 // Lexer error.
                 None => return Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.last_span(),
+                        lexer.token_span(),
                         lexer.column_metrics()),
                     lexer,
                     source: None,
@@ -230,7 +230,7 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
 
         Err(Failure {
             parse_error: ParseError::unexpected_token(
-                lexer.last_span(),
+                lexer.token_span(),
                 format!("one of {}", DisplayList(&tokens[..])),
                 lexer.column_metrics()),
             lexer,
@@ -307,7 +307,7 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
                 // Lexer error.
                 None => return Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.last_span(),
+                        lexer.token_span(),
                         lexer.column_metrics()),
                     lexer,
                     source: None,
@@ -319,7 +319,7 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
                 // Incorrect token.
                 Some(_) => return Err(Failure {
                     parse_error: ParseError::unexpected_token(
-                        lexer.last_span(),
+                        lexer.token_span(),
                         &token,
                         lexer.column_metrics()),
                     lexer,

@@ -42,8 +42,6 @@
 // Internal modules.
 #[cfg(test)]
 mod test;
-#[cfg(test)]
-mod atma;
 
 // Public modules.
 pub mod lexer;

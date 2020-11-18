@@ -234,7 +234,7 @@ pub fn spanned<'text, Sc, Cm, F, V>(mut parser: F)
                 Ok(Success {
                     value: Spanned {
                         value: succ.value,
-                        span: succ.lexer.full_span(),
+                        span: succ.lexer.parse_span_unfiltered(),
                     },
                     lexer: lexer.join(succ.lexer),
                 })

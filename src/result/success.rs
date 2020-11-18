@@ -64,7 +64,7 @@ impl<'text, Sc, Cm, V> Success<'text, Sc, Cm, V>
 
     #[cfg(test)]
     pub fn value_span_display(self) -> (V, String) {
-        (self.value, format!("{}", self.lexer.span()))
+        (self.value, format!("{}", self.lexer.parse_span()))
     }
 }
 

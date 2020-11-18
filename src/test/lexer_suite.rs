@@ -223,9 +223,9 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  | - last span
-  | - last full span
-  | - span
+  | - token
+  | - token unfiltered
+  | - parse
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -234,9 +234,9 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  | -- last span
-  | -- last full span
-  | -- span
+  | -- token
+  | -- token unfiltered
+  | -- parse
 ");
 
     assert_eq!(lexer.next(), Some(B));
@@ -245,9 +245,9 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  |    - last span
-  |    - last full span
-  | ---- span
+  |    - token
+  |    - token unfiltered
+  | ---- parse
 ");
 
     assert_eq!(lexer.next(), Some(B));
@@ -257,9 +257,9 @@ note: lexer state
   | 
 0 | / aa b 
 1 | | bdef
-  | | - last span
-  | | - last full span
-  | |__^ span
+  | | - token
+  | | - token unfiltered
+  | |__^ parse
 ");
 
     assert_eq!(lexer.next(), Some(Def));
@@ -269,9 +269,9 @@ note: lexer state
   | 
 0 | / aa b 
 1 | | bdef
-  | |  --- last span
-  | |  --- last full span
-  | |_____^ span
+  | |  --- token
+  | |  --- token unfiltered
+  | |_____^ parse
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -282,9 +282,9 @@ note: lexer state
 0 | / aa b 
 1 | | bdef
 2 | |  aaa
-  | |  -- last span
-  | |  -- last full span
-  | |____^ span
+  | |  -- token
+  | |  -- token unfiltered
+  | |____^ parse
 ");
 
     assert_eq!(lexer.next(), Some(A));
@@ -295,9 +295,9 @@ note: lexer state
 0 | / aa b 
 1 | | bdef
 2 | |  aaa
-  | |    - last span
-  | |    - last full span
-  | |_____^ span
+  | |    - token
+  | |    - token unfiltered
+  | |_____^ parse
 ");
 
     assert_eq!(lexer.next(), None);

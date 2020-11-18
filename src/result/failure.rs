@@ -38,7 +38,7 @@ impl<'text, Sc, Cm> Failure<'text, Sc, Cm>
 {
     #[cfg(test)]
     pub fn error_span_display(self) -> (&'static str, String) {
-        (self.parse_error.description(), format!("{}", self.lexer.span()))
+        (self.parse_error.description(), format!("{}", self.lexer.parse_span()))
     }
 }
 
