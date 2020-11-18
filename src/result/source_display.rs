@@ -488,15 +488,20 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
             for _ in 0..self.span.start().page.column {
                 write!(f, " ")?;
             }
-            let mut underline_count = std::cmp::max(
-                self.span.end().page.column
-                    .checked_sub(self.span.start().page.column)
-                    .unwrap_or(0),
-                1);
-            for _ in 0..underline_count {
-                write!(f, "{}", self.message_type
-                    .underline()
+            if self.span.is_empty() {
+                write!(f, "{}", "\\".underline()
                     .color(self.message_type.color()))?;
+            } else {
+                let mut underline_count = std::cmp::max(
+                    self.span.end().page.column
+                        .checked_sub(self.span.start().page.column)
+                        .unwrap_or(0),
+                    1);
+                for _ in 0..underline_count {
+                    write!(f, "{}", self.message_type
+                        .underline()
+                        .color(self.message_type.color()))?;
+                }
             }
             match (&self.start_message, &self.end_message) {
                 (Some(msg), None)      | 
@@ -510,8 +515,10 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
             if write_extra_riser_spacer {
                 write!(f, "{}", "_".color(self.message_type.color()))?;
             }
-            for _ in 0..self.span.start().page.column {
-                write!(f, "{}", "_".color(self.message_type.color()))?;
+            if self.span.start().page.column > 0 {
+                for _ in 0..(self.span.start().page.column - 1) {
+                    write!(f, "{}", "_".color(self.message_type.color()))?;
+                }
             }
             write!(f, "{}", "^".color(self.message_type.color()))?;
             match &self.start_message {
@@ -524,8 +531,10 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
             if write_extra_riser_spacer {
                 write!(f, "{}", "_".color(self.message_type.color()))?;
             }
-            for _ in 0..self.span.end().page.column {
-                write!(f, "{}", "_".color(self.message_type.color()))?;
+            if self.span.end().page.column > 0 {
+                for _ in 0..(self.span.end().page.column - 1) {
+                    write!(f, "{}", "_".color(self.message_type.color()))?;
+                }
             }
             write!(f, "{}", "^".color(self.message_type.color()))?;
             match &self.end_message {

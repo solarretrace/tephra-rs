@@ -223,8 +223,8 @@ note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
-  | - token (0:0, byte 0)
-  | - parse (0:0, byte 0)
+  | \\ token (0:0, byte 0)
+  | \\ parse (0:0, byte 0)
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -255,7 +255,7 @@ note: lexer state
 0 | / aa b 
 1 | | bdef
   | | - token (1:0-1:1, bytes 6-7)
-  | |__^ parse (0:0-1:1, bytes 0-7)
+  | |_^ parse (0:0-1:1, bytes 0-7)
 ");
 
     assert_eq!(lexer.next(), Some(Def));
@@ -265,8 +265,8 @@ note: lexer state
   | 
 0 | / aa b 
 1 | | bdef
-  | |  --- token
-  | |_____^ parse
+  | |  --- token (1:1-1:4, bytes 7-10)
+  | |____^ parse (0:0-1:4, bytes 0-10)
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -277,8 +277,8 @@ note: lexer state
 0 | / aa b 
 1 | | bdef
 2 | |  aaa
-  | |  -- token
-  | |____^ parse
+  | |  -- token (2:1-2:3, bytes 12-14)
+  | |___^ parse (0:0-2:3, bytes 0-14)
 ");
 
     assert_eq!(lexer.next(), Some(A));
@@ -289,8 +289,8 @@ note: lexer state
 0 | / aa b 
 1 | | bdef
 2 | |  aaa
-  | |    - token
-  | |_____^ parse
+  | |    - token (2:3-2:4, bytes 14-15)
+  | |____^ parse (0:0-2:4, bytes 0-15)
 ");
 
     assert_eq!(lexer.next(), None);
