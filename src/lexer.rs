@@ -344,7 +344,9 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
                 .with_highlight(Highlight::new(self.token_span(),
                     format!("token ({})", self.token_span())))
                 .with_highlight(Highlight::new(self.parse_span(),
-                    format!("parse ({})", self.parse_span()))));
+                    format!("parse ({})", self.parse_span())))
+                .with_highlight(Highlight::new(self.parse_span_unfiltered(),
+                    format!("unfiltered ({})", self.parse_span()))));
 
         write!(f, "{}", source_display)
     }

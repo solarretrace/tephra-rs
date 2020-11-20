@@ -146,39 +146,6 @@ pub fn discard<'text, Sc, Cm, F, V>(mut parser: F)
 }
 
 /// A combinator which replaces a parsed value with the source text of the
-/// parsed span (including any filtered prefix.)
-pub fn text_exact<'text, Sc, Cm, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) 
-        -> ParseResult<'text, Sc, Cm, &'text str>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-{
-    move |lexer| {
-        let span = span!(Level::DEBUG, "text_exact");
-        let _enter = span.enter();
-
-        let start = lexer.end_pos().byte;
-        match (parser)
-            (lexer)
-            .trace_result(Level::TRACE, "subparse")
-        {
-            Ok(succ) => {
-                let end = succ.lexer.end_pos().byte;
-                let value = &succ.lexer.source()[start..end];
-
-                Ok(Success {
-                    lexer: succ.lexer,
-                    value,
-                })
-            },
-            Err(fail) => Err(fail),
-        }
-    }
-}
-
-/// A combinator which replaces a parsed value with the source text of the
 /// parsed span.
 pub fn text<'text, Sc, Cm, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc, Cm>) 
