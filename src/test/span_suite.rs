@@ -12,7 +12,6 @@
 use crate::span::Span;
 use crate::position::Lf;
 use crate::position::Pos;
-use crate::position::ColumnMetrics as _;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,55 +32,6 @@ fn empty() {
         "\"\" (0:0, byte 0)");
 }
 
-/// Tests `Span::extend_by_bytes`.
-#[test]
-fn extend_by_bytes() {
-    let text = "abcd";
-    let mut span = Span::new(text);
-    span.extend_by_bytes(2, Lf::new());
-
-    assert_eq!(
-        format!("{:?}", span),
-        "\"ab\" (0:0-0:2, bytes 0-2)");
-}
-
-/// Tests `Span::extend_by_bytes` with a newline.
-#[test]
-fn extend_by_bytes_newline() {
-    let text = "a\nbcd";
-    let mut span = Span::new(text);
-    span.extend_by_bytes(2, Lf::new());
-
-    assert_eq!(
-        format!("{:?}", span),
-        "\"a\n\" (0:0-1:0, bytes 0-2)");
-}
-
-/// Tests `Span::extend_by_bytes` with a newline.
-#[test]
-fn extend_by_bytes_newline_split() {
-    let text = "a\nbcd";
-    let mut span = Span::new(text);
-    span.extend_by_bytes(3, Lf::new());
-
-    assert_eq!(
-        format!("{:?}", span),
-        "\"a\nb\" (0:0-1:1, bytes 0-3)");
-}
-
-
-/// Tests `Span::new_from`.
-#[test]
-fn new_from() {
-    let text = " \n  abcd  \n ";
-    let mut span = Span::new_from(Pos::new(4, 1, 2), text);
-    span.extend_by(Pos::new(4, 0, 4));
-
-    assert_eq!(
-        format!("{:?}", span),
-        "\"abcd\" (1:2-1:6, bytes 4-8)");
-}
-
 /// Tests `Span::full`.
 #[test]
 fn full() {
@@ -97,8 +47,10 @@ fn full() {
 #[test]
 fn widen_to_line() {
     let text = " \n  abcd  \n ";
-    let mut span = Span::new_from(Pos::new(4, 1, 2), text);
-    span.extend_by(Pos::new(4, 0, 4));
+    let span = Span::new_enclosing(
+        Pos::new(4, 1, 2),
+        Pos::new(8, 1, 6),
+        text);
 
     assert_eq!(
         format!("{:?}", span.widen_to_line(Lf::new())),
@@ -116,31 +68,34 @@ fn widen_empty_to_line() {
         "\"  abcd  \" (1:0-1:8, bytes 2-10)");
 }
 
+/// Tests `Span::widen_to_line`.
+#[test]
+fn widen_line_to_line() {
+    let text = " \n  abcd  \n ";
+    let span = Span::new_enclosing(
+        Pos::new(2, 1, 0),
+        Pos::new(10, 1, 8),
+        text);
 
-/// Tests `Span::widento_line`.
+    assert_eq!(
+        format!("{:?}", span.widen_to_line(Lf::new())),
+        "\"  abcd  \" (1:0-1:8, bytes 2-10)");
+}
+
+/// Tests `Span::widen_to_line`.
 #[test]
 fn widen_full_to_line() {
     let text = " \n  abcd  \n ";
-    let mut span = Span::new(text);
-    span.extend_by(Lf::new().width(text));
+    let span = Span::new_enclosing(
+        Pos::new(0, 0, 0),
+        Pos::new(12, 2, 1),
+        text);
 
     assert_eq!(
         format!("{:?}", span.widen_to_line(Lf::new())),
         "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)");
 }
 
-
-/// Tests `Span::trim`.
-#[test]
-fn trim() {
-    let text = " \n  abcd  \n ";
-    let mut span = Span::new_from(Pos::new(2, 1, 0), text);
-    span.extend_by(Pos::new(8, 0, 8));
-
-    assert_eq!(
-        format!("{:?}", span.trim(Lf::new())),
-        "\"abcd\" (1:2-1:6, bytes 4-8)");
-}
 
 /// Tests `Span::split_lines`.
 #[test]

@@ -44,9 +44,9 @@
 mod test;
 
 // Public modules.
-pub mod lexer;
 pub mod combinator;
+pub mod lexer;
+pub mod position;
 pub mod result;
 pub mod span;
-pub mod position;
 

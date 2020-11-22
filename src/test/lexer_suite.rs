@@ -51,31 +51,38 @@ struct Test;
 impl Scanner for Test {
     type Token = TestToken;
 
-    fn scan<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
+    fn scan<'text, Cm>(&mut self, source: &'text str, base: Pos, metrics: Cm)
         -> Option<(Self::Token, Pos)>
         where Cm: ColumnMetrics,
     {
-        // println!("{:?}", text);
-        // println!("{:?}", text.split("\n").collect::<Vec<_>>());
+        let text = &source[base.byte..];
+
         if text.starts_with("aa") {
-            return Some((TestToken::Aa, metrics.width(&text[..2])));
+            Some((
+                TestToken::Aa,
+                metrics.end_position(&source[..base.byte + 2], base)))
+        } else if text.starts_with('a') {
+            Some((
+                TestToken::A,
+                metrics.end_position(&source[..base.byte + 1], base)))
+        } else if text.starts_with('b') {
+            Some((
+                TestToken::B,
+                metrics.end_position(&source[..base.byte + 1], base)))
+        } else if text.starts_with("def") {
+            Some((
+                TestToken::Def,
+                metrics.end_position(&source[..base.byte + 3], base)))
+        } else {
+            let rest = text.trim_start_matches(char::is_whitespace);
+            if rest.len() < text.len() {
+                let substr_len = text.len() - rest.len();
+                let substr = &source[0.. base.byte + substr_len];
+                Some((TestToken::Ws, metrics.end_position(substr, base)))
+            } else {
+                None
+            }
         }
-        if text.starts_with('a') {
-            return Some((TestToken::A, metrics.width(&text[..1])));
-        }
-        if text.starts_with('b') {
-            return Some((TestToken::B, metrics.width(&text[..1])));
-        }
-        if text.starts_with("def") {
-            return Some((TestToken::Def, metrics.width(&text[..3])));
-        }
-        let rest = text.trim_start_matches(char::is_whitespace);
-        if rest.len() < text.len() {
-            let substr_len = text.len() - rest.len();
-            let substr = &text[0..substr_len];
-            return Some((TestToken::Ws, metrics.width(substr)));
-        }
-        None
     }
 }
 
@@ -94,10 +101,21 @@ fn empty() {
         None);
 }
 
-
 /// Tests `Lexer::next`.
 #[test]
 fn simple() {
+    use TestToken::*;
+    let text = "aa b";
+    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+
+    assert_eq!(lexer.next(), Some(Aa));
+    assert_eq!(lexer.next(), Some(Ws));
+    assert_eq!(lexer.next(), Some(B));
+}
+
+/// Tests `Lexer::iter_with_spans`.
+#[test]
+fn simple_iter() {
     use TestToken::*;
     let text = "aa b";
     let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));

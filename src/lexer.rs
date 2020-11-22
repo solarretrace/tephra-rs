@@ -35,11 +35,8 @@ pub trait Scanner: Debug + Clone + PartialEq {
     /// The parse token type.
     type Token: Display + Debug + Clone + PartialEq + Send + Sync + 'static;
 
-    /// Parses a token from the given string. When the parse success, the
-    /// length of the consumed text should be returned. When the parse fails,
-    /// the length of the text to skip before resuming should be returned. If no
-    /// further progress is possible, 0 should be returned instead.
-    fn scan<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
+    /// Parses a token from the given string.
+    fn scan<'text, Cm>(&mut self, source: &'text str, base: Pos, metrics: Cm)
         -> Option<(Self::Token, Pos)>
         where Cm: ColumnMetrics;
 }
@@ -207,7 +204,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     pub fn remaining_span(&self) -> Span<'text> {
         Span::new_enclosing(
             self.end,
-            self.metrics.width(self.source),
+            self.metrics.end_position(self.source, self.end),
             self.source)
     }
 
@@ -228,15 +225,12 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         let mut scanner = self.scanner.clone();
         let mut end_byte = self.end.byte;
         while end_byte < self.source.len() {
-            match scanner.scan(
-                &self.source[end_byte..],
-                self.metrics)
-            {
-                Some((token, adv)) if self.filter
+            match scanner.scan(self.source, self.end, self.metrics) {
+                Some((token, new)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
                 {
-                    end_byte += adv.byte;
+                    end_byte = new.byte;
                 },
 
                 Some((token, _)) => return Some(token),
@@ -259,27 +253,24 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
         let _enter = span.enter();
 
         while self.end.byte < self.source.len() {
-            match self.scanner.scan(
-                &self.source[self.end.byte..],
-                self.metrics)
-            {
-                Some((token, adv)) if self.filter
+            match self.scanner.scan(self.source, self.end, self.metrics) {
+                Some((token, new)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
                 {
                     // Parsed a filtered token.
-                    self.end += adv;
-                    self.token_start = self.end;
+                    self.end = new;
+                    self.token_start = new;
                 },
 
-                Some((token, adv)) => {
+                Some((token, new)) => {
                     // Parsed a non-filtered token.
                     if !self.parse_start_found {
                         self.parse_start = self.end;
                         self.parse_start_found = true;
                     }
                     self.token_start = self.end;
-                    self.end += adv;
+                    self.end = new;
                     return Some(token);
                 },
 
@@ -374,8 +365,8 @@ impl<'text, 'l, Sc, Cm> Iterator for IterWithSpans<'text, 'l, Sc, Cm>
     type Item = (Sc::Token, Span<'text>);
     
     fn next(&mut self) -> Option<Self::Item> {
-        self.lexer.next().map(|t| {
-             (t, self.lexer.token_span())
-        })
+        self.lexer
+            .next()
+            .map(|t| (t, self.lexer.token_span()))
     }
 }

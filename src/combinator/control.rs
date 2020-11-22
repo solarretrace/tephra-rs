@@ -27,6 +27,13 @@ use tracing::span;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A combinator which filters tokens during exectution of the given parser.
+///
+/// ### Parameters
+/// + `filter_fn`: A function which will return `false` for any
+/// [`Scanner::Token`] to be excluded during the parse.
+/// + `parser`: The parser to run with with the applied token filter.
+///
+/// [`Scanner::Token`]: crate::lexer::Scanner#associatedtype.Token
 pub fn filter<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
     -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>
     where
@@ -41,6 +48,7 @@ pub fn filter<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
 
         let old_filter = lexer.take_filter();
         lexer.set_filter_fn(filter_fn.clone());
+
         match (parser)
             (lexer)
             .trace_result(Level::TRACE, "subparse")
@@ -59,6 +67,9 @@ pub fn filter<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
 
 /// A combinator which disables all token filters during exectution of the given
 /// parser.
+///
+/// ### Parameters
+/// + `parser`: The parser to run with without a token filter.
 pub fn exact<'text, Sc, Cm, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>
     where

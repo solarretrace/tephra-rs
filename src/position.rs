@@ -18,149 +18,234 @@ use unicode_width::UnicodeWidthChar;
 ////////////////////////////////////////////////////////////////////////////////
 /// A trait providing column positioning measurements.
 pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
+    /// Returns the next column-aligned position after the given base position
+    /// within the given text. None is returned if the result position is not
+    /// within the text.
+    fn next_position<'text>(&self, text: &'text str, base: Pos) -> Option<Pos>;
 
-    /// Returns the position of the next display column after the start of the
-    /// given text.
-    fn next_column<'text>(&self, text: &'text str) -> Option<Pos>;
+    /// Returns the previous column-aligned position before the given base
+    /// position within the given text. None is returned if the result position
+    /// is not within the text.
+    fn previous_position<'text>(&self, text: &'text str, base: Pos)
+        -> Option<Pos>;
 
-    /// Returns the position of the next display column before the end of the
-    /// given text.
-    fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos>;
+    /// Returns true if a line break is positioned at the given byte position in
+    /// the text.
+    fn is_line_break<'text>(&self, text: &'text str, byte: usize) -> bool;
 
-    /// Returns the display width of the given text.
-    fn width<'text>(&self, text: &'text str) -> Pos {
-        let mut end = Pos::ZERO;
-        let mut rest = text;
-
-        while !rest.is_empty() {
-            end += self.next_column(rest)
-                .expect("column position for nonempty text");
-            rest = &text[end.byte..];
+    /// Returns the position of the end of line containing the given base
+    /// position.
+    fn line_end_position<'text>(&self, text: &'text str, base: Pos) -> Pos {
+        let mut end = base;
+        while end.byte < text.len() {
+            if self.is_line_break(text, end.byte) { break; }
+            match self.next_position(text, end) {
+                Some(new) => end = new,
+                None      => break,
+            }
         }
         end
     }
 
-    /// Returns the position of the start of the next line after the start of
-    /// the given text. If the text ends before a new line is encountered, the
-    /// full width is returned.
-    fn next_line_start<'text>(&self, text: &'text str) -> Pos {
-        let mut end = Pos::ZERO;
-        let mut rest = text;
+    /// Returns the position of the start of line containing the given base
+    /// position.
+    fn line_start_position<'text>(&self, text: &'text str, base: Pos) -> Pos {
+        let mut start = base;
 
-        while !rest.is_empty() {
-            end += self.next_column(rest)
-                .expect("column position for nonempty text");
-
-            if end.page.column == 0 { break; }
-            rest = &text[end.byte..];
+        while start.byte > 0 {
+            match self.previous_position(text, start) {
+                Some(new) => {
+                    if new.page.line != base.page.line { break; }
+                    start = new;
+                },
+                None      => break,
+            }   
         }
-        end
+        start
     }
 
-    /// Returns the position of the end of the current line after the start of
-    /// the given text. If the text ends before a new line is encountered, the
-    /// full width is returned.
-    fn next_line_end<'text>(&self, text: &'text str) -> Pos {
-        let mut end = Pos::ZERO;
-        let mut rest = text;
-
-        while !rest.is_empty() {
-            let next = self.next_column(rest)
-                .expect("column position for nonempty text");
-
-            if next.page.column == 0 { break; }
-            end += next;
-            rest = &text[end.byte..];
-        }
-        end
-    }
-
-    /// Returns the position up to first display column for which the given
-    /// predicate fails from the start of the given text.
-    fn next_until<'text, F>(&self, text: &'text str, mut pred: F) -> Pos 
-        where F: for<'a> FnMut(&'a str, Pos) -> bool,
+    /// Returns the position at the start of the next line after the given base
+    /// position.
+    fn previous_line_end_position<'text>(&self, text: &'text str, base: Pos)
+        -> Option<Pos>
     {
-        let mut end = Pos::ZERO;
-        let mut rest = text;
-
-        while !rest.is_empty() {
-            let next = self.next_column(rest)
-                .expect("column position for nonempty text");
-
-            if pred(&text[end.byte .. end.byte + next.byte], next) { break; }
-
-            end += next;
-            rest = &text[end.byte..];
-        }
-        end
+        self.previous_position(
+            text,
+            self.line_start_position(text, base))
     }
 
-    /// Returns the position of the end of the next to last line of the given
-    /// text. If the text ends before a new line is encountered, the full width
-    /// is returned.
-    fn next_back_line_start<'text>(&self, text: &'text str) -> Pos {
-        let mut end = Pos::ZERO;
-        let mut rest = text;
-
-        while !rest.is_empty() {
-            let next = self.next_back_column(rest)
-                .expect("column position for nonempty text");
-
-            if next.page.column == 0 { break; }
-            end += next;
-            rest = &text[0..(text.len() - end.byte)];
-        }
-        end
-    }
-
-    /// Returns the position of the start of the last line of the given text.
-    /// If the text ends before a new line is encountered, the full width is
-    /// returned.
-    fn next_back_line_end<'text>(&self, text: &'text str) -> Pos {
-        let mut end = Pos::ZERO;
-        let mut rest = text;
-
-        while !rest.is_empty() {
-            end += dbg!(self.next_back_column(rest))
-                .expect("column position for nonempty text");
-
-            if end.page.column == 0 { break; }
-            rest = &text[0..(text.len() - end.byte)];
-        }
-        end
-    }
-
-    /// Returns the position up to first display column for which the given
-    /// predicate fails from the end of the given text.
-    fn next_back_until<'text, F>(&self, text: &'text str, mut pred: F) -> Pos 
-        where F: for<'a> FnMut(&'a str, Pos) -> bool,
+    /// Returns the position at the start of the next line after the given base
+    /// position.
+    fn next_line_start_position<'text>(&self, text: &'text str, base: Pos)
+        -> Option<Pos>
     {
-        let mut end = Pos::ZERO;
-        let mut rest = text;
+        self.next_position(
+            text,
+            self.line_end_position(text, base))
+    }
 
-        while !rest.is_empty() {
-            let next = self.next_back_column(rest)
-                .expect("column position for nonempty text");
+    /// Returns the end position of the text, given its start position.
+    fn end_position<'text>(&self, text: &'text str, start: Pos) -> Pos {
+        let mut end = start;
 
-            let start = text.len() - end.byte;
-            if pred(&text[start .. start + next.byte], next) { break; }
-
-            end += next;
-            rest = &text[end.byte..];
+        while end.byte < text.len() {
+            match self.next_position(text, end) {
+                Some(new) => end = new,
+                None      => break,
+            }
         }
         end
+    }
+
+    /// Returns the start position of the text, given its end position.
+    fn start_position<'text>(&self, text: &'text str, end: Pos) -> Pos {
+        let mut start = end;
+
+        while start.byte > 0 {
+            match self.previous_position(text, start) {
+                Some(new) => start = new,
+                None      => break,
+            }
+        }
+        start
     }
 
     /// Returns an iterator over the display columns of the given text.
-    fn iter_columns<'text>(&self, text: &'text str) -> IterColumns<'text, Self>
+    fn iter_columns<'text>(&self, text: &'text str, base: Pos)
+        -> IterColumns<'text, Self>
     {
         IterColumns {
             text,
+            current: Some(base),
             metrics: *self,
         }
     }
 }
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Lf
+////////////////////////////////////////////////////////////////////////////////
+/// Line Feed (`\n`) newline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Lf {
+    tab_width: u8,
+}
+
+/// The byte-width of a line break for Lf.
+const LF_LINE_BREAK_LEN: usize = 1;
+
+/// The byte-width of a tab for Lf.
+const LF_TAB_LEN: usize = 1;
+
+impl Lf {
+    /// Returns a new `Lf` with the default tab width of 4.
+    pub fn new() -> Self {
+        Lf {
+            tab_width: 4,
+        }
+    }
+
+    /// Returns a new `Lf` with the given tab width.
+    pub fn with_tab_width(tab_width: u8) -> Self {
+        assert!(tab_width > 0);
+        Lf { tab_width }
+    }
+}
+
+impl ColumnMetrics for Lf {
+    fn next_position<'text>(&self, text: &'text str, base: Pos) -> Option<Pos> {
+        let mut chars = text[base.byte..].chars();
+        
+        match chars.next() {
+            Some(c) if c == '\n' => Some(Pos::new(
+                base.byte + LF_LINE_BREAK_LEN,
+                base.page.line + 1,
+                0)),
+            
+            Some(c) if c == '\t' => {
+                let tab = self.tab_width as usize;
+                let tab_stop = tab - (base.page.column % tab);
+                Some(Pos::new(
+                    base.byte + LF_TAB_LEN,
+                    base.page.line,
+                    base.page.column + tab_stop))
+            },
+
+            Some(c)              => Some(Pos::new(
+                base.byte + c.len_utf8(),
+                base.page.line,
+                base.page.column + UnicodeWidthChar::width(c).unwrap_or(0))),
+
+            None                 => None,
+        }
+    }
+
+    fn previous_position<'text>(&self, text: &'text str, base: Pos)
+        -> Option<Pos>
+    {
+        let mut chars = text[..base.byte].chars();
+        match chars.next_back() {
+            Some(c) if c == '\n' => Some(Pos::new(
+                base.byte - LF_LINE_BREAK_LEN,
+                base.page.line - 1,
+                0)),
+            
+            Some(c) if c == '\t' => {
+                // To get position of tab start, we must measure from the start
+                // of the line.
+
+                // Advance until we find the tab just before the current
+                // position.
+                let mut current = self.line_start_position(text, base);
+                loop {
+                    let next = self.next_position(text, current)
+                        .expect("next position is guaranteed");
+                    current = next;
+                    if current.byte == base.byte - LF_TAB_LEN { break }
+                }
+                
+                Some(current)
+            },
+
+            Some(c)              => Some(Pos::new(
+                base.byte - c.len_utf8(),
+                base.page.line,
+                base.page.column - UnicodeWidthChar::width(c).unwrap_or(0))),
+
+            None                 => None,
+        }
+    }
+
+
+    fn line_start_position<'text>(&self, text: &'text str, base: Pos) -> Pos {
+        let mut start_byte = base.byte;
+        while start_byte > 0 {
+            while !text.is_char_boundary(start_byte) {
+                start_byte -= 1;
+            }
+            if self.is_line_break(text, start_byte) {
+                start_byte += LF_LINE_BREAK_LEN;
+                break;
+            }
+            if start_byte > 0 { start_byte -= 1; }
+        }
+
+        Pos::new(start_byte, base.page.line, 0)
+    }
+
+    fn is_line_break<'text>(&self, text: &'text str, byte: usize) -> bool {
+        &text[byte..byte + LF_LINE_BREAK_LEN] == "\n"
+    }
+}
+
+
+impl Default for Lf {
+    fn default() -> Self {
+        Lf::new()
+    }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,6 +256,12 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
 pub struct CrLf {
     tab_width: u8,
 }
+
+/// The byte-width of a line break for CrLf.
+const CRLF_LINE_BREAK_LEN: usize = 2;
+
+/// The byte-width of a tab for CrLf.
+const CRLF_TAB_LEN: usize = 1;
 
 impl CrLf {
     /// Returns a new `CrLf` with the default tab width of 4.
@@ -188,37 +279,90 @@ impl CrLf {
 }
 
 impl ColumnMetrics for CrLf {
-
-    fn next_column<'text>(&self, text: &'text str) -> Option<Pos> {
-        let mut chars = text.chars();
+fn next_position<'text>(&self, text: &'text str, base: Pos) -> Option<Pos> {
+        let mut chars = text[base.byte..].chars();
+        
         match chars.next() {
             Some(c) if c == '\r' => match chars.next() {
-                Some(c) if c == '\n' => Some(Pos::new(2, 1, 0)),
+                Some(c) if c == '\n' => Some(Pos::new(
+                    base.byte + CRLF_LINE_BREAK_LEN,
+                    base.page.line + 1,
+                    0)),
                 _                    => Some(Pos::new(1, 0, 1)),
             }
-            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            
+            Some(c) if c == '\t' => {
+                let tab = self.tab_width as usize;
+                let tab_stop = tab - (base.page.column % tab);
+                Some(Pos::new(
+                    base.byte + CRLF_TAB_LEN,
+                    base.page.line,
+                    base.page.column + tab_stop))
+            },
+
             Some(c)              => Some(Pos::new(
-                c.len_utf8(),
-                0,
-                UnicodeWidthChar::width(c).unwrap_or(0))),
+                base.byte + c.len_utf8(),
+                base.page.line,
+                base.page.column + UnicodeWidthChar::width(c).unwrap_or(0))),
+
             None                 => None,
         }
     }
 
-    fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos> {
-        let mut chars = text.chars();
+    fn previous_position<'text>(&self, text: &'text str, base: Pos)
+        -> Option<Pos>
+    {
+        let mut chars = text[..base.byte].chars();
         match chars.next_back() {
-            Some(c) if c == '\n' => match chars.next_back() {
-                Some(c) if c == '\r' => Some(Pos::new(2, 1, 0)),
-                _                    => Some(Pos::new(1, 0, 1)),
-            }
-            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c) if c == '\n' => Some(Pos::new(
+                base.byte - CRLF_LINE_BREAK_LEN,
+                base.page.line - 1,
+                0)),
+            
+            Some(c) if c == '\t' => {
+                // To get position of tab start, we must measure from the start
+                // of the line.
+
+                // Advance until we find the tab just before the current
+                // position.
+                let mut current = self.line_start_position(text, base);
+                loop {
+                    let next = self.next_position(text, current)
+                        .expect("next position is guaranteed");
+                    current = next;
+                    if current.byte == base.byte - CRLF_TAB_LEN { break }
+                }
+                
+                Some(current)
+            },
+
             Some(c)              => Some(Pos::new(
-                c.len_utf8(),
-                0,
-                UnicodeWidthChar::width(c).unwrap_or(0))),
+                base.byte - c.len_utf8(),
+                base.page.line,
+                base.page.column - UnicodeWidthChar::width(c).unwrap_or(0))),
+
             None                 => None,
         }
+    }
+
+    fn line_start_position<'text>(&self, text: &'text str, base: Pos) -> Pos {
+        let mut start_byte = base.byte;
+        while start_byte > 0 {
+            while !text.is_char_boundary(start_byte) {
+                start_byte -= 1;
+            }
+            if self.is_line_break(text, start_byte) {
+                start_byte += CRLF_LINE_BREAK_LEN;
+                break;
+            }
+            if start_byte > 0 { start_byte -= 1; }
+        }
+
+        Pos::new(start_byte, base.page.line, 0)
+    }
+
+    fn is_line_break<'text>(&self, text: &'text str, byte: usize) -> bool {
+        &text[byte..byte + CRLF_LINE_BREAK_LEN] == "\r\n"
     }
 }
 
@@ -238,6 +382,12 @@ pub struct Cr {
     tab_width: u8,
 }
 
+/// The byte-width of a line break for Cr.
+const CR_LINE_BREAK_LEN: usize = 1;
+
+/// The byte-width of a tab for Cr.
+const CR_TAB_LEN: usize = 1;
+
 impl Cr {
     /// Returns a new `Cr` with the default tab width of 4.
     pub fn new() -> Self {
@@ -254,97 +404,93 @@ impl Cr {
 }
 
 impl ColumnMetrics for Cr {
-
-    fn next_column<'text>(&self, text: &'text str) -> Option<Pos> {
-        let mut chars = text.chars();
+    fn next_position<'text>(&self, text: &'text str, base: Pos) -> Option<Pos> {
+        let mut chars = text[base.byte..].chars();
+        
         match chars.next() {
-            Some(c) if c == '\r' => Some(Pos::new(1, 1, 0)),
-            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c) if c == '\n' => Some(Pos::new(
+                base.byte + CR_LINE_BREAK_LEN,
+                base.page.line + 1,
+                0)),
+            
+            Some(c) if c == '\t' => {
+                let tab = self.tab_width as usize;
+                let tab_stop = tab - (base.page.column % tab);
+                Some(Pos::new(
+                    base.byte + CR_TAB_LEN,
+                    base.page.line,
+                    base.page.column + tab_stop))
+            },
+
             Some(c)              => Some(Pos::new(
-                c.len_utf8(),
-                0,
-                UnicodeWidthChar::width(c).unwrap_or(0))),
+                base.byte + c.len_utf8(),
+                base.page.line,
+                base.page.column + UnicodeWidthChar::width(c).unwrap_or(0))),
+
             None                 => None,
         }
     }
-    
-    fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos> {
-        let mut chars = text.chars();
+
+    fn previous_position<'text>(&self, text: &'text str, base: Pos)
+        -> Option<Pos>
+    {
+        let mut chars = text[..base.byte].chars();
         match chars.next_back() {
-            Some(c) if c == '\r' => Some(Pos::new(1, 1, 0)),
-            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
+            Some(c) if c == '\n' => Some(Pos::new(
+                base.byte - CR_LINE_BREAK_LEN,
+                base.page.line - 1,
+                0)),
+            
+            Some(c) if c == '\t' => {
+                // To get position of tab start, we must measure from the start
+                // of the line.
+
+                // Advance until we find the tab just before the current
+                // position.
+                let mut current = self.line_start_position(text, base);
+                loop {
+                    let next = self.next_position(text, current)
+                        .expect("next position is guaranteed");
+                    current = next;
+                    if current.byte == base.byte - CR_TAB_LEN { break }
+                }
+                
+                Some(current)
+            },
+
             Some(c)              => Some(Pos::new(
-                c.len_utf8(),
-                0,
-                UnicodeWidthChar::width(c).unwrap_or(0))),
+                base.byte - c.len_utf8(),
+                base.page.line,
+                base.page.column - UnicodeWidthChar::width(c).unwrap_or(0))),
+
             None                 => None,
         }
+    }
+
+    fn line_start_position<'text>(&self, text: &'text str, base: Pos) -> Pos {
+        let mut start_byte = base.byte;
+        while start_byte > 0 {
+            while !text.is_char_boundary(start_byte) {
+                start_byte -= 1;
+            }
+            if self.is_line_break(text, start_byte) {
+                start_byte += CR_LINE_BREAK_LEN;
+                break;
+            }
+            if start_byte > 0 { start_byte -= 1; }
+        }
+
+        Pos::new(start_byte, base.page.line, 0)
+    }
+
+    fn is_line_break<'text>(&self, text: &'text str, byte: usize) -> bool {
+        &text[byte..byte + CR_LINE_BREAK_LEN] == "\n"
     }
 }
 
 impl Default for Cr {
     fn default() -> Self {
         Cr::new()
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Lf
-////////////////////////////////////////////////////////////////////////////////
-/// Line Feed (`\n`) newline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Lf {
-    tab_width: u8,
-}
-
-impl Lf {
-    /// Returns a new `Lf` with the default tab width of 4.
-    pub fn new() -> Self {
-        Lf {
-            tab_width: 4,
-        }
-    }
-
-    /// Returns a new `Lf` with the given tab width.
-    pub fn with_tab_width(tab_width: u8) -> Self {
-        assert!(tab_width > 0);
-        Lf { tab_width }
-    }
-}
-
-impl ColumnMetrics for Lf {
-    fn next_column<'text>(&self, text: &'text str) -> Option<Pos> {
-        let mut chars = text.chars();
-        match chars.next() {
-            Some(c) if c == '\n' => Some(Pos::new(1, 1, 0)),
-            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
-            Some(c)              => Some(Pos::new(
-                c.len_utf8(),
-                0,
-                UnicodeWidthChar::width(c).unwrap_or(0))),
-            None                 => None,
-        }
-    }
-
-    fn next_back_column<'text>(&self, text: &'text str) -> Option<Pos> {
-        let mut chars = text.chars();
-        match chars.next_back() {
-            Some(c) if c == '\n' => Some(Pos::new(1, 1, 0)),
-            Some(c) if c == '\t' => Some(Pos::new(1, 0, self.tab_width as usize)),
-            Some(c)              => Some(Pos::new(
-                c.len_utf8(),
-                0,
-                UnicodeWidthChar::width(c).unwrap_or(0))),
-            None                 => None,
-        }
-    }
-}
-
-
-impl Default for Lf {
-    fn default() -> Self {
-        Lf::new()
     }
 }
 
@@ -385,25 +531,6 @@ impl Pos {
     }
 }
 
-
-impl std::ops::Add for Pos {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        Pos {
-            byte: self.byte + other.byte,
-            page: self.page + other.page,
-        }
-    }
-}
-
-impl std::ops::AddAssign for Pos {
-    fn add_assign(&mut self, other: Self) {
-        self.byte += other.byte;
-        self.page += other.page;
-    }
-}
-
 impl Default for Pos {
     fn default() -> Self {
         Pos::ZERO
@@ -440,32 +567,6 @@ impl Page {
     }
 }
 
-impl std::ops::Add for Page {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        Page {
-            line: self.line + other.line,
-            column: if other.is_line_start() || other.line > 0 { 
-                other.column
-            } else {
-                self.column + other.column
-            },
-        }
-    }
-}
-
-impl std::ops::AddAssign for Page {
-    fn add_assign(&mut self, other: Self) {
-        self.line += other.line;
-        if other.is_line_start() || other.line > 0 {
-            self.column = other.column;
-        } else {
-            self.column += other.column;
-        }
-    }
-}
-
 impl Default for Page {
     fn default() -> Self {
         Page::ZERO
@@ -479,7 +580,6 @@ impl std::fmt::Display for Page {
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // IterColumns
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,6 +588,8 @@ impl std::fmt::Display for Page {
 pub struct IterColumns<'text, Cm> {
     /// The source text.
     text: &'text str,
+    /// The current column position.
+    current: Option<Pos>,
     /// The column metrics.
     metrics: Cm,
 }
@@ -498,27 +600,11 @@ impl<'text, Cm> Iterator for IterColumns<'text, Cm>
     type Item = (&'text str, Pos);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.metrics
-            .next_column(self.text)
-            .map(|pos| {
-                let res = (&self.text[..pos.byte], pos);
-                self.text = &self.text[pos.byte..];
-                res
-            })
-    }
-}
-
-impl<'text, Cm> DoubleEndedIterator for IterColumns<'text, Cm>
-    where Cm: ColumnMetrics,
-{
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.metrics
-            .next_back_column(self.text)
-            .map(|pos| {
-                let res = (&self.text[pos.byte..], pos);
-                self.text = &self.text[..(self.text.len() - pos.byte)];
-                res
-            })
+        let next = self.current
+            .and_then(|curr| self.metrics.next_position(self.text, curr));
+        self.current = next;
+        
+        next.map(|p| (&self.text[p.byte..], p))
     }
 }
 

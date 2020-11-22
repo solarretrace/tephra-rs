@@ -39,7 +39,7 @@ impl<'text> Span<'text> {
     {
         Span::new_enclosing(
             Pos::ZERO,
-            metrics.width(source),
+            metrics.end_position(source, Pos::ZERO),
             source)
     }
 
@@ -115,67 +115,22 @@ impl<'text> Span<'text> {
         *pos >= self.start()  && *pos <= self.end()
     }
 
-    /// Extends the span by the given span position.
-    pub fn extend_by(&mut self, pos: Pos) {
-        self.byte.end += pos.byte;
-        self.page.end += pos.page;
-    }
-
-    /// Extends the span by the given number of bytes.
-    pub fn extend_by_bytes<Cm>(&mut self, bytes: usize, metrics: Cm)
-        where Cm: ColumnMetrics,
-    {
-        let substr = &self.source[self.byte.end..self.byte.end+bytes];
-        let adv = metrics.width(substr);
-
-        self.byte.end += adv.byte;
-        self.page.end += adv.page;
-    }
-
+    // /// Extends the span by the given span position.
+    // pub fn extend_by(&mut self, pos: Pos) {
+    //     self.byte.end += pos.byte;
+    //     self.page.end += pos.page;
+    // }
 
     /// Widens the span on the left and right to the nearest newline.
     pub fn widen_to_line<Cm>(&self, metrics: Cm) -> Self
         where Cm: ColumnMetrics,
     {
         if self.is_full() { return self.clone(); }
-        
-        let start_byte = self.byte.start;
-        let end_byte = self.byte.end;
 
-        let l_adv = metrics
-            .next_back_line_start(&self.source[0..start_byte]);
-        let r_adv = metrics
-            .next_line_end(&self.source[end_byte..]);
-
-        let start = Pos::new(
-            start_byte - l_adv.byte,
-            self.start().page.line,
-            0);
-        let end = Pos::new(
-            end_byte + r_adv.byte,
-            self.end().page.line,
-            self.end().page.column + r_adv.page.column);
-        Span::new_enclosing(start, end, self.source)
-    }
-
-    /// Trims the span on the left and right, removing any whitespace.
-    pub fn trim<Cm>(&self, metrics: Cm) -> Self 
-        where Cm: ColumnMetrics,
-    {
-        let text = self.text();
-        if text.is_empty() { return self.clone(); }
-        
-        let trimmed = text.trim_start();
-        let left_len = text.len() - trimmed.len();
-        let mut left_pos = self.start();
-        left_pos += metrics.width(&text[..left_len]);
-        let trimmed = trimmed.trim_end();
-        let right_pos = metrics.width(trimmed);
-
-        let mut span = Span::new_from(left_pos, self.source);
-        span.extend_by(right_pos);
-
-        span
+        Span::new_enclosing(
+            metrics.line_start_position(self.source, self.start()),
+            metrics.line_end_position(self.source, self.end()),
+            self.source)
     }
 
     /// Returns true if the given spans overlap.
@@ -284,10 +239,9 @@ impl<'text> Span<'text> {
     {
         SplitLines {
             metrics,
-            base: self.start(),
-            text: self.text(),
+            start: self.start(),
+            end: self.end(),
             source: self.source,
-            max_line: self.page.end.line,
         }
     }
 }
@@ -557,38 +511,41 @@ impl<'text> From<Span<'text>> for SpanOwned {
 #[derive(Debug, Clone)]
 pub struct SplitLines<'text, Cm> {
     source: &'text str,
-    text: &'text str,
-    base: Pos,
+    start: Pos,
+    end: Pos,
     metrics: Cm,
-    max_line: usize,
 }
 
 impl<'text, Cm> Iterator for SplitLines<'text, Cm> where Cm: ColumnMetrics {
     type Item = Span<'text>;
     
     fn next(&mut self) -> Option<Self::Item> {
-        if self.base.page.line > self.max_line { return None; }
-        if self.text.is_empty() {
-            let span = Span::new_from(self.base, self.source);
-            self.base.page.line += 1;
+        if self.start.page.line > self.end.page.line {
+            None
+        } else if self.start.page.line == self.end.page.line {
+            let res = Some(Span::new_enclosing(
+                self.start,
+                self.end,
+                self.source,
+            ));
 
-            return Some(span);
-        }
-
-        let mut span = Span::new_from(self.base, self.source);
-
-        let adv = self.metrics.next_line_end(&self.text);
-        span.extend_by(adv);
-        self.base += adv;
-        self.text = &self.text[adv.byte..];
-        if self.text.is_empty() {
-            self.base.page.line = self.max_line + 1;
+            self.start.page.line += 1;
+            res
         } else {
-            let adv = self.metrics.next_line_start(&self.text);
-            self.base += adv;
-            self.text = &self.text[adv.byte..];
+            let end = self.metrics
+                .line_end_position(self.source, self.start);
+
+            let res = Some(Span::new_enclosing(
+                self.start,
+                end,
+                self.source,
+            ));
+
+            self.start = self.metrics
+                .next_position(self.source, end)
+                .expect("next line < end line");
+            res
         }
-        Some(span)
     }
 }
 
@@ -600,7 +557,7 @@ impl<'text, Cm> ExactSizeIterator for SplitLines<'text, Cm>
     where Cm: ColumnMetrics,
 {
     fn len(&self) -> usize {
-         self.max_line - self.base.page.line
+         self.end.page.line - self.start.page.line
     }
 }
 

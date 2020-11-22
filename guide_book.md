@@ -26,6 +26,10 @@ As a parser combinator library, it is possible to make primitive parsers into co
 
 5. Use separate lexer and parser phases.
 
+6. Scanner emits new positions relative to base, not position diffs.
+
+This is needed to support tabstops in ColumnMetrics.
+
 ### Parsing strategy
 
 Tephra parsers use a combination of builtin types and user-defined types to construct recursive-descent parsers. Different aspects of the parse are religated to different components of the library. The typical process for implementing a full-featured parser looks like this:
@@ -85,11 +89,15 @@ The `one` combinator is straightforward: provide it with a `Scanner::Token` argu
 
 The `text` combinator simply substitutes the result of a parse for the text in the span of the parse. If token filtering is active, the filtered text will be omitted from the result.
 
-#### `exact`
+#### `filter` and `exact`
+
+The `filter` combinator filters tokens during the duration of the parse.
+
+The `exact` combinator disables any token filtering for the duration of the parse. This is most often useful if you need to disallow whitespace or comments between certain tokens.
+
 #### `end_of_text`
 #### `spanned`
 #### `discard`
-#### `filter`
 
 #### `left`
 #### `right`

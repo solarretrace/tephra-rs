@@ -135,7 +135,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
         let _enter = span.enter();
 
         if lexer.is_empty() {
-            span!(Level::TRACE, "lexer is empty");
+            event!(Level::TRACE, "lexer is empty");
             // Unexpected End-of-text.
             return Err(Failure {
                 parse_error: ParseError::unexpected_end_of_text(
@@ -149,7 +149,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
         match lexer.next() {
             // Lexer error.
             None => {
-                span!(Level::TRACE, "lexer error");
+                event!(Level::TRACE, "lexer error");
                 // println!(" -> unrecognized {}", lexer.token_span());
                 Err(Failure {
                     parse_error: ParseError::unrecognized_token(
@@ -162,7 +162,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
 
             // Matching token.
             Some(lex) if lex == token => {
-                span!(Level::TRACE, "correct token", found = ?lex);
+                event!(Level::TRACE, "correct token {{found={:?}}}", lex);
                 // println!(" -> MATCH {}", lexer.token_span());
                 Ok(Success {
                     lexer,
@@ -172,7 +172,7 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
 
             // Incorrect token.
             Some(lex) => {
-                span!(Level::TRACE, "incorrect token", found = ?lex);
+                event!(Level::TRACE, "incorrect token {{found={:?}}}", lex);
                 // println!( " -> unexpected {}", lexer.token_span());
                 Err(Failure {
                     parse_error: ParseError::unexpected_token(
