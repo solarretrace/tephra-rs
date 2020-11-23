@@ -78,3 +78,22 @@ fn lf_position_after_chars_matching() {
     let expected = Some(Pos::new(6, 2, 8));
     assert_eq!(actual, expected);
 }
+
+/// Tests `ColumnMetrics::iter_columns` for `Lf`.
+#[test]
+fn lf_iter_columns() {
+    let text = "abcd";
+    let metrics = Lf::new();
+
+
+    let actual: Vec<_> = metrics.iter_columns(text, Pos::ZERO)
+        .collect();
+
+    let expected = vec![
+        ("a", Pos::new(1, 0, 1)),
+        ("b", Pos::new(2, 0, 2)),
+        ("c", Pos::new(3, 0, 3)),
+        ("d", Pos::new(4, 0, 4)),
+    ];
+    assert_eq!(actual, expected);
+}

@@ -180,7 +180,7 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
     {
         IterColumns {
             text,
-            current: Some(base),
+            base: Some(base),
             metrics: *self,
         }
     }
@@ -697,7 +697,7 @@ pub struct IterColumns<'text, Cm> {
     /// The source text.
     text: &'text str,
     /// The current column position.
-    current: Option<Pos>,
+    base: Option<Pos>,
     /// The column metrics.
     metrics: Cm,
 }
@@ -708,11 +708,16 @@ impl<'text, Cm> Iterator for IterColumns<'text, Cm>
     type Item = (&'text str, Pos);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next = self.current
-            .and_then(|curr| self.metrics.next_position(self.text, curr));
-        self.current = next;
-        
-        next.map(|p| (&self.text[p.byte..], p))
+        let end = self.base
+            .and_then(|start| self.metrics.next_position(self.text, start));
+
+        let res = match (self.base, end) {
+            (Some(s), Some(e)) => Some((&self.text[s.byte..e.byte], e)),
+            _                  => None,
+        };
+
+        self.base = end;
+        res        
     }
 }
 
