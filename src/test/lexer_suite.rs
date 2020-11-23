@@ -151,6 +151,42 @@ fn simple_iter() {
 }
 
 
+/// Tests `Lexer`'s auto-filtering capability.
+#[test]
+fn auto_filter() {
+    use TestToken::*;
+    let text = "aaaabaaaab";
+    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    lexer.set_filter_fn(|tok| *tok != Aa);
+
+    assert_eq!(lexer.peek(), Some(B));
+
+    lexer.take_filter();
+
+    assert_eq!(lexer.peek(), Some(Aa));
+
+    lexer.set_filter_fn(|tok| *tok != Aa);
+
+    let actual = lexer
+        .iter_with_spans()
+        .map(|lex| (lex.0, format!("{:?}", lex.1)))
+        .collect::<Vec<_>>();
+
+    let expected = vec![
+            (B,   "\"b\" (0:4-0:5, bytes 4-5)".to_string()),
+            (B,   "\"b\" (0:9-0:10, bytes 9-10)".to_string()),
+        ];
+
+    for (i, act) in actual.iter().enumerate() {
+        println!("{:?}", act);
+        println!("{:?}", expected[i]);
+        println!();
+    }
+
+    assert_eq!(actual, expected);
+}
+
+
 /// Tests `Lexer` with whitespace filter.
 #[test]
 fn whitespace_filter() {

@@ -192,14 +192,6 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         None
     }
 
-    /// Skips past any filtered tokens at the lex position.
-    pub fn filter_next(&mut self) {
-        let span = span!(Level::DEBUG, "Lexer::filter_next");
-        let _enter = span.enter();
-
-        let _ = self.scan_unfiltered();
-    }
-
     /// Returns the next token that would be returned by the `next` method
     /// without advancing the lexer position, assuming the lexer state is
     /// unchanged by the time `next` is called.
