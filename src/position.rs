@@ -531,6 +531,24 @@ impl Pos {
     }
 }
 
+impl std::ops::Add for Pos {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Pos {
+            byte: self.byte + other.byte,
+            page: self.page + other.page,
+        }
+    }
+}
+
+impl std::ops::AddAssign for Pos {
+    fn add_assign(&mut self, other: Self) {
+        self.byte += other.byte;
+        self.page += other.page;
+    }
+}
+
 impl Default for Pos {
     fn default() -> Self {
         Pos::ZERO
@@ -564,6 +582,32 @@ impl Page {
     /// Return true if the page position is the start of a new line.
     pub fn is_line_start(self) -> bool {
         self.column == 0
+    }
+}
+
+impl std::ops::Add for Page {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Page {
+            line: self.line + other.line,
+            column: if other.is_line_start() || other.line > 0 { 
+                other.column
+            } else {
+                self.column + other.column
+            },
+        }
+    }
+}
+
+impl std::ops::AddAssign for Page {
+    fn add_assign(&mut self, other: Self) {
+        self.line += other.line;
+        if other.is_line_start() || other.line > 0 {
+            self.column = other.column;
+        } else {
+            self.column += other.column;
+        }
     }
 }
 

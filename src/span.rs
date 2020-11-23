@@ -115,12 +115,6 @@ impl<'text> Span<'text> {
         *pos >= self.start()  && *pos <= self.end()
     }
 
-    // /// Extends the span by the given span position.
-    // pub fn extend_by(&mut self, pos: Pos) {
-    //     self.byte.end += pos.byte;
-    //     self.page.end += pos.page;
-    // }
-
     /// Widens the span on the left and right to the nearest newline.
     pub fn widen_to_line<Cm>(&self, metrics: Cm) -> Self
         where Cm: ColumnMetrics,
