@@ -294,6 +294,9 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
         let _enter = span.enter();
         
         for token in &tokens {
+            let span = span!(Level::TRACE, "seq", expect = ?token);
+            let _enter = span.enter();
+
             if lexer.is_empty() {
                 // Unexpected End-of-text.
                 return Err(Failure {
