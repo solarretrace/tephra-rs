@@ -10,4 +10,5 @@
 
 // Internal modules.
 mod lexer_suite;
+mod metrics_suite;
 mod span_suite;

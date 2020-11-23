@@ -110,6 +110,46 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
         start
     }
 
+    /// Returns the position after the given pattern string, given its start
+    /// position.
+    fn position_after_str<'text, 'a>(
+        &self,
+        text: &'text str,
+        start: Pos,
+        pattern: &'a str)
+        -> Pos
+    {
+        let mut end = start;
+        while let Some(adv) = self.next_position(text, end) {
+            if &pattern[end.byte-start.byte .. adv.byte-start.byte] 
+                != &text[end.byte..adv.byte]
+            {
+                break;
+            }
+            end = adv;
+            if adv.byte - start.byte >= pattern.len() { break; }
+        }
+        return end;
+    }
+
+    /// Returns the position after any `char`s matching a closure, given its
+    /// start position.
+    fn position_after_chars_matching<'text, F>(
+        &self,
+        text: &'text str,
+        start: Pos,
+        mut f: F)
+        -> Pos
+        where F: FnMut(char) -> bool
+    {
+        let mut end = start;
+        while let Some(adv) = self.next_position(text, end) {
+            if !text[end.byte..adv.byte].chars().all(&mut f) { break; }
+            end = adv;
+        }
+        end
+    }
+
     /// Returns an iterator over the display columns of the given text.
     fn iter_columns<'text>(&self, text: &'text str, base: Pos)
         -> IterColumns<'text, Self>
