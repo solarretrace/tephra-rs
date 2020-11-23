@@ -150,6 +150,24 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
         end
     }
 
+    /// Returns the next position after `char`s matching a closure, given its
+    /// start position.
+    fn next_position_after_chars_matching<'text, F>(
+        &self,
+        text: &'text str,
+        start: Pos,
+        mut f: F)
+        -> Pos
+        where F: FnMut(char) -> bool
+    {
+        if let Some(adv) = self.next_position(text, start) {
+            if text[start.byte..adv.byte].chars().all(&mut f) { 
+                return adv;
+            }
+        }
+        start
+    }
+
     /// Returns an iterator over the display columns of the given text.
     fn iter_columns<'text>(&self, text: &'text str, base: Pos)
         -> IterColumns<'text, Self>
