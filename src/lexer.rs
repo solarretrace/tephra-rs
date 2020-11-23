@@ -223,10 +223,6 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
             self.cursor = other.cursor;
         }
 
-        if self.parse_start > other.parse_start {
-            self.parse_start = other.parse_start;
-        }
-
         self
     }
     
