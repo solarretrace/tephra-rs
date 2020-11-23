@@ -210,6 +210,9 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
 
     /// Skips past any filtered tokens at the lex position.
     pub fn filter_next(&mut self) {
+        let span = span!(Level::DEBUG, "Lexer::filter_next");
+        let _enter = span.enter();
+
         let _ = self.next();
         // Move back to the parse_start of token_start unfiltered token.
         self.end = self.token_start;
