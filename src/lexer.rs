@@ -361,6 +361,7 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
                 .with_highlight(Highlight::new(self.cursor_span(),
                     format!("cursor ({})", self.cursor_span()))));
 
+        writeln!(f, "Scanner: {:?}", self.scanner)?;
         write!(f, "{}", source_display)
     }
 }
