@@ -222,22 +222,8 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         let span = span!(Level::DEBUG, "Lexer::peek");
         let _enter = span.enter();
 
-        let mut scanner = self.scanner.clone();
-        let mut end_byte = self.end.byte;
-        while end_byte < self.source.len() {
-            match scanner.scan(self.source, self.end, self.metrics) {
-                Some((token, new)) if self.filter
-                    .as_ref()
-                    .map_or(false, |f| !(f)(&token)) => 
-                {
-                    end_byte = new.byte;
-                },
-
-                Some((token, _)) => return Some(token),
-                None             => return None,
-            }
-        }
-        None
+        // TODO: Make this more efficient.
+        self.clone().next()
     }
 }
 

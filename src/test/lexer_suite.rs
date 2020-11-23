@@ -113,6 +113,24 @@ fn simple() {
     assert_eq!(lexer.next(), Some(B));
 }
 
+
+/// Tests `Lexer::peek`.
+#[test]
+fn simple_peek() {
+    use TestToken::*;
+    let text = "aa b";
+    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+
+    assert_eq!(lexer.peek(), Some(Aa));
+    assert_eq!(lexer.next(), Some(Aa));
+    assert_eq!(lexer.peek(), Some(Ws));
+    assert_eq!(lexer.next(), Some(Ws));
+    assert_eq!(lexer.peek(), Some(B));
+    assert_eq!(lexer.next(), Some(B));
+    assert_eq!(lexer.peek(), None);
+    assert_eq!(lexer.next(), None);
+}
+
 /// Tests `Lexer::iter_with_spans`.
 #[test]
 fn simple_iter() {
