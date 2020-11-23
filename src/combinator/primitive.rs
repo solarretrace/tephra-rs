@@ -205,7 +205,7 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
         let _enter = span.enter();
 
         for token in &tokens {
-            let span = span!(Level::TRACE, "any", expect = token);
+            let span = span!(Level::TRACE, "any", expect = ?token);
             let _enter = span.enter();
 
             let mut lexer = lexer.clone();
