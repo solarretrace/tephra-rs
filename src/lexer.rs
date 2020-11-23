@@ -207,7 +207,6 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     /// lexer will begin a new parse and advance past any filtered tokens.
     pub fn sublexer(&self) -> Self {
         let mut sub = self.clone();
-        sub.filter_next();
         sub.consume_current();
         sub
     }
@@ -257,15 +256,6 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     pub fn cursor_span(&self) -> Span<'text> {
         Span::new_at(self.cursor, self.source)
     }
-
-    /// Returns the span of the remainder of the unlexed text.
-    pub fn remaining_span(&self) -> Span<'text> {
-        Span::new_enclosing(
-            self.cursor,
-            self.metrics.end_position(self.source, self.cursor),
-            self.source)
-    }
-
 }
 
 impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>

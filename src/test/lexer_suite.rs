@@ -161,11 +161,11 @@ fn auto_filter() {
 
     assert_eq!(lexer.peek(), Some(B));
 
-    lexer.take_filter();
+    let f = lexer.take_filter();
 
     assert_eq!(lexer.peek(), Some(Aa));
 
-    lexer.set_filter_fn(|tok| *tok != Aa);
+    lexer.set_filter(f);
 
     let actual = lexer
         .iter_with_spans()

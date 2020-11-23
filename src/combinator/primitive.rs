@@ -89,7 +89,7 @@ pub fn fail<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses the end of the text.
-pub fn end_of_text<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
+pub fn end_of_text<'text, Sc, Cm>(lexer: Lexer<'text, Sc, Cm>)
     -> ParseResult<'text, Sc, Cm, ()>
     where
         Sc: Scanner,
@@ -98,7 +98,6 @@ pub fn end_of_text<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
     let span = span!(Level::DEBUG, "end_of_text");
     let _enter = span.enter();
 
-    lexer.filter_next();
     if lexer.is_empty() {
         event!(Level::TRACE, "end of text found");
         Ok(Success {

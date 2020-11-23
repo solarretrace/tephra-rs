@@ -65,12 +65,11 @@ pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
         V: std::fmt::Debug
 {
-    move |mut lexer| {
+    move |lexer| {
         let span = span!(Level::DEBUG, "atomic");
         let _enter = span.enter();
 
         let initial = lexer.clone();
-        lexer.filter_next();
         let end = lexer.end_pos();
 
         match parser
