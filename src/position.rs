@@ -117,7 +117,7 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
         text: &'text str,
         start: Pos,
         pattern: &'a str)
-        -> Pos
+        -> Option<Pos>
     {
         let mut end = start;
         while let Some(adv) = self.next_position(text, end) {
@@ -126,10 +126,12 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
             {
                 break;
             }
+            if adv.byte - start.byte >= pattern.len() {
+                return Some(adv);
+            }
             end = adv;
-            if adv.byte - start.byte >= pattern.len() { break; }
         }
-        return end;
+        None
     }
 
     /// Returns the position after any `char`s matching a closure, given its
@@ -139,7 +141,7 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
         text: &'text str,
         start: Pos,
         mut f: F)
-        -> Pos
+        -> Option<Pos>
         where F: FnMut(char) -> bool
     {
         let mut end = start;
@@ -147,7 +149,11 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
             if !text[end.byte..adv.byte].chars().all(&mut f) { break; }
             end = adv;
         }
-        end
+        if end == start {
+            None
+        } else {
+            Some(end)
+        }
     }
 
     /// Returns the next position after `char`s matching a closure, given its
@@ -157,15 +163,15 @@ pub trait ColumnMetrics: std::fmt::Debug + Clone + Copy {
         text: &'text str,
         start: Pos,
         mut f: F)
-        -> Pos
+        -> Option<Pos>
         where F: FnMut(char) -> bool
     {
         if let Some(adv) = self.next_position(text, start) {
             if text[start.byte..adv.byte].chars().all(&mut f) { 
-                return adv;
+                return Some(adv);
             }
         }
-        start
+        None
     }
 
     /// Returns an iterator over the display columns of the given text.

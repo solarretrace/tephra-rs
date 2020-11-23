@@ -27,11 +27,11 @@ fn lf_position_after_str() {
 
 
     let actual = metrics.position_after_str(text, Pos::ZERO, "ab");
-    let expected = Pos::new(2, 0, 2);
+    let expected = Some(Pos::new(2, 0, 2));
     assert_eq!(actual, expected);
 
     let actual = metrics.position_after_str(text, Pos::new(1, 2, 3), "bc");
-    let expected = Pos::new(3, 2, 5);
+    let expected = Some(Pos::new(3, 2, 5));
     assert_eq!(actual, expected);
 }
 
@@ -46,14 +46,14 @@ fn lf_next_position_after_chars_matching() {
         text,
         Pos::ZERO,
         char::is_whitespace);
-    let expected = Pos::new(1, 0, 1);
+    let expected = Some(Pos::new(1, 0, 1));
     assert_eq!(actual, expected);
 
     let actual = metrics.next_position_after_chars_matching(
         text,
         Pos::new(4, 2, 3),
         char::is_whitespace);
-    let expected = Pos::new(5, 2, 4);
+    let expected = Some(Pos::new(5, 2, 4));
     assert_eq!(actual, expected);
 }
 
@@ -68,13 +68,13 @@ fn lf_position_after_chars_matching() {
         text,
         Pos::ZERO,
         char::is_whitespace);
-    let expected = Pos::new(6, 0, 12);
+    let expected = Some(Pos::new(6, 0, 12));
     assert_eq!(actual, expected);
 
     let actual = metrics.position_after_chars_matching(
         text,
         Pos::new(4, 2, 3),
         char::is_whitespace);
-    let expected = Pos::new(6, 2, 8);
+    let expected = Some(Pos::new(6, 2, 8));
     assert_eq!(actual, expected);
 }
