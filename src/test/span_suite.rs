@@ -61,7 +61,7 @@ fn widen_to_line() {
 #[test]
 fn widen_empty_to_line() {
     let text = " \n  abcd  \n ";
-    let span = Span::new_from(Pos::new(6, 1, 4), text);
+    let span = Span::new_at(Pos::new(6, 1, 4), text);
 
     assert_eq!(
         format!("{:?}", span.widen_to_line(Lf::new())),

@@ -153,7 +153,7 @@ fn simple_iter() {
 
 /// Tests `Lexer` with whitespace filter.
 #[test]
-fn no_whitespace() {
+fn whitespace_filter() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
     let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
@@ -185,7 +185,7 @@ fn no_whitespace() {
 
 /// Tests `both` with whitespace filter.
 #[test]
-fn atma_issue_1_both_no_whitespace() {
+fn atma_issue_1_both_whitespace_filter() {
     use TestToken::*;
     let input = "aa b \nbdef\n aaa";
     let mut lexer = Lexer::new(Test, input, Lf::with_tab_width(4));
@@ -219,7 +219,7 @@ note: lexer state
 0 | aa b 
   | \\ token (0:0, byte 0)
   | \\ parse (0:0, byte 0)
-  | \\ unfiltered (0:0, byte 0)
+  | \\ cursor (0:0, byte 0)
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -230,18 +230,7 @@ note: lexer state
 0 | aa b 
   | -- token (0:0-0:2, bytes 0-2)
   | -- parse (0:0-0:2, bytes 0-2)
-  | -- unfiltered (0:0-0:2, bytes 0-2)
-");
-
-    assert_eq!(lexer.next(), Some(B));
-    assert_eq!(format!("{}", lexer), "\
-note: lexer state
- --> (0:0-0:5, bytes 0-5)
-  | 
-0 | aa b 
-  |    - token (0:3-0:4, bytes 3-4)
-  | ---- parse (0:0-0:4, bytes 0-4)
-  | ---- unfiltered (0:0-0:4, bytes 0-4)
+  |    \\ cursor (0:3, byte 3)
 ");
 
     assert_eq!(lexer.next(), Some(B));
@@ -249,23 +238,36 @@ note: lexer state
 note: lexer state
  --> (0:0-1:4, bytes 0-10)
   | 
-0 | // aa b 
-1 | || bdef
-  | || - token (1:0-1:1, bytes 6-7)
-  | ||_^ parse (0:0-1:1, bytes 0-7)
-  |  |_^ unfiltered (0:0-1:1, bytes 0-7)
+0 | aa b 
+  |    - token (0:3-0:4, bytes 3-4)
+  | ---- parse (0:0-0:4, bytes 0-4)
+1 | bdef
+  | \\ cursor (1:0, byte 6)
+");
+
+    assert_eq!(lexer.next(), Some(B));
+    assert_eq!(format!("{}", lexer), "\
+note: lexer state
+ --> (0:0-1:4, bytes 0-10)
+  | 
+0 | / aa b 
+1 | | bdef
+  | | - token (1:0-1:1, bytes 6-7)
+  | |_^ parse (0:0-1:1, bytes 0-7)
+  |    \\ cursor (1:1, byte 7)
 ");
 
     assert_eq!(lexer.next(), Some(Def));
     assert_eq!(format!("{}", lexer), "\
 note: lexer state
- --> (0:0-1:4, bytes 0-10)
+ --> (0:0-2:4, bytes 0-15)
   | 
-0 | // aa b 
-1 | || bdef
-  | ||  --- token (1:1-1:4, bytes 7-10)
-  | ||____^ parse (0:0-1:4, bytes 0-10)
-  |  |____^ unfiltered (0:0-1:4, bytes 0-10)
+0 | / aa b 
+1 | | bdef
+  | |  --- token (1:1-1:4, bytes 7-10)
+  | |____^ parse (0:0-1:4, bytes 0-10)
+2 |    aaa
+  |    \\ cursor (2:1, byte 12)
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
@@ -273,12 +275,12 @@ note: lexer state
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 
-0 | // aa b 
-1 | || bdef
-2 | ||  aaa
-  | ||  -- token (2:1-2:3, bytes 12-14)
-  | ||___^ parse (0:0-2:3, bytes 0-14)
-  |  |___^ unfiltered (0:0-2:3, bytes 0-14)
+0 | / aa b 
+1 | | bdef
+2 | |  aaa
+  | |  -- token (2:1-2:3, bytes 12-14)
+  | |___^ parse (0:0-2:3, bytes 0-14)
+  |      \\ cursor (2:3, byte 14)
 ");
 
     assert_eq!(lexer.next(), Some(A));
@@ -286,12 +288,12 @@ note: lexer state
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 
-0 | // aa b 
-1 | || bdef
-2 | ||  aaa
-  | ||    - token (2:3-2:4, bytes 14-15)
-  | ||____^ parse (0:0-2:4, bytes 0-15)
-  |  |____^ unfiltered (0:0-2:4, bytes 0-15)
+0 | / aa b 
+1 | | bdef
+2 | |  aaa
+  | |    - token (2:3-2:4, bytes 14-15)
+  | |____^ parse (0:0-2:4, bytes 0-15)
+  |       \\ cursor (2:4, byte 15)
 ");
 
     assert_eq!(lexer.next(), None);

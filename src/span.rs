@@ -54,7 +54,7 @@ impl<'text> Span<'text> {
 
     /// Constructs a new empty span in the given source text, starting from the
     /// given byte and page.
-    pub fn new_from(pos: Pos, source: &'text str) -> Self {
+    pub fn new_at(pos: Pos, source: &'text str) -> Self {
         Span {
             source,
             byte: ByteSpan { start: pos.byte, end: pos.byte },
@@ -485,7 +485,7 @@ impl std::fmt::Display for SpanOwned {
 
 impl<'text> From<Span<'text>> for SpanOwned {
     fn from(span: Span<'text>) -> Self {
-        let full_span = Span::new_from(Pos::ZERO, span.source);
+        let full_span = Span::new_at(Pos::ZERO, span.source);
         SpanOwned {
             source: span.source.to_owned().into(),
             full_byte: full_span.byte,

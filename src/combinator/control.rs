@@ -34,7 +34,7 @@ use tracing::span;
 /// + `parser`: The parser to run with with the applied token filter.
 ///
 /// [`Scanner::Token`]: crate::lexer::Scanner#associatedtype.Token
-pub fn filter<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
+pub fn filter_with<'text, Sc, Cm, F, P, V>(filter_fn: F, mut parser: P)
     -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>
     where
         Sc: Scanner,
@@ -166,12 +166,11 @@ pub fn text<'text, Sc, Cm, F, V>(mut parser: F)
         Cm: ColumnMetrics,
         F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
 {
-    move |mut lexer| {
+    move |lexer| {
         let span = span!(Level::DEBUG, "text");
         let _enter = span.enter();
 
-        lexer.filter_next();
-        let start = lexer.end_pos().byte;
+        let start = lexer.cursor_pos().byte;
         match (parser)
             (lexer)
             .trace_result(Level::TRACE, "subparse")

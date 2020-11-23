@@ -62,16 +62,13 @@ pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
     token_start: Pos,
     /// The position of the start of the current parse sequence.
     parse_start: Pos,
-    /// The position of the start of the current parse sequence, including any
-    /// filtered tokens preceding it.
-    parse_unfiltered_start: Pos,
-    /// The current position of the lexer cursor.
+    /// The end position of the lexer cursor for the parse and last lexed token.
     end: Pos,
+    /// The current position of the lexer cursor.
+    cursor: Pos,
 
-    /// A flag indicating that the start of the current parse sequence has been
-    /// found, and that any further filtered tokens should be included in the
-    /// current parse sequence.
-    parse_start_found: bool,
+    /// The next token to emit.
+    buffer: Option<(Sc::Token, Pos)>,
 }
 
 impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
@@ -88,15 +85,45 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
             filter: None,
             token_start: Pos::ZERO,
             parse_start: Pos::ZERO,
-            parse_unfiltered_start: Pos::ZERO,
             end: Pos::ZERO,
-            parse_start_found: false,
+            cursor: Pos::ZERO,
+            buffer: None,
         }
     }
 
     /// Returns true if there is no more text available to process.
     pub fn is_empty(&self) -> bool {
         self.end.byte >= self.source.len()
+    }
+
+    /// Returns the underlying source text.
+    pub fn source(&self) -> &'text str {
+        self.source
+    }
+
+    /// Returns the column metrics for the source.
+    pub fn column_metrics(&self) -> Cm {
+        self.metrics
+    }
+
+    /// Returns the end position for the lexer's current parse.
+    pub fn end_pos(&self) -> Pos {
+        self.end
+    }
+
+    /// Returns the position of the lexer's cursor.
+    pub fn cursor_pos(&self) -> Pos {
+        self.cursor
+    }
+
+
+    /// Consumes the text from the parse_start of the current parse up to the current
+    /// position. This ends the 'current parse' and prevents further spans
+    /// from including any previously lexed text.
+    fn consume_current(&mut self) {
+        self.token_start = self.cursor;
+        self.parse_start = self.cursor;
+        self.end = self.cursor;
     }
 
     /// Returns an iterator over the lexer tokens together with their spans.
@@ -118,6 +145,8 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     /// Returns the token filter, removing it from the lexer.
     pub fn take_filter(&mut self) -> Option<Arc<dyn Fn(&Sc::Token) -> bool>>
     {
+        self.cursor = self.end;
+        self.buffer = None;
         self.filter.take()
     }
 
@@ -126,32 +155,60 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         &mut self,
         filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>)
     {
+        self.cursor = self.end;
         self.filter = filter;
+
+        self.buffer = self.scan_unfiltered();
     }
 
-    /// Returns the parse_unfiltered_start underlying source text.
-    pub fn source(&self) -> &'text str {
-        self.source
+    /// Scans to the next unfiltered token and returns it, advancing the lexer
+    /// state past any filtered tokens. This method is idempotent.
+    fn scan_unfiltered(&mut self) -> Option<(Sc::Token, Pos)> {
+        let span = span!(Level::DEBUG, "Lexer::scan_unfiltered");
+        let _enter = span.enter();
+
+        while self.cursor.byte < self.source.len() {
+            match self.scanner
+                .scan(self.source, self.cursor, self.metrics)
+            {
+                Some((token, adv)) if self.filter
+                    .as_ref()
+                    .map_or(false, |f| !(f)(&token)) => 
+                {
+                    // Parsed a filtered token.
+                    self.cursor = adv;
+                },
+
+                Some((token, adv)) => {
+                    // Parsed a non-filtered token.
+                    return Some((token, adv));
+                },
+
+                None => {
+                    return None;
+                },
+            }
+        }
+        None
     }
 
-    /// Returns the column metrics for the source.
-    pub fn column_metrics(&self) -> Cm {
-        self.metrics
+    /// Skips past any filtered tokens at the lex position.
+    pub fn filter_next(&mut self) {
+        let span = span!(Level::DEBUG, "Lexer::filter_next");
+        let _enter = span.enter();
+
+        let _ = self.scan_unfiltered();
     }
 
-    /// Returns the end position for the lexer's current parse.
-    pub fn end_pos(&self) -> Pos {
-        self.end
-    }
+    /// Returns the next token that would be returned by the `next` method
+    /// without advancing the lexer position, assuming the lexer state is
+    /// unchanged by the time `next` is called.
+    pub fn peek(&self) -> Option<Sc::Token> {
+        let span = span!(Level::DEBUG, "Lexer::peek");
+        let _enter = span.enter();
 
-    /// Consumes the text from the parse_start of the current parse up to the current
-    /// position. This ends the 'current parse' and prevents further spans
-    /// from including any previously lexed text.
-    fn consume_current(&mut self) {
-        self.token_start = self.end;
-        self.parse_start = self.end;
-        self.parse_unfiltered_start = self.end;
-        self.parse_start_found = false;
+        // TODO: Make this more efficient.
+        self.clone().next()
     }
 
     /// Creates a sublexer starting at the current lex position. The returned
@@ -171,10 +228,14 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
             self.token_start = other.token_start;
         }
 
-        if self.parse_unfiltered_start > other.parse_unfiltered_start {
-            self.parse_unfiltered_start = other.parse_unfiltered_start;
+        if self.cursor < other.cursor {
+            self.cursor = other.cursor;
+        }
+
+        if self.parse_start > other.parse_start {
             self.parse_start = other.parse_start;
         }
+
         self
     }
     
@@ -189,45 +250,30 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         Span::new_enclosing(self.parse_start, self.end, self.source)
     }
 
-    /// Returns the parse_unfiltered_start span (including filtered text) back to the token_start
+    /// Returns the cursor span (including filtered text) back to the token_start
     /// consumed position.
     pub fn parse_span_unfiltered(&self) -> Span<'text> {
-        Span::new_enclosing(self.parse_unfiltered_start, self.end, self.source)
+        Span::new_enclosing(self.parse_start, self.cursor, self.source)
     }
 
     /// Returns the span of the end of the lexed text.
     pub fn end_span(&self) -> Span<'text> {
-        Span::new_from(self.end, self.source)
+        Span::new_at(self.end, self.source)
+    }
+
+    /// Returns the span of the lexer cursor.
+    pub fn cursor_span(&self) -> Span<'text> {
+        Span::new_at(self.cursor, self.source)
     }
 
     /// Returns the span of the remainder of the unlexed text.
     pub fn remaining_span(&self) -> Span<'text> {
         Span::new_enclosing(
-            self.end,
-            self.metrics.end_position(self.source, self.end),
+            self.cursor,
+            self.metrics.end_position(self.source, self.cursor),
             self.source)
     }
 
-    /// Skips past any filtered tokens at the lex position.
-    pub fn filter_next(&mut self) {
-        let span = span!(Level::DEBUG, "Lexer::filter_next");
-        let _enter = span.enter();
-
-        let _ = self.next();
-        // Move back to the parse_start of token_start unfiltered token.
-        self.end = self.token_start;
-    }
-
-    /// Returns the next token that would be returned by the `next` method
-    /// without advancing the lexer position, assuming the lexer state is
-    /// unchanged by the time `next` is called.
-    pub fn peek(&self) -> Option<Sc::Token> {
-        let span = span!(Level::DEBUG, "Lexer::peek");
-        let _enter = span.enter();
-
-        // TODO: Make this more efficient.
-        self.clone().next()
-    }
 }
 
 impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
@@ -241,30 +287,35 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
         let span = span!(Level::DEBUG, "Lexer::next");
         let _enter = span.enter();
 
-        while self.end.byte < self.source.len() {
-            match self.scanner.scan(self.source, self.end, self.metrics) {
-                Some((token, new)) if self.filter
+        while self.cursor.byte < self.source.len() {
+            match self.buffer
+                .take()
+                .or_else(|| self.scanner
+                    .scan(self.source, self.cursor, self.metrics))
+            {
+                Some((token, adv)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
                 {
                     // Parsed a filtered token.
-                    self.end = new;
-                    self.token_start = new;
+                    self.cursor = adv;
+                    self.token_start = adv;
                 },
 
-                Some((token, new)) => {
+                Some((token, adv)) => {
                     // Parsed a non-filtered token.
-                    if !self.parse_start_found {
-                        self.parse_start = self.end;
-                        self.parse_start_found = true;
+                    self.token_start = self.cursor;
+                    self.end = adv;
+                    self.cursor = adv;
+
+                    if self.filter.is_some() {
+                        self.buffer = self.scan_unfiltered();
                     }
-                    self.token_start = self.end;
-                    self.end = new;
                     return Some(token);
                 },
 
                 None => {
-                    self.token_start = self.end;
+                    self.token_start = self.cursor;
                     return None;
                 },
             }
@@ -286,9 +337,9 @@ impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm>
             .field("filter_set", &self.filter.is_some())
             .field("token_start", &self.token_start)
             .field("parse_start", &self.parse_start)
-            .field("parse_unfiltered_start", &self.parse_unfiltered_start)
             .field("end", &self.end)
-            .field("parse_start_found", &self.parse_start_found)
+            .field("cursor", &self.cursor)
+            .field("buffer", &self.buffer)
             .finish()
     }
 }
@@ -304,9 +355,9 @@ impl<'text, Sc, Cm> PartialEq for Lexer<'text, Sc, Cm>
         self.filter.is_some() == other.filter.is_some() &&
         self.token_start == other.token_start &&
         self.parse_start == other.parse_start &&
-        self.parse_unfiltered_start == other.parse_unfiltered_start &&
         self.end == other.end && 
-        self.parse_start_found == other.parse_start_found
+        self.cursor == other.cursor &&
+        self.buffer == other.buffer
     }
 }
 
@@ -325,8 +376,8 @@ impl<'text, Sc, Cm> Display for Lexer<'text, Sc, Cm>
                     format!("token ({})", self.token_span())))
                 .with_highlight(Highlight::new(self.parse_span(),
                     format!("parse ({})", self.parse_span())))
-                .with_highlight(Highlight::new(self.parse_span_unfiltered(),
-                    format!("unfiltered ({})", self.parse_span()))));
+                .with_highlight(Highlight::new(self.cursor_span(),
+                    format!("cursor ({})", self.cursor_span()))));
 
         write!(f, "{}", source_display)
     }
