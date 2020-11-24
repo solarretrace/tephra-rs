@@ -163,9 +163,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         &mut self,
         filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>)
     {
-        self.cursor = self.end;
         self.filter = filter;
-
         self.buffer = self.scan_unfiltered();
     }
 
