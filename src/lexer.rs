@@ -237,6 +237,8 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
             self.cursor = other.cursor;
         }
 
+        self.scanner = other.scanner;
+        self.scanner_save = other.scanner_save;
         event!(Level::TRACE, "joined\n{}", self);
         self
     }
