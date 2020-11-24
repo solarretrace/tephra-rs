@@ -70,6 +70,7 @@ pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
 
     /// The next token to emit.
     buffer: Option<(Sc::Token, Pos)>,
+    back_scanner: Option<Sc>,
 }
 
 impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
@@ -89,12 +90,13 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
             end: Pos::ZERO,
             cursor: Pos::ZERO,
             buffer: None,
+            back_scanner: None,
         }
     }
 
     /// Returns true if there is no more text available to process.
     pub fn is_empty(&self) -> bool {
-        self.end.byte >= self.source.len()
+        self.cursor.byte >= self.source.len()
     }
 
     /// Returns the underlying source text.
@@ -125,6 +127,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         self.token_start = self.cursor;
         self.parse_start = self.cursor;
         self.end = self.cursor;
+        self.back_scanner = None;
     }
 
     /// Returns an iterator over the lexer tokens together with their spans.
@@ -148,6 +151,10 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     {
         self.cursor = self.end;
         self.buffer = None;
+        if let Some(scanner) = self.back_scanner.take() {
+            self.scanner = scanner;
+        }
+
         self.filter.take()
     }
 
@@ -168,6 +175,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         let span = span!(Level::DEBUG, "Lexer::scan_unfiltered");
         let _enter = span.enter();
 
+        self.back_scanner = Some(self.scanner.clone());
         while self.cursor.byte < self.source.len() {
             match self.scanner
                 .scan(self.source, self.cursor, self.metrics)
