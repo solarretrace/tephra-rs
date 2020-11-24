@@ -19,6 +19,7 @@ use crate::span::Span;
 // External library imports.
 use tracing::Level;
 use tracing::span;
+use tracing::event;
 
 // Standard library imports.
 use std::fmt::Debug;
