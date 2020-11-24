@@ -71,6 +71,8 @@ pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
 
         let current_cursor = lexer.cursor_pos();
 
+        event!(Level::TRACE, "before parse:\n{}", lexer);
+
         match parser
             (lexer.clone())
             .trace_result(Level::TRACE, "subparse")

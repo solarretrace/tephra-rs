@@ -133,6 +133,8 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
         let span = span!(Level::DEBUG, "one", expected = ?token);
         let _enter = span.enter();
 
+        event!(Level::TRACE, "before parse:\n{}", lexer);
+
         if lexer.is_empty() {
             event!(Level::TRACE, "lexer is empty");
             // Unexpected End-of-text.
@@ -199,6 +201,8 @@ pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
         let span = span!(Level::DEBUG, "any",
             expected = ?DisplayList(&tokens[..]));
         let _enter = span.enter();
+
+        event!(Level::TRACE, "before parse:\n{}", lexer);
 
         for token in &tokens {
             let span = span!(Level::TRACE, "any", expect = ?token);
@@ -289,6 +293,8 @@ pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
         let span = span!(Level::DEBUG, "seq",
             expected = ?DisplayList(&tokens[..]));
         let _enter = span.enter();
+
+        event!(Level::TRACE, "before parse:\n{}", lexer);
         
         for token in &tokens {
             let span = span!(Level::TRACE, "seq", expect = ?token);

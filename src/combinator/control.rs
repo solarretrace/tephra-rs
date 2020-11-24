@@ -81,6 +81,8 @@ pub fn exact<'text, Sc, Cm, F, V>(mut parser: F)
         let span = span!(Level::DEBUG, "exact");
         let _enter = span.enter();
 
+        event!(Level::TRACE, "before removing filter:\n{}", lexer);
+
         let filter = lexer.take_filter();
         match (parser)
             (lexer)
@@ -202,6 +204,8 @@ pub fn spanned<'text, Sc, Cm, F, V>(mut parser: F)
     move |lexer| {
         let span = span!(Level::DEBUG, "spanned");
         let _enter = span.enter();
+
+        event!(Level::TRACE, "before subparse:\n{}", lexer);
 
         match (parser)
             (lexer.sublexer())
