@@ -20,6 +20,7 @@ use crate::result::Success;
 // External library imports.
 use tracing::Level;
 use tracing::span;
+use tracing::event;
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -19,6 +19,7 @@ use crate::position::ColumnMetrics;
 // External library imports.
 use tracing::Level;
 use tracing::span;
+use tracing::event;
 
 
 ////////////////////////////////////////////////////////////////////////////////
