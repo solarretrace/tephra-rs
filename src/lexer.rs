@@ -305,7 +305,7 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
                         self.buffer = self.scan_unfiltered();
                     }
                     event!(Level::DEBUG, "token {:?}", token);
-                    event!(Level::TRACE, "lexer {:?}", self);
+                    event!(Level::TRACE, "lexer {}", self);
                     return Some(token);
                 },
 
