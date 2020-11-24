@@ -69,19 +69,18 @@ pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
         let span = span!(Level::DEBUG, "atomic");
         let _enter = span.enter();
 
-        let initial = lexer.clone();
-        let end = lexer.end_pos();
+        let current_cursor = lexer.cursor_pos();
 
         match parser
-            (lexer)
+            (lexer.clone())
             .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => Ok(succ.map_value(Some)),
             
-            Err(fail) if fail.lexer.token_span().start() > end => Err(fail),
+            Err(fail) if fail.lexer.cursor_pos() > current_cursor => Err(fail),
 
-            Err(_)   => Ok(Success {
-                lexer: initial,
+            Err(_) => Ok(Success {
+                lexer,
                 value: None,
             }),
         }
