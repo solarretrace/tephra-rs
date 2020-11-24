@@ -283,6 +283,7 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
         let _enter = span.enter();
 
         while self.cursor.byte < self.source.len() {
+            event!(Level::TRACE, "buffer {:?}", self.buffer);
             match self.buffer
                 .take()
                 .or_else(|| self.scanner
@@ -298,6 +299,7 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
                 },
 
                 Some((token, adv)) => {
+                    event!(Level::DEBUG, "token {:?}", token);
                     // Parsed a non-filtered token.
                     self.token_start = self.cursor;
                     self.end = adv;
@@ -306,7 +308,6 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
                     if self.filter.is_some() {
                         self.buffer = self.scan_unfiltered();
                     }
-                    event!(Level::DEBUG, "token {:?}", token);
                     event!(Level::TRACE, "lexer {}", self);
                     return Some(token);
                 },
