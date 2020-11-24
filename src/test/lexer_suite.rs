@@ -46,7 +46,13 @@ impl std::fmt::Display for TestToken {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Test;
+struct Test(Option<TestToken>);
+
+impl Test {
+    pub fn new() -> Self {
+        Test(None)
+    }
+}
 
 impl Scanner for Test {
     type Token = TestToken;
@@ -58,28 +64,38 @@ impl Scanner for Test {
         let text = &source[base.byte..];
 
         if text.starts_with("aa") {
+            self.0 = Some(TestToken::Aa);
             Some((
                 TestToken::Aa,
                 metrics.end_position(&source[..base.byte + 2], base)))
+
         } else if text.starts_with('a') {
+            self.0 = Some(TestToken::A);
             Some((
                 TestToken::A,
                 metrics.end_position(&source[..base.byte + 1], base)))
+
         } else if text.starts_with('b') {
+            self.0 = Some(TestToken::B);
             Some((
                 TestToken::B,
                 metrics.end_position(&source[..base.byte + 1], base)))
+
         } else if text.starts_with("def") {
+            self.0 = Some(TestToken::Def);
             Some((
                 TestToken::Def,
                 metrics.end_position(&source[..base.byte + 3], base)))
+            
         } else {
+            self.0 = Some(TestToken::Ws);
             let rest = text.trim_start_matches(char::is_whitespace);
             if rest.len() < text.len() {
                 let substr_len = text.len() - rest.len();
                 let substr = &source[0.. base.byte + substr_len];
                 Some((TestToken::Ws, metrics.end_position(substr, base)))
             } else {
+                self.0 = None;
                 None
             }
         }
@@ -94,7 +110,7 @@ impl Scanner for Test {
 #[test]
 fn empty() {
     let text = "";
-    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    let mut lexer = Lexer::new(Test::new(), text, Lf::with_tab_width(4));
 
     assert_eq!(
         lexer.next(),
@@ -106,7 +122,7 @@ fn empty() {
 fn simple() {
     use TestToken::*;
     let text = "aa b";
-    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    let mut lexer = Lexer::new(Test::new(), text, Lf::with_tab_width(4));
 
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(lexer.next(), Some(Ws));
@@ -119,7 +135,7 @@ fn simple() {
 fn simple_peek() {
     use TestToken::*;
     let text = "aa b";
-    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    let mut lexer = Lexer::new(Test::new(), text, Lf::with_tab_width(4));
 
     assert_eq!(lexer.peek(), Some(Aa));
     assert_eq!(lexer.next(), Some(Aa));
@@ -136,7 +152,7 @@ fn simple_peek() {
 fn simple_iter() {
     use TestToken::*;
     let text = "aa b";
-    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    let mut lexer = Lexer::new(Test::new(), text, Lf::with_tab_width(4));
 
     assert_eq!(
         lexer
@@ -156,7 +172,7 @@ fn simple_iter() {
 fn auto_filter() {
     use TestToken::*;
     let text = "aaaabaaaab";
-    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    let mut lexer = Lexer::new(Test::new(), text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != Aa);
 
     assert_eq!(lexer.peek(), Some(B));
@@ -192,7 +208,7 @@ fn auto_filter() {
 fn whitespace_filter() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
-    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    let mut lexer = Lexer::new(Test::new(), text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = lexer
@@ -224,7 +240,7 @@ fn whitespace_filter() {
 fn atma_issue_1_both_whitespace_filter() {
     use TestToken::*;
     let input = "aa b \nbdef\n aaa";
-    let mut lexer = Lexer::new(Test, input, Lf::with_tab_width(4));
+    let mut lexer = Lexer::new(Test::new(), input, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = both(
@@ -245,11 +261,11 @@ fn atma_issue_1_both_whitespace_filter() {
 fn display_formatting() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
-    let mut lexer = Lexer::new(Test, text, Lf::with_tab_width(4));
+    let mut lexer = Lexer::new(Test::new(), text, Lf::with_tab_width(4));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test
+Scanner: Test(Some(Aa))
 note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
@@ -261,7 +277,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test
+Scanner: Test(Some(B))
 note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
@@ -273,7 +289,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(B));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test
+Scanner: Test(Some(B))
 note: lexer state
  --> (0:0-1:4, bytes 0-10)
   | 
@@ -286,7 +302,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(B));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test
+Scanner: Test(Some(Def))
 note: lexer state
  --> (0:0-1:4, bytes 0-10)
   | 
@@ -299,7 +315,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(Def));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test
+Scanner: Test(Some(Aa))
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 
@@ -313,7 +329,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test
+Scanner: Test(Some(A))
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 
@@ -327,7 +343,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(A));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test
+Scanner: Test(Some(A))
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 

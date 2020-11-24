@@ -149,7 +149,6 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
             // Lexer error.
             None => {
                 event!(Level::TRACE, "lexer error");
-                // println!(" -> unrecognized {}", lexer.token_span());
                 Err(Failure {
                     parse_error: ParseError::unrecognized_token(
                         lexer.token_span(),
@@ -162,7 +161,6 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
             // Matching token.
             Some(lex) if lex == token => {
                 event!(Level::TRACE, "correct token {{found={:?}}}", lex);
-                // println!(" -> MATCH {}", lexer.token_span());
                 Ok(Success {
                     lexer,
                     value: token.clone(),
@@ -172,7 +170,6 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
             // Incorrect token.
             Some(lex) => {
                 event!(Level::TRACE, "incorrect token {{found={:?}}}", lex);
-                // println!( " -> unexpected {}", lexer.token_span());
                 Err(Failure {
                     parse_error: ParseError::unexpected_token(
                         lexer.token_span(),

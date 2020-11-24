@@ -58,6 +58,8 @@ pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
     /// The token inclusion filter. Any token for which this returns false will
     /// be skipped automatically.
     filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
+    /// A saved copy of the scanner state to revert to when a filter is removed.
+    scanner_save: Option<Sc>,
 
     /// The position of the start of the last lexed token.
     token_start: Pos,
@@ -70,7 +72,6 @@ pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
 
     /// The next token to emit.
     buffer: Option<(Sc::Token, Pos)>,
-    back_scanner: Option<Sc>,
 }
 
 impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
@@ -90,7 +91,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
             end: Pos::ZERO,
             cursor: Pos::ZERO,
             buffer: None,
-            back_scanner: None,
+            scanner_save: None,
         }
     }
 
@@ -127,7 +128,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         self.token_start = self.cursor;
         self.parse_start = self.cursor;
         self.end = self.cursor;
-        self.back_scanner = None;
+        self.scanner_save = None;
     }
 
     /// Returns an iterator over the lexer tokens together with their spans.
@@ -151,7 +152,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     {
         self.cursor = self.end;
         self.buffer = None;
-        if let Some(scanner) = self.back_scanner.take() {
+        if let Some(scanner) = self.scanner_save.take() {
             self.scanner = scanner;
         }
 
@@ -173,7 +174,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         let span = span!(Level::DEBUG, "Lexer::scan_unfiltered");
         let _enter = span.enter();
 
-        self.back_scanner = Some(self.scanner.clone());
+        self.scanner_save = Some(self.scanner.clone());
         while self.cursor.byte < self.source.len() {
             match self.scanner
                 .scan(self.source, self.cursor, self.metrics)
@@ -303,11 +304,14 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
                     if self.filter.is_some() {
                         self.buffer = self.scan_unfiltered();
                     }
+                    event!(Level::DEBUG, "token {:?}", token);
+                    event!(Level::TRACE, "lexer {:?}", self);
                     return Some(token);
                 },
 
                 None => {
                     self.token_start = self.cursor;
+                    event!(Level::DEBUG, "lexer is empty");
                     return None;
                 },
             }
@@ -325,6 +329,7 @@ impl<'text, Sc, Cm> Debug for Lexer<'text, Sc, Cm>
         f.debug_struct("Lexer")
             .field("source_len", &self.source.len())
             .field("scanner", &self.scanner)
+            .field("scanner_save", &self.scanner_save)
             .field("metrics", &self.metrics)
             .field("filter_set", &self.filter.is_some())
             .field("token_start", &self.token_start)
@@ -344,6 +349,7 @@ impl<'text, Sc, Cm> PartialEq for Lexer<'text, Sc, Cm>
     fn eq(&self, other: &Self) -> bool {
         self.source == other.source &&
         self.scanner == other.scanner &&
+        self.scanner_save == other.scanner_save &&
         self.filter.is_some() == other.filter.is_some() &&
         self.token_start == other.token_start &&
         self.parse_start == other.parse_start &&
