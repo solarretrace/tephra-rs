@@ -214,6 +214,12 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
     /// Extends the receiver lexer to include the current parse span of the
     /// given lexer. (The given lexer's Scanner state will be discarded.)
     pub fn join(mut self, other: Self) -> Self {
+        let span = span!(Level::DEBUG, "Lexer::join");
+        let _enter = span.enter();
+
+        event!(Level::TRACE, "self\n{}", self);
+        event!(Level::TRACE, "other\n{}", other);
+
         if self.end < other.end {
             self.end = other.end;
             self.token_start = other.token_start;
@@ -223,6 +229,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
             self.cursor = other.cursor;
         }
 
+        event!(Level::TRACE, "joined\n{}", self);
         self
     }
     
