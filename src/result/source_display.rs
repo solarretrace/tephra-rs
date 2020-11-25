@@ -27,21 +27,6 @@ use std::fmt::Display;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// with_color_override
-////////////////////////////////////////////////////////////////////////////////
-/// Invokes the provided closure with the `colored` override control set to the
-/// given value.
-fn with_color_override<F, R>(color_enable: bool, f: F) -> R
-    where F: FnOnce() -> R
-{
-    colored::control::set_override(color_enable);
-    let res = (f)();
-    colored::control::unset_override();
-    res
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
 // SourceDisplay
 ////////////////////////////////////////////////////////////////////////////////
 /// A structure for displaying source text with spans, notes, and highlights.
@@ -78,7 +63,6 @@ impl<'text, 'msg, Cm> SourceDisplay<'text, 'msg, Cm> {
         self.color_enabled = color_enabled;
         self
     }
-
 
     /// Returns the given SourceDisplay with the error MessageType.
     pub fn with_error_type(mut self) -> Self {
@@ -133,19 +117,23 @@ impl<'text, 'msg, Cm> Display for SourceDisplay<'text, 'msg, Cm>
     where Cm: ColumnMetrics,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        with_color_override(self.color_enabled, || {
+        if self.color_enabled {
             writeln!(f, "{}{} {}", 
                 self.message_type,
                 ":".bright_white().bold(),
                 self.message.bright_white().bold())?;
-            for source_span in &self.source_spans {
-                write!(f, "{}", source_span)?;
-            }
-            for note in &self.notes {
-                writeln!(f, "{}", note)?;
-            }
-            Ok(())
-        })
+        } else {
+            self.message_type
+                .write_with_color_enablement(f, self.color_enabled)?;
+            writeln!(f, ": {}", self.message)?;
+        }
+        for source_span in &self.source_spans {
+            source_span.write_with_color_enablement(f, self.color_enabled)?;
+        }
+        for note in &self.notes {
+            note.write_with_color_enablement(f, self.color_enabled)?;
+        }
+        Ok(())
     }
 }
 
@@ -169,9 +157,11 @@ pub struct SourceSpan<'text, 'msg, Cm> {
     allow_omissions: bool,
     /// The width of the line number gutter.
     gutter_width: usize,
+    /// Whether colors are enabled during writing.
+    color_enabled: bool,
 }
 
-impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> {
+impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> where Cm: ColumnMetrics {
     /// Constructs a new SourceSpan with the given span.
     pub fn new(span: Span<'text>, metrics: Cm) -> Self
         where Cm: ColumnMetrics,
@@ -187,6 +177,7 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> {
             notes: Vec::new(),
             allow_omissions: true,
             gutter_width,
+            color_enabled: true,
         }
     }
 
@@ -203,6 +194,12 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> {
         SourceSpan::new(span, metrics)
             .with_highlight(Highlight::new(span, message)
                 .with_error_type())
+    }
+
+    /// Returns the given SourceDisplay with the given color enablement.
+    pub fn with_color(mut self, color_enabled: bool) -> Self {
+        self.color_enabled = color_enabled;
+        self
     }
 
     /// Returns the given SourceSpan with the given source name.
@@ -224,40 +221,57 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> {
         self.notes.push(note);
         self
     }
-}
 
-impl<'text, 'msg, Cm> Display for SourceSpan<'text, 'msg, Cm> 
-    where Cm: ColumnMetrics,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn write_with_color_enablement(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+        color_enabled: bool)
+        -> std::fmt::Result
+    {
         let (source_name, sep) = match &self.source_name {
             Some(name) => (name.borrow(), ":"),
             None       => ("", ""),
         };
 
-        writeln!(f, "{:width$}{} {}{}({})",
-            "",
-            "-->".bright_blue().bold(),
-            source_name,
-            sep,
-            self.span,
-            width=self.gutter_width)?;
+        if color_enabled {
+            writeln!(f, "{:width$}{} {}{}({})",
+                "",
+                "-->".bright_blue().bold(),
+                source_name,
+                sep,
+                self.span,
+                width=self.gutter_width)?;
+        } else {
+            writeln!(f, "{:width$}--> {}{}({})",
+                "",
+                source_name,
+                sep,
+                self.span,
+                width=self.gutter_width)?;
+        }
 
         MultiSplitLines::new(
             self.span,
             &self.highlights[..],
             self.gutter_width,
             self.metrics)
-            .write_all(f)?;
+            .write_all(f, color_enabled)?;
 
         for note in &self.notes {
-            writeln!(f, "{:width$} = {}",
-                "",
-                note,
-                width=self.gutter_width)?;
+            write!(f, "{:width$} = ", "", width=self.gutter_width)?;
+            note.write_with_color_enablement(f, color_enabled)?;
+            writeln!(f)?;
         }
 
         Ok(())
+    }
+}
+
+impl<'text, 'msg, Cm> Display for SourceSpan<'text, 'msg, Cm> 
+    where Cm: ColumnMetrics,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.write_with_color_enablement(f, self.color_enabled)
     }
 }
 
@@ -273,9 +287,21 @@ pub struct SourceNote<'msg> {
     note: Cow<'msg, str>,
 }
 
+impl<'msg> SourceNote<'msg> {
+    fn write_with_color_enablement(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+        color_enabled: bool)
+        -> std::fmt::Result
+    {
+        self.note_type.write_with_color_enablement(f, color_enabled)?;
+        write!(f, ": {}", self.note)
+    }
+}
+
 impl<'msg> Display for SourceNote<'msg> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.note_type, self.note)
+        self.write_with_color_enablement(f, true)
     }
 }
 
@@ -322,19 +348,39 @@ impl MessageType {
             Help    => "~",
         }
     }
+
+    fn write_with_color_enablement(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+        color_enabled: bool)
+        -> std::fmt::Result
+    {
+        use MessageType::*;
+        if color_enabled {
+            let color = self.color();
+            
+            match self {
+                Info    => write!(f, "{}", "info"),
+                Error   => write!(f, "{}", "error".color(color).bold()),
+                Warning => write!(f, "{}", "warning".color(color).bold()),
+                Note    => write!(f, "{}", "note".color(color).bold()),
+                Help    => write!(f, "{}", "help".color(color).bold()),
+            }
+        } else {
+            match self {
+                Info    => write!(f, "info"),
+                Error   => write!(f, "error"),
+                Warning => write!(f, "warning"),
+                Note    => write!(f, "note"),
+                Help    => write!(f, "help"),
+            }
+        }
+    }
 }
 
 impl Display for MessageType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let color = self.color();
-        use MessageType::*;
-        match self {
-            Info    => write!(f, "{}", "info"),
-            Error   => write!(f, "{}", "error".color(color).bold()),
-            Warning => write!(f, "{}", "warning".color(color).bold()),
-            Note    => write!(f, "{}", "note".color(color).bold()),
-            Help    => write!(f, "{}", "help".color(color).bold()),
-        }
+        self.write_with_color_enablement(f, true)
     }
 }
 
@@ -429,7 +475,8 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
         f: &mut std::fmt::Formatter<'_>,
         current_line: usize,
         riser_state: &mut RiserState,
-        is_active_riser: bool)
+        is_active_riser: bool,
+        color_enabled: bool)
         -> std::fmt::Result
     {
         // If the span is not over multiple lines, there is no riser portion.
@@ -445,7 +492,11 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
                 && !self.has_message_for_line(current_line)
             {
                 *riser_state = RiserState::Started;
-                write!(f, "{}", "/".color(self.message_type.color()))
+                if color_enabled {
+                    write!(f, "{}", "/".color(self.message_type.color()))
+                } else {
+                    write!(f, "/")
+                }
 
             } else if self.has_message_for_line(current_line) {
                 *riser_state = RiserState::Started;
@@ -460,7 +511,11 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
                 && !self.has_message_for_line(current_line)
             {
                 *riser_state = RiserState::Ended;
-                write!(f, "{}", "\\".color(self.message_type.color()))
+                if color_enabled {
+                    write!(f, "{}", "\\".color(self.message_type.color()))
+                } else {
+                    write!(f, "\\")
+                }
 
             } else if self.has_message_for_line(current_line) {
                 if is_active_riser { *riser_state = RiserState::Ended; }
@@ -478,7 +533,8 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
         &self,
         f: &mut std::fmt::Formatter<'_>,
         line: usize,
-        write_extra_riser_spacer: bool)
+        write_extra_riser_spacer: bool,
+        color_enabled: bool)
         -> std::fmt::Result
     {
         if self.span.start().page.line == line
@@ -489,8 +545,11 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
                 write!(f, " ")?;
             }
             if self.span.is_empty() {
-                write!(f, "{}", "\\".underline()
-                    .color(self.message_type.color()))?;
+                if color_enabled {
+                    write!(f, "{}", "\\".color(self.message_type.color()))?;
+                } else {
+                    write!(f, "\\")?;
+                }
             } else {
                 let mut underline_count = std::cmp::max(
                     self.span.end().page.column
@@ -498,55 +557,92 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
                         .unwrap_or(0),
                     1);
                 for _ in 0..underline_count {
-                    write!(f, "{}", self.message_type
-                        .underline()
-                        .color(self.message_type.color()))?;
+                    if color_enabled {
+                        write!(f, "{}", self.message_type
+                            .underline()
+                            .color(self.message_type.color()))?;
+                    } else {
+                        write!(f, "{}", self.message_type.underline())?;
+                    }
                 }
             }
             match (&self.start_message, &self.end_message) {
                 (Some(msg), None)      | 
-                (None,      Some(msg)) => writeln!(f, " {}", msg
-                    .color(self.message_type.color()))?,
+                (None,      Some(msg)) => if color_enabled {
+                    writeln!(f, " {}", msg.color(self.message_type.color()))?
+                } else {
+                    writeln!(f, " {}", msg)?
+                },
                 (Some(fst), Some(snd)) => unimplemented!(),
                 (None,      None)      => writeln!(f, "")?,
             }
 
         }  else if self.span.start().page.line == line {
             if write_extra_riser_spacer {
-                write!(f, "{}", "_".color(self.message_type.color()))?;
+                if color_enabled {
+                    write!(f, "{}", "_".color(self.message_type.color()))?;
+                } else {
+                    write!(f, "_")?;
+                }
             }
             if self.span.start().page.column > 0 {
                 for _ in 0..(self.span.start().page.column - 1) {
-                    write!(f, "{}", "_".color(self.message_type.color()))?;
+                    if color_enabled {
+                        write!(f, "{}", "_".color(self.message_type.color()))?;
+                    } else {
+                        write!(f, "_")?;
+                    }
                 }
             }
-            write!(f, "{}", "^".color(self.message_type.color()))?;
+            if color_enabled {
+                write!(f, "{}", "^".color(self.message_type.color()))?;
+            } else {
+                write!(f, "^")?;
+            }
             match &self.start_message {
-                Some(msg) => writeln!(f, " {}", msg
-                    .color(self.message_type.color()))?,
+                Some(msg) => if color_enabled {
+                    writeln!(f, " {}", msg.color(self.message_type.color()))?;
+                } else {
+                    write!(f, " {}", msg)?;
+                },
                 None      => writeln!(f, "")?,
             }
             
         } else if self.span.end().page.line == line {
             if write_extra_riser_spacer {
-                write!(f, "{}", "_".color(self.message_type.color()))?;
+                if color_enabled {
+                    write!(f, "{}", "_".color(self.message_type.color()))?;
+                } else {
+                    write!(f, "_")?;
+                }
             }
             if self.span.end().page.column > 0 {
                 for _ in 0..(self.span.end().page.column - 1) {
-                    write!(f, "{}", "_".color(self.message_type.color()))?;
+                    if color_enabled {
+                        write!(f, "{}", "_".color(self.message_type.color()))?;
+                    } else {
+                        write!(f, "_")?;
+                    }
                 }
             }
-            write!(f, "{}", "^".color(self.message_type.color()))?;
+            if color_enabled {
+                write!(f, "{}", "^".color(self.message_type.color()))?;
+            } else {
+                write!(f, "^")?;
+            }
             match &self.end_message {
-                Some(msg) => writeln!(f, " {}", msg
-                    .color(self.message_type.color()))?,
+                Some(msg) => if color_enabled {
+                    writeln!(f, " {}", msg.color(self.message_type.color()))?;
+                } else {
+                    writeln!(f, " {}", msg)?;
+                },
+                
                 None      => writeln!(f, "")?,
             }
         }
         Ok(())
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -595,10 +691,11 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
     }
 
     /// Consumes the MultiSplitLines and writes all of the contained data.
-    fn write_all(mut self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    fn write_all(mut self, f: &mut std::fmt::Formatter<'_>, color_enabled: bool)
+        -> std::fmt::Result
     {
         // Write empty line to uncramp the display.
-        write_gutter(f, "", self.gutter_width)?;
+        write_gutter(f, "", self.gutter_width, color_enabled)?;
         writeln!(f)?;
 
         let mut riser_states = Vec::with_capacity(self.highlights.len());
@@ -616,7 +713,7 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
             let current_line = span.start().page.line;
 
             // Write gutter for source line.
-            write_gutter(f, current_line, self.gutter_width)?;
+            write_gutter(f, current_line, self.gutter_width, color_enabled)?;
 
             // Write risers for source line.
             let mut any_multiline = false;
@@ -625,20 +722,21 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
                     f,
                     current_line,
                     &mut riser_states[idx],
-                    false)?;
+                    false,
+                    color_enabled)?;
                 if hl.is_multiline() { any_multiline = true; }
             }
             if any_multiline { write!(f, " "); }
 
             // Write source text.
-            write_source_line(f, span)?;
+            writeln!(f, "{}", span.text())?;
 
             for (message_idx, message_hl) in self.highlights.iter().enumerate()
             {
                 if !message_hl.has_message_for_line(current_line) { continue; }
 
                 // Write message gutter.
-                write_gutter(f, "", self.gutter_width)?;
+                write_gutter(f, "", self.gutter_width, color_enabled)?;
                 
                 for (idx, hl) in self.highlights.iter().enumerate() {
                     // Write message risers.
@@ -646,14 +744,16 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
                         f,
                         current_line,
                         &mut riser_states[idx],
-                        message_idx == idx)?;
+                        message_idx == idx,
+                        color_enabled)?;
                 }
                 
                 // Write message.
                 message_hl.write_message_for_line(
                     f,
                     current_line,
-                    any_multiline)?;
+                    any_multiline,
+                    color_enabled)?;
             }
         }
         Ok(())
@@ -663,35 +763,37 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
 fn write_gutter<V>(
     f: &mut std::fmt::Formatter<'_>,
     value: V,
-    width: usize)
+    width: usize,
+    color_enabled: bool)
     -> std::fmt::Result
     where V: Display
 {
-    write!(f, "{:>width$} {} ",
-        format!("{}", value).bright_blue().bold(),
-        "|".bright_blue().bold(),
-        width=width)
+    if color_enabled {
+        write!(f, "{:>width$} {} ",
+            format!("{}", value).bright_blue().bold(),
+            "|".bright_blue().bold(),
+            width=width)
+    } else {
+        write!(f, "{:>width$} | ", value, width=width)
+    }
 }
 
 fn write_gutter_omit<V>(
     f: &mut std::fmt::Formatter<'_>,
     value: V,
-    width: usize)
+    width: usize,
+    color_enabled: bool)
     -> std::fmt::Result
     where V: Display
 {
-    write!(f, "{:>width$}{}",
-        "",
-        "...".bright_blue().bold(),
-        width=width)
-}
-
-fn write_source_line<'text>(
-    f: &mut std::fmt::Formatter<'_>,
-    span: Span<'text>)
-    -> std::fmt::Result {
-    writeln!(f, "{}", span.text())?;
-    Ok(())
+    if color_enabled {
+        write!(f, "{:>width$}{}",
+            "",
+            "...".bright_blue().bold(),
+            width=width)
+    } else {
+        write!(f, "{:>width$}...", "", width=width)
+    }
 }
 
 

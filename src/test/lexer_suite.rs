@@ -255,7 +255,6 @@ fn atma_issue_1_both_whitespace_filter() {
     assert_eq!(actual, expected);
 }
 
-
 /// Tests `Lexer` display output formatting.
 #[test]
 fn display_formatting() {
@@ -356,4 +355,37 @@ note: lexer state
 ");
 
     assert_eq!(lexer.next(), None);
+}
+
+
+
+/// Tests `Lexer` display output formatting with tabstops.
+#[test]
+fn tabstop_align() {
+    use TestToken::*;
+    let text = "\taa\ta\n\t\tb";
+    let mut lexer = Lexer::new(Test::new(), text, Lf::with_tab_width(4));
+
+    assert_eq!(format!("{}", lexer), "\
+Scanner: Test(None)
+note: lexer state
+ --> (0:0-0:9, bytes 0-5)
+  | 
+0 | 	aa	a
+  | \\ token (0:0, byte 0)
+  | \\ parse (0:0, byte 0)
+  | \\ cursor (0:0, byte 0)
+");
+
+    assert_eq!(lexer.next(), Some(Ws));
+    assert_eq!(format!("{}", lexer), "\
+Scanner: Test(Some(Ws))
+note: lexer state
+ --> (0:0-0:9, bytes 0-5)
+  | 
+0 | 	aa	a
+  | ---- token (0:0-0:4, bytes 0-1)
+  | ---- parse (0:0-0:4, bytes 0-1)
+  |     \\ cursor (0:4, byte 1)
+");
 }

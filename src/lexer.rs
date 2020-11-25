@@ -298,7 +298,6 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
             event!(Level::TRACE, "buffer {:?}", self.buffer);
             if self.buffer.is_some() {
                 let res = self.next_buffered();
-                self.scan_unfiltered();
                 event!(Level::TRACE, "lexer {}", self);
                 return res;
             }
