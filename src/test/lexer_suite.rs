@@ -265,7 +265,7 @@ fn display_formatting() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(Aa))
+Scanner: Test(None)
 note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
@@ -277,7 +277,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(B))
+Scanner: Test(Some(Aa))
 note: lexer state
  --> (0:0-0:5, bytes 0-5)
   | 
@@ -302,7 +302,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(B));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(Def))
+Scanner: Test(Some(B))
 note: lexer state
  --> (0:0-1:4, bytes 0-10)
   | 
@@ -315,7 +315,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(Def));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(Aa))
+Scanner: Test(Some(Def))
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 
@@ -329,7 +329,7 @@ note: lexer state
 
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(A))
+Scanner: Test(Some(Aa))
 note: lexer state
  --> (0:0-2:4, bytes 0-15)
   | 
