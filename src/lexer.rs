@@ -68,7 +68,7 @@ pub struct Lexer<'text, Sc, Cm> where Sc: Scanner {
     /// The current position of the lexer cursor.
     cursor: Pos,
 
-    /// The next token to emit, it's position, and the resulting scanner state.
+    /// The next token to emit, its position, and the resulting scanner state.
     buffer: Option<(Sc::Token, Pos, Sc)>,
 }
 
@@ -157,13 +157,13 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>)
     {
         self.filter = filter;
-        self.scan_unfiltered();
+        self.scan_to_buffer();
     }
 
-    /// Scans to the next unfiltered token and returns it, advancing the lexer
-    /// state past any filtered tokens. This method is idempotent.
-    fn scan_unfiltered(&mut self) {
-        let span = span!(Level::DEBUG, "Lexer::scan_unfiltered");
+    /// Scans to the next unfiltered token and buffers it. This method is
+    /// idempotent.
+    fn scan_to_buffer(&mut self) {
+        let span = span!(Level::DEBUG, "Lexer::scan_to_buffer");
         let _enter = span.enter();
 
         let mut scanner = self.scanner.clone();
@@ -217,7 +217,7 @@ impl<'text, Sc, Cm> Lexer<'text, Sc, Cm>
         self.end = adv;
         self.cursor = adv;
         self.scanner = scanner;
-        self.scan_unfiltered();
+        self.scan_to_buffer();
 
         Some(token)
     }
@@ -320,7 +320,7 @@ impl<'text, Sc, Cm> Iterator for Lexer<'text, Sc, Cm>
                     self.cursor = adv;
 
                     if self.filter.is_some() {
-                        self.scan_unfiltered();
+                        self.scan_to_buffer();
                     }
                     event!(Level::TRACE, "lexer {}", self);
                     return Some(token);

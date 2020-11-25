@@ -255,7 +255,7 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> where Cm: ColumnMetrics {
             &self.highlights[..],
             self.gutter_width,
             self.metrics)
-            .write_all(f, color_enabled)?;
+            .write_with_color_enablement(f, color_enabled)?;
 
         for note in &self.notes {
             write!(f, "{:width$} = ", "", width=self.gutter_width)?;
@@ -691,7 +691,10 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
     }
 
     /// Consumes the MultiSplitLines and writes all of the contained data.
-    fn write_all(mut self, f: &mut std::fmt::Formatter<'_>, color_enabled: bool)
+    fn write_with_color_enablement(
+        mut self,
+        f: &mut std::fmt::Formatter<'_>,
+        color_enabled: bool)
         -> std::fmt::Result
     {
         // Write empty line to uncramp the display.
@@ -707,7 +710,6 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
                     RiserState::Unused
                 });
         }
-
 
         for span in self.source_lines {
             let current_line = span.start().page.line;
