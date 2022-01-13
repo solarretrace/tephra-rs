@@ -42,7 +42,7 @@ impl<'text, Sc, Cm, V> Success<'text, Sc, Cm, V>
         self.value
     }
 
-    /// Converts Success<'_, _, _, V> into a Success<'_, _, _, U> by
+    /// Converts `Success<'_, _, _, V>` into a `Success<'_, _, _, U>` by
     /// applying the given closure.
     pub fn map_value<F, U>(self, f: F) -> Success<'text, Sc, Cm, U> 
         where F: FnOnce(V) -> U
@@ -82,12 +82,14 @@ pub struct Spanned<'text, T> {
 }
 
 impl<'text, T> Spanned<'text, T> {
+    /// Converts `Spanned<'_, T>` into a `Spanned<'_, U>` by applying the given
+    /// closure.
     pub fn map_value<F, U>(self, f: F) -> Spanned<'text, U> 
         where F: FnOnce(T) -> U
     {
         Spanned {
             value: (f)(self.value),
-            span: (f)(self.span),
+            span: self.span,
         }
     }
 }
