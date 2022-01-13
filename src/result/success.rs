@@ -80,3 +80,14 @@ pub struct Spanned<'text, T> {
     /// The span of the value's source text.
     pub span: Span<'text>,
 }
+
+impl<'text, T> Spanned<'text, T> {
+    pub fn map_value<F, U>(self, f: F) -> Spanned<'text, U> 
+        where F: FnOnce(V) -> U
+    {
+        Spanned {
+            value: (f)(self.value),
+            span: (f)(self.span),
+        }
+    }
+}
