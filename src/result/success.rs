@@ -83,7 +83,7 @@ pub struct Spanned<'text, T> {
 
 impl<'text, T> Spanned<'text, T> {
     pub fn map_value<F, U>(self, f: F) -> Spanned<'text, U> 
-        where F: FnOnce(V) -> U
+        where F: FnOnce(T) -> U
     {
         Spanned {
             value: (f)(self.value),
