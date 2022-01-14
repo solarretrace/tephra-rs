@@ -19,6 +19,17 @@ use crate::position::Pos;
 // ColumnMetrics tests.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Performs size checks.
+#[allow(unused_qualifications)]
+#[test]
+fn size_checks() {
+    use std::mem::size_of;
+    assert_eq!(1, size_of::<crate::position::Lf>(), "Lf");
+    assert_eq!(1, size_of::<crate::position::Cr>(), "Cr");
+    assert_eq!(1, size_of::<crate::position::CrLf>(), "CrLf");
+    assert_eq!(24, size_of::<crate::position::Pos>(), "Pos");
+}
+
 /// Tests `ColumnMetrics::position_after_str` for `Lf`.
 #[test]
 fn lf_position_after_str() {

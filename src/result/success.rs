@@ -75,10 +75,10 @@ impl<'text, Sc, Cm, V> Success<'text, Sc, Cm, V>
 /// A parsed value with its span.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Spanned<'text, T> {
-    /// The parsed value.
-    pub value: T,
     /// The span of the value's source text.
     pub span: Span<'text>,
+    /// The parsed value.
+    pub value: T,
 }
 
 impl<'text, T> Spanned<'text, T> {
@@ -88,8 +88,8 @@ impl<'text, T> Spanned<'text, T> {
         where F: FnOnce(T) -> U
     {
         Spanned {
-            value: (f)(self.value),
             span: self.span,
+            value: (f)(self.value),
         }
     }
 }

@@ -18,6 +18,15 @@ use crate::position::Pos;
 // Span tests.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Performs size checks.
+#[allow(unused_qualifications)]
+#[test]
+fn size_checks() {
+    use std::mem::size_of;
+    assert_eq!(64, size_of::<crate::span::Span<'_>>(), "Span");
+    assert_eq!(112, size_of::<crate::span::SpanOwned>(), "SpanOwned");
+}
+
 /// Tests `Span::new`.
 #[test]
 fn empty() {

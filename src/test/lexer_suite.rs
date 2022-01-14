@@ -24,6 +24,7 @@ use crate::result::ParseResultExt as _;
 // Token parser.
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 enum TestToken {
     Aa,
     A,
@@ -105,6 +106,14 @@ impl Scanner for Test {
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
+
+/// Performs size checks.
+#[allow(unused_qualifications)]
+#[test]
+fn size_checks() {
+    use std::mem::size_of;
+    assert_eq!(168, size_of::<crate::lexer::Lexer<'_, Test, Lf>>(), "Lexer");
+}
 
 /// Tests `Lexer::new`.
 #[test]

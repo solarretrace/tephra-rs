@@ -343,7 +343,7 @@ impl CrLf {
 }
 
 impl ColumnMetrics for CrLf {
-fn next_position<'text>(&self, text: &'text str, base: Pos) -> Option<Pos> {
+    fn next_position<'text>(&self, text: &'text str, base: Pos) -> Option<Pos> {
         let mut chars = text[base.byte..].chars();
         
         match chars.next() {
