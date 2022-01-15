@@ -300,7 +300,8 @@ impl ColumnMetrics for Lf {
     }
 
     fn is_line_break<'text>(&self, text: &'text str, byte: usize) -> bool {
-        &text[byte..byte + LF_LINE_BREAK_LEN] == "\n"
+        byte + LF_LINE_BREAK_LEN < text.len() &&
+            &text[byte..byte + LF_LINE_BREAK_LEN] == "\n"
     }
 }
 
@@ -426,7 +427,8 @@ impl ColumnMetrics for CrLf {
     }
 
     fn is_line_break<'text>(&self, text: &'text str, byte: usize) -> bool {
-        &text[byte..byte + CRLF_LINE_BREAK_LEN] == "\r\n"
+        byte + CRLF_LINE_BREAK_LEN < text.len() &&
+            &text[byte..byte + CRLF_LINE_BREAK_LEN] == "\r\n"
     }
 }
 
@@ -548,7 +550,8 @@ impl ColumnMetrics for Cr {
     }
 
     fn is_line_break<'text>(&self, text: &'text str, byte: usize) -> bool {
-        &text[byte..byte + CR_LINE_BREAK_LEN] == "\n"
+        byte + CR_LINE_BREAK_LEN < text.len() &&
+            &text[byte..byte + CR_LINE_BREAK_LEN] == "\n"
     }
 }
 
