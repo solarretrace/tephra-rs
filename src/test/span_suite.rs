@@ -10,7 +10,7 @@
 
 // Local imports.
 use crate::span::Span;
-use crate::position::Lf;
+use crate::position::ColumnMetrics;
 use crate::position::Pos;
 
 
@@ -45,7 +45,7 @@ fn empty() {
 #[test]
 fn full() {
     let text = " \n  abcd  \n ";
-    let span = Span::full(text, Lf::new());
+    let span = Span::full(text, ColumnMetrics::new());
 
     assert_eq!(
         format!("{:?}", span),
@@ -62,7 +62,7 @@ fn widen_to_line() {
         text);
 
     assert_eq!(
-        format!("{:?}", span.widen_to_line(Lf::new())),
+        format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
         "\"  abcd  \" (1:0-1:8, bytes 2-10)");
 }
 
@@ -73,7 +73,7 @@ fn widen_empty_to_line() {
     let span = Span::new_at(Pos::new(6, 1, 4), text);
 
     assert_eq!(
-        format!("{:?}", span.widen_to_line(Lf::new())),
+        format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
         "\"  abcd  \" (1:0-1:8, bytes 2-10)");
 }
 
@@ -87,7 +87,7 @@ fn widen_line_to_line() {
         text);
 
     assert_eq!(
-        format!("{:?}", span.widen_to_line(Lf::new())),
+        format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
         "\"  abcd  \" (1:0-1:8, bytes 2-10)");
 }
 
@@ -101,7 +101,7 @@ fn widen_full_to_line() {
         text);
 
     assert_eq!(
-        format!("{:?}", span.widen_to_line(Lf::new())),
+        format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
         "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)");
 }
 
@@ -110,10 +110,10 @@ fn widen_full_to_line() {
 #[test]
 fn split_lines() {
     let text = "\n \n\n \nabcd\n def \nghi\n";
-    let span = Span::full(text, Lf::new());
+    let span = Span::full(text, ColumnMetrics::new());
 
     let actual = span
-        .split_lines(Lf::new())
+        .split_lines(ColumnMetrics::new())
         .map(|v| format!("{:?}", v))
         .collect::<Vec<_>>();
     let expected = vec![
@@ -138,12 +138,12 @@ fn split_lines() {
 
 /// Tests `Span::split_lines` with no line breaks.
 #[test]
-fn split_lines_no_breaks() {
+fn split_line_no_breaks() {
     let text = "abcd";
-    let span = Span::full(text, Lf::new());
+    let span = Span::full(text, ColumnMetrics::new());
 
     let actual = span
-        .split_lines(Lf::new())
+        .split_lines(ColumnMetrics::new())
         .map(|v| format!("{:?}", v))
         .collect::<Vec<_>>();
     let expected = vec![

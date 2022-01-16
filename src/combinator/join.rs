@@ -11,7 +11,6 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::position::ColumnMetrics;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 
@@ -26,13 +25,12 @@ use tracing::span;
 
 /// Returns a parser which sequences two parsers which must both succeed,
 /// returning the value of the first one.
-pub fn left<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, X>
+pub fn left<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        L: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, X>,
-        R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
+        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "left");
@@ -52,13 +50,12 @@ pub fn left<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
 
 /// Returns a parser which sequences two parsers which must both succeed,
 /// returning the value of the second one.
-pub fn right<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>
+pub fn right<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        L: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, X>,
-        R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
+        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "right");
@@ -76,13 +73,12 @@ pub fn right<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
 
 /// Returns a parser which sequences two parsers which must both succeed,
 /// returning their values in a tuple.
-pub fn both<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, (X, Y)>
+pub fn both<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, (X, Y)>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        L: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, X>,
-        R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
+        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "both");
@@ -102,17 +98,16 @@ pub fn both<'text, Sc, Cm, L, R, X, Y>(mut left: L, mut right: R)
 
 /// Returns a parser which sequences three parsers which must all succeed,
 /// returning the value of the center parser.
-pub fn bracket<'text, Sc, Cm, L, C, R, X, Y, Z>(
+pub fn bracket<'text, Sc, L, C, R, X, Y, Z>(
     mut left: L,
     mut center: C,
     mut right: R)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        L: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, X>,
-        C: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
-        R: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Z>,
+        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        C: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
+        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Z>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "bracket");
@@ -141,52 +136,20 @@ pub fn bracket<'text, Sc, Cm, L, C, R, X, Y, Z>(
     }
 }
 
-/// Returns a parser which calls a bracketting parser before and after a center
-/// parser.
-pub fn bracket_symmetric<'text, Sc, Cm, C, B, X, Y>(
-    mut bracket: B,
-    mut center: C)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
-        B: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, X>,
-        C: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
-{
-    move |lexer| {
-        let span = span!(Level::DEBUG, "bracket_symmetric");
-        let _enter = span.enter();
-
-        let succ = (&mut bracket)
-            (lexer)
-            .trace_result(Level::TRACE, "left discard")?;
-
-        let (c, succ) = (center)
-            (succ.lexer)
-            .trace_result(Level::TRACE, "center capture")?
-            .take_value();
-
-        (&mut bracket)
-            (succ.lexer)
-            .trace_result(Level::TRACE, "right discard")
-            .map_value(|_| c)
-    }
-}
 
 /// Returns a parser which sequences three parsers which must all succeed,
 /// returning the value of the center parser. The right parser will receive the
 /// output of the left parser as an argument.
-pub fn bracket_dynamic<'text, Sc, Cm, L, C, R, X, Y, Z>(
+pub fn bracket_dynamic<'text, Sc, L, C, R, X, Y, Z>(
     mut left: L,
     mut center: C,
     mut right: R)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        L: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, X>,
-        C: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Y>,
-        R: FnMut(Lexer<'text, Sc, Cm>, X) -> ParseResult<'text, Sc, Cm, Z>,
+        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        C: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
+        R: FnMut(Lexer<'text, Sc>, X) -> ParseResult<'text, Sc, Z>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "bracket_dynamic");

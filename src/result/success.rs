@@ -11,7 +11,6 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::position::ColumnMetrics;
 use crate::span::Span;
 
 
@@ -21,21 +20,17 @@ use crate::span::Span;
 /// The result of a successful parse.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Success<'text, Sc, Cm, V>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
+pub struct Success<'text, Sc, V>
+    where Sc: Scanner,
 {
     /// The lexer state for continuing after the parse.
-    pub lexer: Lexer<'text, Sc, Cm>,
+    pub lexer: Lexer<'text, Sc>,
     /// The parsed value.
     pub value: V,
 }
 
-impl<'text, Sc, Cm, V> Success<'text, Sc, Cm, V>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
+impl<'text, Sc, V> Success<'text, Sc, V>
+    where Sc: Scanner,
 {
     /// Consumes the Success and returns its parsed value.
     pub fn into_value(self) -> V {
@@ -44,7 +39,7 @@ impl<'text, Sc, Cm, V> Success<'text, Sc, Cm, V>
 
     /// Converts `Success<'_, _, _, V>` into a `Success<'_, _, _, U>` by
     /// applying the given closure.
-    pub fn map_value<F, U>(self, f: F) -> Success<'text, Sc, Cm, U> 
+    pub fn map_value<F, U>(self, f: F) -> Success<'text, Sc, U> 
         where F: FnOnce(V) -> U
     {
         Success {
@@ -55,7 +50,7 @@ impl<'text, Sc, Cm, V> Success<'text, Sc, Cm, V>
 
     /// Splits the Success into a tuple containing its parsed value and its
     /// other components.
-    pub fn take_value(self) -> (V, Success<'text, Sc, Cm, ()>) {
+    pub fn take_value(self) -> (V, Success<'text, Sc, ()>) {
         (self.value, Success {
             lexer: self.lexer,
             value: (),

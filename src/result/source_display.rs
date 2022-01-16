@@ -31,20 +31,20 @@ use std::fmt::Display;
 ////////////////////////////////////////////////////////////////////////////////
 /// A structure for displaying source text with spans, notes, and highlights.
 #[derive(Debug)]
-pub struct SourceDisplay<'text, 'msg, Cm> {
+pub struct SourceDisplay<'text, 'msg> {
     /// The top-level description for all of the source spans.
     message: Cow<'msg, str>,
     /// The overall message type for all of the source spans.
     message_type: MessageType,
     /// The source spans to display.
-    source_spans: Vec<SourceSpan<'text, 'msg, Cm>>,
+    source_spans: Vec<SourceSpan<'text, 'msg>>,
     /// Notes to append after the displayed spans.
     notes: Vec<SourceNote<'msg>>,
     /// Whether colors are enabled during writing.
     color_enabled: bool,
 }
 
-impl<'text, 'msg, Cm> SourceDisplay<'text, 'msg, Cm> {
+impl<'text, 'msg> SourceDisplay<'text, 'msg> {
     /// Constructs a new info-type SourceDisplay with the given description.
     pub fn new<M>(message: M) -> Self 
         where M: Into<Cow<'msg, str>>,
@@ -97,7 +97,7 @@ impl<'text, 'msg, Cm> SourceDisplay<'text, 'msg, Cm> {
     /// Returns the given SourceDisplay with the given SourceSpan attachment.
     pub fn with_source_span<S>(mut self, source_span: S)
         -> Self
-        where S: Into<SourceSpan<'text, 'msg, Cm>>
+        where S: Into<SourceSpan<'text, 'msg>>
     {
         self.source_spans.push(source_span.into());
         self
@@ -113,9 +113,7 @@ impl<'text, 'msg, Cm> SourceDisplay<'text, 'msg, Cm> {
     }
 }
 
-impl<'text, 'msg, Cm> Display for SourceDisplay<'text, 'msg, Cm> 
-    where Cm: ColumnMetrics,
-{
+impl<'text, 'msg> Display for SourceDisplay<'text, 'msg> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.color_enabled {
             writeln!(f, "{}{} {}", 
@@ -142,11 +140,11 @@ impl<'text, 'msg, Cm> Display for SourceDisplay<'text, 'msg, Cm>
 ////////////////////////////////////////////////////////////////////////////////
 /// A single span of source text with notes and highlights.
 #[derive(Debug)]
-pub struct SourceSpan<'text, 'msg, Cm> {
+pub struct SourceSpan<'text, 'msg> {
     /// The name of the file or data that is being displayed.
     source_name: Option<Cow<'msg, str>>,
     /// The column metrics for the source,
-    metrics: Cm,
+    metrics: ColumnMetrics,
     /// The full text span of the displayed source.
     span: Span<'text>,
     /// The subsets of the displayed text to highlight.
@@ -161,11 +159,9 @@ pub struct SourceSpan<'text, 'msg, Cm> {
     color_enabled: bool,
 }
 
-impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> where Cm: ColumnMetrics {
+impl<'text, 'msg> SourceSpan<'text, 'msg> {
     /// Constructs a new SourceSpan with the given span.
-    pub fn new(span: Span<'text>, metrics: Cm) -> Self
-        where Cm: ColumnMetrics,
-    {
+    pub fn new(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         let gutter_width = std::cmp::max(
             (span.end().page.line as f32).log10().ceil() as usize, 1);
 
@@ -185,11 +181,9 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> where Cm: ColumnMetrics {
     pub fn new_error_highlight<M>(
         span: Span<'text>,
         message: M,
-        metrics: Cm)
+        metrics: ColumnMetrics)
         -> Self
-        where
-            M: Into<Cow<'msg, str>>,
-            Cm: ColumnMetrics,
+        where M: Into<Cow<'msg, str>>,
     {
         SourceSpan::new(span, metrics)
             .with_highlight(Highlight::new(span, message)
@@ -267,9 +261,7 @@ impl<'text, 'msg, Cm> SourceSpan<'text, 'msg, Cm> where Cm: ColumnMetrics {
     }
 }
 
-impl<'text, 'msg, Cm> Display for SourceSpan<'text, 'msg, Cm> 
-    where Cm: ColumnMetrics,
-{
+impl<'text, 'msg> Display for SourceSpan<'text, 'msg> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.write_with_color_enablement(f, self.color_enabled)
     }
@@ -650,9 +642,9 @@ impl<'text, 'msg> Highlight<'text, 'msg> {
 ////////////////////////////////////////////////////////////////////////////////
 /// An iterator over the line-based data relevant to a particular SourceSpan.
 #[derive(Debug)]
-struct MultiSplitLines<'text, 'msg, 'hl, Cm> {
+struct MultiSplitLines<'text, 'msg, 'hl> {
     /// The SplitLines iterator for the `SourceSpan`.
-    source_lines: SplitLines<'text, Cm>,
+    source_lines: SplitLines<'text>,
     /// The highlights contained within the SourceSpan.
     highlights: &'hl [Highlight<'text, 'msg>],
     /// The width of the line number gutter.
@@ -661,10 +653,8 @@ struct MultiSplitLines<'text, 'msg, 'hl, Cm> {
     riser_width: usize,
 }
 
-impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm> 
-    where
-        'text: 'msg,
-        Cm: ColumnMetrics,
+impl<'text, 'msg, 'hl> MultiSplitLines<'text, 'msg, 'hl> 
+    where 'text: 'msg,
 {
     /// Constructs a new MultiSplitLines from the given source span and
     /// highlights.
@@ -672,7 +662,7 @@ impl<'text, 'msg, 'hl, Cm> MultiSplitLines<'text, 'msg, 'hl, Cm>
         source_span: Span<'text>,
         highlights: &'hl [Highlight<'text, 'msg>],
         gutter_width: usize,
-        metrics: Cm)
+        metrics: ColumnMetrics)
         -> Self
     {
         let riser_width = highlights

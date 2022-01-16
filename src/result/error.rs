@@ -23,13 +23,13 @@ use crate::result::SourceSpan;
 // ParseError
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
-pub struct ParseError<'text, Cm> {
+pub struct ParseError<'text> {
     description: &'static str,
-    span: Option<(Span<'text>, String, Cm)>,
+    span: Option<(Span<'text>, String, ColumnMetrics)>,
     is_lexer_error: bool,
 }
 
-impl<'text, Cm> ParseError<'text, Cm> {
+impl<'text> ParseError<'text> {
     pub fn new(description: &'static str) -> Self {
         ParseError {
             description,
@@ -42,17 +42,15 @@ impl<'text, Cm> ParseError<'text, Cm> {
         mut self,
         message: S,
         span: Span<'text>,
-        metrics: Cm)
+        metrics: ColumnMetrics)
         -> Self 
-        where
-            S: Into<String>,
-            Cm: ColumnMetrics,
+        where S: Into<String>,
     {
         self.span = Some((span, message.into(), metrics));
         self
     }
 
-    pub fn unrecognized_token(span: Span<'text>, metrics: Cm) -> Self {
+    pub fn unrecognized_token(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         ParseError {
             description: "unrecognized token",
             span: Some((span, "symbol not recognized".to_owned(), metrics)),
@@ -60,7 +58,10 @@ impl<'text, Cm> ParseError<'text, Cm> {
         }
     }
 
-    pub fn unexpected_token<T>(span: Span<'text>, expected: T, metrics: Cm)
+    pub fn unexpected_token<T>(
+        span: Span<'text>,
+        expected: T,
+        metrics: ColumnMetrics)
         -> Self 
         where T: std::fmt::Display
     {
@@ -71,7 +72,9 @@ impl<'text, Cm> ParseError<'text, Cm> {
         }
     }
 
-    pub fn unexpected_end_of_text(span: Span<'text>, metrics: Cm) -> Self {
+    pub fn unexpected_end_of_text(span: Span<'text>, metrics: ColumnMetrics)
+        -> Self
+    {
         ParseError {
             description: "unexpected end of text",
             span: Some((span, "text ends here".to_owned(), metrics)),
@@ -79,7 +82,7 @@ impl<'text, Cm> ParseError<'text, Cm> {
         }
     }
 
-    pub fn unexpected_text(span: Span<'text>, metrics: Cm) -> Self {
+    pub fn unexpected_text(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         ParseError {
             description: "expected end of text",
             span: Some((span, "text should end here".to_owned(), metrics)),
@@ -96,10 +99,8 @@ impl<'text, Cm> ParseError<'text, Cm> {
     }
 }
 
-impl<'text, Cm> ParseError<'text, Cm> 
-    where Cm: ColumnMetrics,
-{
-    pub fn into_owned(self) -> ParseErrorOwned<Cm> 
+impl<'text> ParseError<'text> {
+    pub fn into_owned(self) -> ParseErrorOwned 
     {
         ParseErrorOwned {
             description: self.description,
@@ -110,7 +111,7 @@ impl<'text, Cm> ParseError<'text, Cm>
 }
 
 
-impl<'text, Cm> Default for ParseError<'text, Cm> {
+impl<'text> Default for ParseError<'text> {
     fn default() -> Self {
         ParseError {
             description: "parse error",
@@ -120,9 +121,7 @@ impl<'text, Cm> Default for ParseError<'text, Cm> {
     }
 }
 
-impl<'text, Cm> std::fmt::Display for ParseError<'text, Cm> 
-    where Cm: ColumnMetrics,
-{
+impl<'text> std::fmt::Display for ParseError<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some((span, msg, metrics)) = &self.span {
             let span = *span;
@@ -140,7 +139,7 @@ impl<'text, Cm> std::fmt::Display for ParseError<'text, Cm>
     }
 }
 
-impl<'text, Cm> From<&'static str> for ParseError<'text, Cm> {
+impl<'text> From<&'static str> for ParseError<'text> {
     fn from(description: &'static str) -> Self {
         ParseError {
             description,
@@ -154,13 +153,13 @@ impl<'text, Cm> From<&'static str> for ParseError<'text, Cm> {
 // ParseErrorOwned
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
-pub struct ParseErrorOwned<Cm> {
+pub struct ParseErrorOwned {
     description: &'static str,
-    span: Option<(SpanOwned, String, Cm)>,
+    span: Option<(SpanOwned, String, ColumnMetrics)>,
     is_lexer_error: bool,
 }
 
-impl<Cm> ParseErrorOwned<Cm> {
+impl ParseErrorOwned {
     pub fn description(&self) -> &'static str {
         self.description
     }
@@ -171,9 +170,7 @@ impl<Cm> ParseErrorOwned<Cm> {
 }
 
 
-impl<Cm> std::fmt::Display for ParseErrorOwned<Cm> 
-    where Cm: ColumnMetrics,
-{
+impl std::fmt::Display for ParseErrorOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some((span, msg, metrics)) = &self.span {
             let span = span.into();

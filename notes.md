@@ -31,6 +31,7 @@ Different parser designs may be able to accomodate different data formats. In or
 ## Do not box/own all parse errors.
 ## Impl `PartialEq` on results for testing.
 ## Return value, lexer on success.
+## Don't use generics for column metrics.
 
 ## Join spans by default, explicitely separate them.
 
@@ -257,7 +258,7 @@ Furthermore, in order to keep our parsers general purpose, we want to minimize t
 
 Every time we're about to introduce an 'open bracket' or delimitted parse, we want to break off into a new span. 
 
-Speaking of brackets, when we have a failure within a delimitted rule, it often makes sense to log an error, advance to the next delimiter, and continue on to look for further errors. 
+Speaking of brackets, when we have a failure within a delimitted rule, it often makes sense to log an error, advance to the next delimiter, and continue on to look for further errors.
 
 
 ## Error relavance and validation
@@ -273,3 +274,99 @@ If only one of the two succeeds, the successful one is more relevant. However, i
 Another thing to bear in mind is that grammatical errors only have a few possible error states: unexpected tokens, unexpected end-of-text, unrecognized tokens. All other errors signify that only valid tokens were produced and consumed, so they must be conversion errors.
 
 As an addendum to all of the above, a lot of these kinds of headaches can be avoided by delaying any validation operations as long as possible. You might parse the entire input to validate its grammar and capture all values as text, then do a second pass to convert text values into semantically meaningful values. By doing this, you ensure that all parsers have consistent behavior, because they can only fail due to grammatical errors. The downside of this is that it becomes difficult to compose parsers, because you have to forbid calling into anything that does validation. It also means you can't easily do context-sensitive parsing where you make decisions based on the value of a previous parse, but that's probably something to avoid for other reasons.
+
+# Combinators
+
+One of tephra's design goals is to minimize the number of parser combinators supplied. This is to the benefit of the user, as it is far less likely to use the wrong combinator when only a few options are available, and any of the rarer parses that would behave in an exceptional manner immediately stand out due to the use of special handling at the parse site. Moreover it is easier to understand a smaller set of combinators, which makes it that much easier to understand when they are being used incorrectly, or when a manually written parser is doing what a simple combinator would do.
+
+Another consequence of minimizing the set of combinators is that tephra doesn't demand a compositional parser writing style, as would be expected of a parser combinator library in a functional language. It is expected for the user to write imperative code for handling errors and introducing optimizations and tracing into their parsers.
+
+Every combinator provided by tephra is either assumed to be useful for a wide variety of situations, or obvious and trivial in what it does. This is a surprisingly hard standard to meet, so we'll go over each combinator to explain what it is useful for, as well as a broader picture of parsing various common things to show how they are used in practice. We'll also cover some of the control methods available on the parse result types, as they cover some of the functionality that a traditional combinator library would provide.
+
+
+
+## Primitive (Token) Combinators
+### `empty`
+A mostly useless parser with a trivial implementation. Returns a successful parse of nothing.
+
+### `fail`
+### `end_of_text`
+A simple and useful combinator. Successfully parses only if there is no more text to process, which is a useful way to ensure everything has been parsed. Often used to validate the final result of all parsing, or as a terminator for a repeating parse.
+
+### `one`
+Probably the most useful combinator provided. Constructs a parser the matches a single token. This is usually the first step in any parse.
+
+### `any`
+An obvious generalization of `one`, which will successfully parse one of any of the given tokens. Less useful than `one`, because you probably end up matching on the result (but you could also do that with `Lexer::peek` without advancing the lexer state.) This is more useful when you want to dynamically match related tokens, such as when using `bracket_dynamic`.
+
+Example:
+
+In atma-script, this is only used in one place: to dynamically match single and double quotes on strings.
+
+```
+let string_close = move |lexer, tok| match tok {
+        StringOpenSingle => one(StringCloseSingle)(lexer),
+        StringOpenDouble => one(StringCloseDouble)(lexer),
+        _ => unreachable!(),
+    };
+
+bracket_dynamic(
+    any(&[StringOpenSingle, StringOpenDouble]),
+    text(one(StringText)),
+    string_close)
+```
+
+Without `any`, the solution would be to attempt each parse seperately, or to write the implementations of these manually.
+
+### `seq`
+Another obvious generalization of `one`, which will successfully parse the given sequence of tokens. This is often used with `exact`, but in many situations, a proper `Scanner` impl will obviate the need for this.
+
+Example:
+
+In atma-script, this is only used once to parse color hex codes. because the `HexDigits` token overlaps with identifiers, the `Hash` token changes the scanning mode to avoid parsing idents until a `HexDigits` is found.
+
+```
+text(exact(seq(&[
+    AtmaToken::Hash,
+    AtmaToken::HexDigits])))
+```
+
+Alternatively, the Scanner could just consume the `Hash` and `HexDigits` as a single token. So it ends up being a very minor trade-off between scanner complexity and parser complexity.
+
+## Control Combinators
+### `filter_with`
+This combinator is not very useful, but it is a more general form of the sometimes-useful `exact` combinator. It allows you to temporarily set the lexer filters during a parse so that you can selectively ignore tokens.
+
+### `exact`
+This combinator is occasionally useful, but the implementation is quite general. It disables all lexer filters during a parse, allowing you to take manual control over the exact tokens consumed. This is useful if you want to do something like parse two tokens without any whitespace between them. (A potentially preferred alternative to this would to redesign the `Scanner` to match the combined tokens as a new token.)
+
+### `section`
+### `discard`
+A mostly useless parser with a trivial implementation. Discards the parse result and converts it to `()`.
+
+### `text`
+This combinator substitutes a successful parse result with the text it was parsed from. This is commonly wrapped around token combinators to extract the text of the token that was matched.
+
+### `spanned`
+This should be one of your most-used combinators. It captures the span of a parse, and is incredibly useful for describing errors from a parse.
+
+## Join Combinators
+### `left`, `right`, `both`, `bracket`
+These are common and useful combinators that allow you to perform a sequence of parses, capturing specific parts of the output. Often used to parse prefixes, postfixes, delimiters, brackets, etc.
+
+### `bracket_dynamic`
+This is an occasionally useful generalization of `bracket`, that passes the output of the first parser to the third parser. This can be used to match closing brackets with opening brackets. When the bracket is a token, it often makes more sense to push a token context in the `Scanner` to ensure the correct ending token is encountered (such as with comments or strings.)
+
+## Repeat Combinators
+### `repeat`
+### `repeat_until`
+### `repeat_collect`
+### `repeat_collect_until`
+### `intersperse`
+### `intersperse_until`
+### `intersperse_collect`
+### `intersperse_collect_until`
+## Option Combinators
+### `maybe`
+### `atomic`
+### `require_if`

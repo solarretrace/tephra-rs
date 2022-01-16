@@ -34,8 +34,8 @@ pub struct Span<'text> {
 
 impl<'text> Span<'text> {
     /// Constructs a new span covering given source text.
-    pub fn full<Cm>(source: &'text str, metrics: Cm) -> Self
-        where Cm: ColumnMetrics,
+    pub fn full(source: &'text str, metrics: ColumnMetrics)
+        -> Self
     {
         Span::new_enclosing(
             Pos::ZERO,
@@ -116,8 +116,8 @@ impl<'text> Span<'text> {
     }
 
     /// Widens the span on the left and right to the nearest newline.
-    pub fn widen_to_line<Cm>(&self, metrics: Cm) -> Self
-        where Cm: ColumnMetrics,
+    pub fn widen_to_line(&self, metrics: ColumnMetrics)
+        -> Self
     {
         if self.is_full() { return self.clone(); }
 
@@ -228,14 +228,14 @@ impl<'text> Span<'text> {
     }
 
     /// Returns an iterator over the lines of the span.
-    pub fn split_lines<Cm>(&self, metrics: Cm) -> SplitLines<'text, Cm>
-        where Cm: ColumnMetrics,
+    pub fn split_lines(&self, metrics: ColumnMetrics)
+        -> SplitLines<'text>
     {
         SplitLines {
-            metrics,
             start: self.start(),
             end: self.end(),
             source: self.source,
+            metrics,
         }
     }
 }
@@ -503,14 +503,14 @@ impl<'text> From<Span<'text>> for SpanOwned {
 /// An iterator over the lines of a span. Returned by the `lines` method on
 /// `Span`.
 #[derive(Debug, Clone)]
-pub struct SplitLines<'text, Cm> {
+pub struct SplitLines<'text> {
     source: &'text str,
     start: Pos,
     end: Pos,
-    metrics: Cm,
+    metrics: ColumnMetrics,
 }
 
-impl<'text, Cm> Iterator for SplitLines<'text, Cm> where Cm: ColumnMetrics {
+impl<'text> Iterator for SplitLines<'text> {
     type Item = Span<'text>;
     
     fn next(&mut self) -> Option<Self::Item> {
@@ -543,13 +543,9 @@ impl<'text, Cm> Iterator for SplitLines<'text, Cm> where Cm: ColumnMetrics {
     }
 }
 
-impl<'text, Cm> std::iter::FusedIterator for SplitLines<'text, Cm> 
-    where Cm: ColumnMetrics,
-{}
+impl<'text> std::iter::FusedIterator for SplitLines<'text> {}
 
-impl<'text, Cm> ExactSizeIterator for SplitLines<'text, Cm> 
-    where Cm: ColumnMetrics,
-{
+impl<'text> ExactSizeIterator for SplitLines<'text> {
     fn len(&self) -> usize {
          self.end.page.line - self.start.page.line
     }

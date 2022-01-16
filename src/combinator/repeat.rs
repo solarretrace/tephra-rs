@@ -17,7 +17,6 @@ use crate::lexer::Scanner;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::Success;
-use crate::position::ColumnMetrics;
 
 // External library imports.
 use tracing::event;
@@ -30,19 +29,154 @@ use tracing::span;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Returns a parser which repeats the given number of times, interspersed by
-/// parse attempts from a secondary parser. Each parsed value is collected into
-/// a `Vec`.
-pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
+/// parse attempts from a secondary parser. The parsed value is the number of
+/// successful parses.
+pub fn repeat<'text, Sc, F, V>(
+    low: usize,
+    high: Option<usize>,
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, usize>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+{
+    move |lexer| {
+        intersperse_collect(low, high, 
+                discard(&mut parser),
+                empty)
+            (lexer)
+            .map_value(|vals| vals.len())
+    }
+}
+
+/// Returns a parser which repeats the given number of times, interspersed by
+/// parse attempts from a secondary parser. The parsed value is the number of
+/// successful parses.
+pub fn repeat_until<'text, Sc, F, G, V, U>(
+    low: usize,
+    high: Option<usize>,
+    mut stop_parser: F,
+    mut parser: G)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, usize>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+{
+    move |lexer| {
+        intersperse_collect_until(low, high, 
+                &mut stop_parser,
+                discard(&mut parser),
+                empty)
+            (lexer)
+            .map_value(|vals| vals.len())
+    }
+}
+
+/// Returns a parser which repeats the given number of times. Each parsed value
+/// is collected into a `Vec`.
+pub fn repeat_collect<'text, Sc, F, V>(
+    low: usize,
+    high: Option<usize>,
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<V>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+{
+    move |lexer| {
+        intersperse_collect(low, high,
+            &mut parser,
+            empty)
+            (lexer)
+    }
+}
+
+/// Returns a parser which repeats the given number of times or until a stop
+/// parser succeeds, interspersed by parse attempts from a secondary parser.
+/// Each parsed value is collected into a `Vec`. The stop parse is not included
+/// in the result.
+pub fn repeat_collect_until<'text, Sc, F, G, V, U>(
+    low: usize,
+    high: Option<usize>,
+    mut stop_parser: F,
+    mut parser: G)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<U>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+{
+    move |lexer| {
+        intersperse_collect_until(low, high, &mut stop_parser,
+            &mut parser,
+            empty)
+            (lexer)
+    }
+}
+
+/// Returns a parser which repeats the given number of times, interspersed by
+/// parse attempts from a secondary parser. The parsed value is the number of
+/// successful parses.
+pub fn intersperse<'text, Sc, F, G, V, U>(
     low: usize,
     high: Option<usize>,
     mut parser: F,
     mut inter_parser: G)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Vec<V>>
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-        G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+{
+    move |lexer| {
+        intersperse_collect(low, high, 
+                discard(&mut parser),
+                &mut inter_parser)
+            (lexer)
+            .map_value(|vals| vals.len())
+    }
+}
+
+/// Returns a parser which repeats the given number of times, interspersed by
+/// parse attempts from a secondary parser. The parsed value is the number of
+/// successful parses.
+pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
+    low: usize,
+    high: Option<usize>,
+    mut stop_parser: F,
+    mut parser: G,
+    mut inter_parser: H)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, usize>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+        H: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, T>,
+{
+    move |lexer| {
+        intersperse_collect_until(low, high, 
+                &mut stop_parser,
+                discard(&mut parser),
+                &mut inter_parser)
+            (lexer)
+            .map_value(|vals| vals.len())
+    }
+}
+
+/// Returns a parser which repeats the given number of times, interspersed by
+/// parse attempts from a secondary parser. Each parsed value is collected into
+/// a `Vec`.
+pub fn intersperse_collect<'text, Sc, F, G, V, U>(
+    low: usize,
+    high: Option<usize>,
+    mut parser: F,
+    mut inter_parser: G)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<V>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "intersperse_collect");
@@ -123,19 +257,18 @@ pub fn intersperse_collect<'text, Sc, Cm, F, G, V, U>(
 /// parser succeeds, interspersed by parse attempts from a secondary parser.
 /// Each parsed value is collected into a `Vec`. The stop parse is not included
 /// in the result.
-pub fn intersperse_collect_until<'text, Sc, Cm, F, G, H, V, U, T>(
+pub fn intersperse_collect_until<'text, Sc, F, G, H, V, U, T>(
     low: usize,
     high: Option<usize>,
     mut stop_parser: F,
     mut parser: G,
     mut inter_parser: H)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Vec<U>>
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<U>>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-        G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
-        H: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, T>,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+        H: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, T>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "intersperse_collect_until");
@@ -220,147 +353,5 @@ pub fn intersperse_collect_until<'text, Sc, Cm, F, G, H, V, U, T>(
 
         event!(Level::TRACE, "Ok with {} repetitions", vals.len());
         Ok(succ.map_value(|_| vals))
-    }
-}
-
-/// Returns a parser which repeats the given number of times, interspersed by
-/// parse attempts from a secondary parser. The parsed value is the number of
-/// successful parses.
-pub fn intersperse<'text, Sc, Cm, F, G, V, U>(
-    low: usize,
-    high: Option<usize>,
-    mut parser: F,
-    mut inter_parser: G)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, usize>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-        G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
-{
-    move |lexer| {
-        intersperse_collect(low, high, 
-                discard(&mut parser),
-                &mut inter_parser)
-            (lexer)
-            .map_value(|vals| vals.len())
-    }
-}
-
-/// Returns a parser which repeats the given number of times, interspersed by
-/// parse attempts from a secondary parser. The parsed value is the number of
-/// successful parses.
-pub fn intersperse_until<'text, Sc, Cm, F, G, H, V, U, T>(
-    low: usize,
-    high: Option<usize>,
-    mut stop_parser: F,
-    mut parser: G,
-    mut inter_parser: H)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, usize>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-        G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
-        H: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, T>,
-{
-    move |lexer| {
-        intersperse_collect_until(low, high, 
-                &mut stop_parser,
-                discard(&mut parser),
-                &mut inter_parser)
-            (lexer)
-            .map_value(|vals| vals.len())
-    }
-}
-
-/// Returns a parser which repeats the given number of times. Each parsed value
-/// is collected into a `Vec`.
-pub fn repeat_collect<'text, Sc, Cm, F, V>(
-    low: usize,
-    high: Option<usize>,
-    mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Vec<V>>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-{
-    move |lexer| {
-        intersperse_collect(low, high,
-            &mut parser,
-            empty)
-            (lexer)
-    }
-}
-
-/// Returns a parser which repeats the given number of times or until a stop
-/// parser succeeds, interspersed by parse attempts from a secondary parser.
-/// Each parsed value is collected into a `Vec`. The stop parse is not included
-/// in the result.
-pub fn repeat_collect_until<'text, Sc, Cm, F, G, V, U>(
-    low: usize,
-    high: Option<usize>,
-    mut stop_parser: F,
-    mut parser: G)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Vec<U>>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-        G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
-{
-    move |lexer| {
-        intersperse_collect_until(low, high, &mut stop_parser,
-            &mut parser,
-            empty)
-            (lexer)
-    }
-}
-
-/// Returns a parser which repeats the given number of times, interspersed by
-/// parse attempts from a secondary parser. The parsed value is the number of
-/// successful parses.
-pub fn repeat<'text, Sc, Cm, F, V>(
-    low: usize,
-    high: Option<usize>,
-    mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, usize>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-{
-    move |lexer| {
-        intersperse_collect(low, high, 
-                discard(&mut parser),
-                empty)
-            (lexer)
-            .map_value(|vals| vals.len())
-    }
-}
-
-/// Returns a parser which repeats the given number of times, interspersed by
-/// parse attempts from a secondary parser. The parsed value is the number of
-/// successful parses.
-pub fn repeat_until<'text, Sc, Cm, F, G, V, U>(
-    low: usize,
-    high: Option<usize>,
-    mut stop_parser: F,
-    mut parser: G)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, usize>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
-        G: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, U>,
-{
-    move |lexer| {
-        intersperse_collect_until(low, high, 
-                &mut stop_parser,
-                discard(&mut parser),
-                empty)
-            (lexer)
-            .map_value(|vals| vals.len())
     }
 }

@@ -10,7 +10,6 @@
 
 // Local imports.
 use crate::position::ColumnMetrics;
-use crate::position::Lf;
 use crate::position::Pos;
 
 
@@ -24,17 +23,14 @@ use crate::position::Pos;
 #[test]
 fn size_checks() {
     use std::mem::size_of;
-    assert_eq!(1, size_of::<crate::position::Lf>(), "Lf");
-    assert_eq!(1, size_of::<crate::position::Cr>(), "Cr");
-    assert_eq!(1, size_of::<crate::position::CrLf>(), "CrLf");
-    assert_eq!(24, size_of::<crate::position::Pos>(), "Pos");
+    assert_eq!(2, size_of::<crate::position::ColumnMetrics>(), "ColumnMetrics");
 }
 
 /// Tests `ColumnMetrics::position_after_str` for `Lf`.
 #[test]
 fn lf_position_after_str() {
     let text = "abcd";
-    let metrics = Lf::new();
+    let metrics = ColumnMetrics::new();
 
 
     let actual = metrics.position_after_str(text, Pos::ZERO, "ab");
@@ -50,7 +46,7 @@ fn lf_position_after_str() {
 #[test]
 fn lf_next_position_after_chars_matching() {
     let text = "    \t\tabcd";
-    let metrics = Lf::new();
+    let metrics = ColumnMetrics::new();
 
 
     let actual = metrics.next_position_after_chars_matching(
@@ -72,7 +68,7 @@ fn lf_next_position_after_chars_matching() {
 #[test]
 fn lf_position_after_chars_matching() {
     let text = "    \t\tabcd";
-    let metrics = Lf::new();
+    let metrics = ColumnMetrics::new();
 
 
     let actual = metrics.position_after_chars_matching(
@@ -94,7 +90,7 @@ fn lf_position_after_chars_matching() {
 #[test]
 fn lf_iter_columns() {
     let text = "abcd";
-    let metrics = Lf::new();
+    let metrics = ColumnMetrics::new();
 
 
     let actual: Vec<_> = metrics.iter_columns(text, Pos::ZERO)

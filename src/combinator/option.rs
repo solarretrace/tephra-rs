@@ -14,7 +14,6 @@ use crate::lexer::Scanner;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::Success;
-use crate::position::ColumnMetrics;
 
 // External library imports.
 use tracing::Level;
@@ -27,12 +26,11 @@ use tracing::event;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Returns a parser which converts any failure into an empty success.
-pub fn maybe<'text, Sc, Cm, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Option<V>>
+pub fn maybe<'text, Sc, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "maybe");
@@ -58,12 +56,11 @@ pub fn maybe<'text, Sc, Cm, F, V>(mut parser: F)
 /// non-filtered tokens are consumed.
 ///
 /// This is equivalent to `maybe` if the parser consumes at most a single token.
-pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Option<V>>
+pub fn atomic<'text, Sc, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
         V: std::fmt::Debug
 {
     move |lexer| {
@@ -96,13 +93,12 @@ pub fn atomic<'text, Sc, Cm, F, V>(mut parser: F)
 /// This acts like a `maybe` combinator that can be conditionally disabled:
 /// `require_if(|| false, p)` is identical to `maybe(p)` and 
 /// `require_if(|| true, p)` is identical to `p`.
-pub fn require_if<'text, Sc, Cm, P, F, V>(mut pred: P, mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Option<V>>
+pub fn require_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
-        Cm: ColumnMetrics,
         P: FnMut() -> bool,
-        F: FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, V>,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
         let span = span!(Level::DEBUG, "require_if");

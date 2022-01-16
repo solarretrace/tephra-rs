@@ -9,7 +9,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::position::ColumnMetrics;
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::result::ParseResult;
@@ -36,11 +35,9 @@ use tracing::span;
 /// ## Failure
 ///
 /// This parser cannot fail.
-pub fn empty<'text, Sc, Cm>(lexer: Lexer<'text, Sc, Cm>)
-    -> ParseResult<'text, Sc, Cm, ()>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
+pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>)
+    -> ParseResult<'text, Sc, ()>
+    where Sc: Scanner,
 {
     Ok(Success {
         lexer,
@@ -50,11 +47,9 @@ pub fn empty<'text, Sc, Cm>(lexer: Lexer<'text, Sc, Cm>)
 
 /// Parses any token and fails. Useful for failing if a peeked token doesn't
 /// match any expected tokens.
-pub fn fail<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
-    -> ParseResult<'text, Sc, Cm, ()>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
+pub fn fail<'text, Sc>(mut lexer: Lexer<'text, Sc>)
+    -> ParseResult<'text, Sc, ()>
+    where Sc: Scanner,
 {
     let span = span!(Level::DEBUG, "fail");
     let _enter = span.enter();
@@ -89,11 +84,9 @@ pub fn fail<'text, Sc, Cm>(mut lexer: Lexer<'text, Sc, Cm>)
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses the end of the text.
-pub fn end_of_text<'text, Sc, Cm>(lexer: Lexer<'text, Sc, Cm>)
-    -> ParseResult<'text, Sc, Cm, ()>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
+pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
+    -> ParseResult<'text, Sc, ()>
+    where Sc: Scanner,
 {
     let span = span!(Level::DEBUG, "end_of_text");
     let _enter = span.enter();
@@ -122,11 +115,9 @@ pub fn end_of_text<'text, Sc, Cm>(lexer: Lexer<'text, Sc, Cm>)
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser which consumes a single token if it matches the given
 /// token.
-pub fn one<'text, Sc, Cm>(token: Sc::Token)
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Sc::Token>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
+pub fn one<'text, Sc>(token: Sc::Token)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Sc::Token>
+    where Sc: Scanner,
 {
 
     move |mut lexer| {
@@ -190,11 +181,9 @@ pub fn one<'text, Sc, Cm>(token: Sc::Token)
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser attempts each of the given tokens in sequence, returning
 /// the first which succeeds.
-pub fn any<'text, Sc, Cm>(tokens: &[Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, Sc::Token>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
+pub fn any<'text, Sc>(tokens: &[Sc::Token])
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Sc::Token>
+    where Sc: Scanner,
 {
     let tokens = tokens.to_vec();
     move |lexer| {
@@ -282,11 +271,9 @@ impl<'a, T> std::fmt::Debug for DisplayList<'a, T>
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser attempts each of the given tokens in sequence, returning
 /// the success only if each succeeds.
-pub fn seq<'text, Sc, Cm>(tokens: &[Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc, Cm>) -> ParseResult<'text, Sc, Cm, ()>
-    where
-        Sc: Scanner,
-        Cm: ColumnMetrics,
+pub fn seq<'text, Sc>(tokens: &[Sc::Token])
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, ()>
+    where Sc: Scanner,
 {
     let tokens = tokens.to_vec();
     move |mut lexer| {
