@@ -253,6 +253,9 @@ Another big idea is that there are such things as 'bounded' and 'unbounded' pars
 
 Furthermore, in order to keep our parsers general purpose, we want to minimize the amount of special context handling within a parser. For example, the `bracket` combinator is not going to consider any of its arguments as inherently special; it should be suitable for parsing `abc` just as easily as `[b]`.
 
+## When to clone the lexer.
+
+Clone the lexer whenever you make and overly-general parse. This will allow `atomic` to work correctly.
 
 ## Sections and Recovery
 
@@ -368,5 +371,31 @@ This is an occasionally useful generalization of `bracket`, that passes the outp
 ### `intersperse_collect_until`
 ## Option Combinators
 ### `maybe`
+
+This combinator is sometimes useful when parsing something that is entirely optional. They key word being 'entirely': if any part of the parse suceeds, but not the entire parse, this will succeed with `None`. The behavior of `atomic` is often more useful, but `maybe` is simpler and makes sense for smaller parses, such as looking for extra optional tokens. 
+
+Example:
+
+In StmaScript, trailing commas are accepted in array expressions. The `maybe` combinator allows the parse to tolerate this extra bit of notation:
+
+```
+bracket(
+    one(OpenBracket),
+    left(
+        intersperse_collect(0, None,
+            expr,
+            one(Comma)),
+        maybe(one(Comma))),
+    one(CloseBracket))
+    (lexer)
+```
+
+
 ### `atomic`
+
+This combinator is useful to attempt a parse when the parse call tree is determined by a prefix. Basically, as soon as any part of the given parser succeeds, it is an error for the remainder of the parse to fail.
+
+The `atomic` combinator can sometimes cause headaches if you improperly clone (or fail to clone) the lexer. For example, if you parse a more general token at the beginning of the parse and fail if it doesn't satisfy some constraint (such parsing a identifier and succeeding only if it matches a specific keyword), then the `atomic` wrapper will make this parse fail if *any* version of the general parse is successful (so it will fail on any identifier match.) To avoid this, you always want to clone the lexer before making more general parses than necessary, and then fail by returning the original.
+
+
 ### `require_if`

@@ -45,8 +45,8 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
             Ok(succ) => Ok(succ.map_value(Some)),
 
             Err(_)   => Ok(Success {
-                lexer: initial,
                 value: None,
+                lexer: initial,
             }),
         }
     }
@@ -67,12 +67,13 @@ pub fn atomic<'text, Sc, F, V>(mut parser: F)
         let span = span!(Level::DEBUG, "atomic");
         let _enter = span.enter();
 
+        let sub = lexer.sublexer();
         let current_cursor = lexer.cursor_pos();
 
-        event!(Level::TRACE, "before parse:\n{}", lexer);
+        event!(Level::TRACE, "before parse:\n{}", sub);
 
         match parser
-            (lexer.clone())
+            (sub)
             .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => Ok(succ.map_value(Some)),
@@ -80,8 +81,8 @@ pub fn atomic<'text, Sc, F, V>(mut parser: F)
             Err(fail) if fail.lexer.cursor_pos() > current_cursor => Err(fail),
 
             Err(_) => Ok(Success {
-                lexer,
                 value: None,
+                lexer,
             }),
         }
     }

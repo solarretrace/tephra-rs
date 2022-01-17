@@ -151,9 +151,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
 
-    /// Consumes the text from the parse_start of the current parse up to the current
-    /// position. This ends the 'current parse' and prevents further spans
-    /// from including any previously lexed text.
+    /// Consumes the text from the `parse_start` of the current parse up to the
+    /// current position. This ends the 'current parse' and prevents further
+    /// spans from including any previously lexed text.
     fn consume_current(&mut self) {
         self.token_start = self.cursor;
         self.parse_start = self.cursor;
