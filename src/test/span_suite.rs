@@ -13,6 +13,8 @@ use crate::span::Span;
 use crate::position::ColumnMetrics;
 use crate::position::Pos;
 
+// External library imports.
+use pretty_assertions::assert_eq;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Span tests.
@@ -30,12 +32,10 @@ fn size_checks() {
 /// Tests `Span::new`.
 #[test]
 fn empty() {
-    let text = "abcd";
-    let span = Span::new(text);
+    const TEXT: &'static str = "abcd";
+    let span = Span::new(TEXT);
 
-    assert_eq!(
-        span.text(),
-        "");
+    assert_eq!(span.text(), "");
     assert_eq!(
         format!("{:?}", span),
         "\"\" (0:0, byte 0)");
@@ -44,8 +44,8 @@ fn empty() {
 /// Tests `Span::full`.
 #[test]
 fn full() {
-    let text = " \n  abcd  \n ";
-    let span = Span::full(text, ColumnMetrics::new());
+    const TEXT: &'static str = " \n  abcd  \n ";
+    let span = Span::full(TEXT, ColumnMetrics::new());
 
     assert_eq!(
         format!("{:?}", span),
@@ -55,11 +55,11 @@ fn full() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn widen_to_line() {
-    let text = " \n  abcd  \n ";
+    const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::new_enclosing(
+        TEXT,
         Pos::new(4, 1, 2),
-        Pos::new(8, 1, 6),
-        text);
+        Pos::new(8, 1, 6));
 
     assert_eq!(
         format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
@@ -69,8 +69,8 @@ fn widen_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn widen_empty_to_line() {
-    let text = " \n  abcd  \n ";
-    let span = Span::new_at(Pos::new(6, 1, 4), text);
+    const TEXT: &'static str = " \n  abcd  \n ";
+    let span = Span::new_at(TEXT, Pos::new(6, 1, 4));
 
     assert_eq!(
         format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
@@ -80,11 +80,11 @@ fn widen_empty_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn widen_line_to_line() {
-    let text = " \n  abcd  \n ";
+    const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::new_enclosing(
+        TEXT,
         Pos::new(2, 1, 0),
-        Pos::new(10, 1, 8),
-        text);
+        Pos::new(10, 1, 8));
 
     assert_eq!(
         format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
@@ -94,11 +94,11 @@ fn widen_line_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn widen_full_to_line() {
-    let text = " \n  abcd  \n ";
+    const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::new_enclosing(
+        TEXT,
         Pos::new(0, 0, 0),
-        Pos::new(12, 2, 1),
-        text);
+        Pos::new(12, 2, 1));
 
     assert_eq!(
         format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
@@ -109,8 +109,8 @@ fn widen_full_to_line() {
 /// Tests `Span::split_lines`.
 #[test]
 fn split_lines() {
-    let text = "\n \n\n \nabcd\n def \nghi\n";
-    let span = Span::full(text, ColumnMetrics::new());
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let span = Span::full(TEXT, ColumnMetrics::new());
 
     let actual = span
         .split_lines(ColumnMetrics::new())
@@ -127,11 +127,6 @@ fn split_lines() {
         "\"\" (7:0, byte 21)".to_owned(),
     ];
 
-    for (i, act) in actual.iter().enumerate() {
-        println!("{:?}", act);
-        println!("{:?}", expected[i]);
-        println!();
-    }
     assert_eq!(actual, expected);
 }
 
@@ -139,8 +134,8 @@ fn split_lines() {
 /// Tests `Span::split_lines` with no line breaks.
 #[test]
 fn split_line_no_breaks() {
-    let text = "abcd";
-    let span = Span::full(text, ColumnMetrics::new());
+    const TEXT: &'static str = "abcd";
+    let span = Span::full(TEXT, ColumnMetrics::new());
 
     let actual = span
         .split_lines(ColumnMetrics::new())
@@ -150,11 +145,6 @@ fn split_line_no_breaks() {
         "\"abcd\" (0:0-0:4, bytes 0-4)".to_owned(),
     ];
 
-    for (i, act) in actual.iter().enumerate() {
-        println!("{:?}", act);
-        println!("{:?}", expected[i]);
-        println!();
-    }
     assert_eq!(actual, expected);
 }
 
@@ -162,87 +152,75 @@ fn split_line_no_breaks() {
 /// Tests `Span::enclose`.
 #[test]
 fn enclose() {
-    let text = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let a = Span::new_enclosing(
+        TEXT,
         Pos::new(3, 2, 0),
-        Pos::new(10, 4, 4),
-        text);
+        Pos::new(10, 4, 4));
     let b = Span::new_enclosing(
+        TEXT,
         Pos::new(5, 3, 1),
-        Pos::new(20, 6, 3),
-        text);
+        Pos::new(20, 6, 3));
 
     let actual = format!("{:?}", a.enclose(b));
     let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
 
-    println!("{:?}", actual);
-    println!("{:?}", expected);
-    println!();
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::union`.
 #[test]
 fn union() {
-    let text = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let a = Span::new_enclosing(
+        TEXT,
         Pos::new(3, 2, 0),
-        Pos::new(10, 4, 4),
-        text);
+        Pos::new(10, 4, 4));
     let b = Span::new_enclosing(
+        TEXT,
         Pos::new(5, 3, 1),
-        Pos::new(20, 6, 3),
-        text);
+        Pos::new(20, 6, 3));
 
     let actual = format!("{:?}", a.union(b).next().unwrap());
     let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
 
-    println!("{:?}", actual);
-    println!("{:?}", expected);
-    println!();
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::intersect`.
 #[test]
 fn intersect() {
-    let text = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let a = Span::new_enclosing(
+        TEXT,
         Pos::new(3, 2, 0),
-        Pos::new(10, 4, 4),
-        text);
+        Pos::new(10, 4, 4));
     let b = Span::new_enclosing(
+        TEXT,
         Pos::new(5, 3, 1),
-        Pos::new(20, 6, 3),
-        text);
+        Pos::new(20, 6, 3));
 
     let actual = format!("{:?}", a.intersect(b).unwrap());
     let expected = "\"\nabcd\" (3:1-4:4, bytes 5-10)".to_owned();
 
-    println!("{:?}", actual);
-    println!("{:?}", expected);
-    println!();
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::minus`.
 #[test]
 fn minus() {
-    let text = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let a = Span::new_enclosing(
+        TEXT,
         Pos::new(3, 2, 0),
-        Pos::new(10, 4, 4),
-        text);
+        Pos::new(10, 4, 4));
     let b = Span::new_enclosing(
+        TEXT,
         Pos::new(5, 3, 1),
-        Pos::new(20, 6, 3),
-        text);
+        Pos::new(20, 6, 3));
 
     let actual = format!("{:?}", a.minus(b).next().unwrap());
     let expected = "\"\n \" (2:0-3:1, bytes 3-5)".to_owned();
 
-    println!("{:?}", actual);
-    println!("{:?}", expected);
-    println!();
     assert_eq!(actual, expected);
 }

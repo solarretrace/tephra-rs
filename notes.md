@@ -244,6 +244,29 @@ The problem with implicit joins is figuring out how and when to break them up. B
 
 Outside of those, there is no obvious and automatic way to determine where spans should break.
 
+# Additional parse failure contexts
+In addition to the above highlightings, it is often beneficial to know what was expected, and more importantly, *why* it was expected. If a parse fails, we know what parser was running and what it is expecting to find. If some prefix of an unambiguous parse succeeds, then we also know why we're expecting something. 
+
+A parse can fail for many reasons, and some of those failures should be ignored depending on context. 
+
+    It is a successful match
+    It is an attempt to match
+        .. because a prefix of it was successful
+            1. Use `atomic` to delineate the section
+            2. Why are we parsing?
+            3. What failed? -> in ParseError
+            4. What was expected. -> in ParseError
+
+        .. because a validation condition failed
+            1. use `section` to delineate the section.
+            2. Why are we parsing?
+            3. What failed? -> in ParseError
+            4. What was expected. -> in ParseError
+    It is not an attempt to match
+        .. because no prefix was successful
+            1. use `maybe` to delineate the section
+        .. because a validation condition failed
+            1. use `maybe` to delineate the section
 
 ## General purpose parsers
 

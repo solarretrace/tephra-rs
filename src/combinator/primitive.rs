@@ -267,15 +267,18 @@ impl<'a, T> std::fmt::Debug for DisplayList<'a, T>
 /// Returns a parser attempts each of the given tokens in sequence, returning
 /// the success only if each succeeds.
 pub fn seq<'text, Sc>(tokens: &[Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, ()>
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<Sc::Token>>
     where Sc: Scanner,
 {
     let tokens = tokens.to_vec();
+    let cap = tokens.len();
     move |mut lexer| {
         let _span = span!(Level::DEBUG, "seq",
             expected = ?DisplayList(&tokens[..])).entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
+
+        let mut found = Vec::with_capacity(cap);
         
         for token in &tokens {
             let _span = span!(Level::TRACE, "seq", expect = ?token).entered();
@@ -302,7 +305,7 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
                 }),
 
                 // Matching token.
-                Some(lex) if lex == *token => (),
+                Some(lex) if lex == *token => found.push(lex),
 
                 // Incorrect token.
                 Some(_) => return Err(Failure {
@@ -318,7 +321,7 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
 
         Ok(Success {
             lexer,
-            value: (),
+            value: found,
         })
     }
 }

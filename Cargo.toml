@@ -1,6 +1,6 @@
 [package]
 name = "tephra"
-version = "0.0.159"
+version = "0.0.160"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -30,6 +30,7 @@ unicode-width = { version = "0.1" }
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]
 color = { git = "https://github.com/skysch/color-rs" }
+pretty_assertions = "*"
 
 # The development profile, used for `cargo build`
 [profile.dev]

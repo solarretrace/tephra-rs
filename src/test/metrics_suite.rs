@@ -12,6 +12,8 @@
 use crate::position::ColumnMetrics;
 use crate::position::Pos;
 
+// External library imports.
+use pretty_assertions::assert_eq;
 
 
 ////////////////////////////////////////////////////////////////////////////////

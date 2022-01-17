@@ -149,6 +149,17 @@ impl<'text> From<&'static str> for ParseError<'text> {
     }
 }
 
+
+impl<'text> std::error::Error for ParseError<'text> {
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // ParseErrorOwned
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,5 +196,15 @@ impl std::fmt::Display for ParseErrorOwned {
             // TODO: Clean up message.
             write!(f, "{} NO SPAN", self.description)
         }
+    }
+}
+
+impl std::error::Error for ParseErrorOwned {
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
     }
 }

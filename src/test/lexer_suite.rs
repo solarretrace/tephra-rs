@@ -18,6 +18,8 @@ use crate::position::ColumnMetrics;
 use crate::position::Pos;
 use crate::result::ParseResultExt as _;
 
+// External library imports.
+use pretty_assertions::assert_eq;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Token parser.

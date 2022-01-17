@@ -38,9 +38,9 @@ impl<'text> Span<'text> {
         -> Self
     {
         Span::new_enclosing(
+            source,
             Pos::ZERO,
-            metrics.end_position(source, Pos::ZERO),
-            source)
+            metrics.end_position(source, Pos::ZERO))
     }
 
     /// Constructs a new empty span in the given source text.
@@ -54,7 +54,7 @@ impl<'text> Span<'text> {
 
     /// Constructs a new empty span in the given source text, starting from the
     /// given byte and page.
-    pub fn new_at(pos: Pos, source: &'text str) -> Self {
+    pub fn new_at(source: &'text str, pos: Pos) -> Self {
         Span {
             source,
             byte: ByteSpan { start: pos.byte, end: pos.byte },
@@ -63,7 +63,7 @@ impl<'text> Span<'text> {
     }
 
     /// Constructs a new span covering given source text.
-    pub fn new_enclosing(a: Pos, b: Pos, source: &'text str) -> Self
+    pub fn new_enclosing(source: &'text str, a: Pos, b: Pos) -> Self
     {
         Span {
             source,
@@ -122,9 +122,9 @@ impl<'text> Span<'text> {
         if self.is_full() { return self.clone(); }
 
         Span::new_enclosing(
+            self.source,
             metrics.line_start_position(self.source, self.start()),
-            metrics.line_end_position(self.source, self.end()),
-            self.source)
+            metrics.line_end_position(self.source, self.end()))
     }
 
     /// Returns true if the given spans overlap.
@@ -160,7 +160,7 @@ impl<'text> Span<'text> {
         let b_end = other.end();
         let start = if a_start < b_start { a_start } else { b_start };
         let end = if a_end > b_end { a_end } else { b_end };
-        Span::new_enclosing(start, end, self.source)
+        Span::new_enclosing(self.source, start, end)
     }
 
     /// Returns the smallest set of spans covering the given spans.
@@ -199,7 +199,7 @@ impl<'text> Span<'text> {
             (false, false) => return None,
         };
 
-        Some(Span::new_enclosing(start, end, self.source))
+        Some(Span::new_enclosing(self.source, start, end))
     }
 
     /// Returns the result of removing a portion of the span.
@@ -222,8 +222,8 @@ impl<'text> Span<'text> {
             _            => (None,             None),
         };
 
-        let l = l.map(|(a, b)| Span::new_enclosing(a, b, self.source));
-        let r = r.map(|(a, b)| Span::new_enclosing(a, b, self.source));
+        let l = l.map(|(a, b)| Span::new_enclosing(self.source, a, b));
+        let r = r.map(|(a, b)| Span::new_enclosing(self.source, a, b));
         Few::from((l, r))
     }
 
@@ -448,7 +448,7 @@ impl SpanOwned {
             (false, false) => return None,
         };
 
-        Some(Span::new_enclosing(start, end, other.source))
+        Some(Span::new_enclosing(other.source, start, end))
     }
 
     /// Returns the result of removing a portion of the span.
@@ -471,8 +471,8 @@ impl SpanOwned {
             _            => (None,             None),
         };
 
-        let l = l.map(|(a, b)| Span::new_enclosing(a, b, other.source));
-        let r = r.map(|(a, b)| Span::new_enclosing(a, b, other.source));
+        let l = l.map(|(a, b)| Span::new_enclosing(other.source, a, b));
+        let r = r.map(|(a, b)| Span::new_enclosing(other.source, a, b));
         Few::from((l, r))
     }
 }
@@ -485,7 +485,7 @@ impl std::fmt::Display for SpanOwned {
 
 impl<'text> From<Span<'text>> for SpanOwned {
     fn from(span: Span<'text>) -> Self {
-        let full_span = Span::new_at(Pos::ZERO, span.source);
+        let full_span = Span::new_at(span.source, Pos::ZERO);
         SpanOwned {
             source: span.source.to_owned().into(),
             full_byte: full_span.byte,
@@ -518,10 +518,9 @@ impl<'text> Iterator for SplitLines<'text> {
             None
         } else if self.start.page.line == self.end.page.line {
             let res = Some(Span::new_enclosing(
-                self.start,
-                self.end,
                 self.source,
-            ));
+                self.start,
+                self.end));
 
             self.start.page.line += 1;
             res
@@ -530,10 +529,9 @@ impl<'text> Iterator for SplitLines<'text> {
                 .line_end_position(self.source, self.start);
 
             let res = Some(Span::new_enclosing(
-                self.start,
-                end,
                 self.source,
-            ));
+                self.start,
+                end));
 
             self.start = self.metrics
                 .next_position(self.source, end)

@@ -62,6 +62,10 @@ impl<'text, Sc> std::fmt::Display for Failure<'text, Sc>
 impl<'text, Sc> std::error::Error for Failure<'text, Sc>
     where Sc: Scanner,
 {
+    fn description(&self) -> &str {
+        &self.parse_error.description()
+    }
+
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source.as_ref().map(|src| {
             // Cast away Send + Sync bounds.
@@ -118,6 +122,10 @@ impl std::fmt::Display for FailureOwned {
 }
 
 impl std::error::Error for FailureOwned {
+    fn description(&self) -> &str {
+        &self.parse_error.description()
+    }
+    
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source.as_ref().map(|src| {
             // Cast away Send + Sync bounds.
