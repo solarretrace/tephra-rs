@@ -33,8 +33,7 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "maybe");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "maybe").entered();
 
         let initial = lexer.clone();
         
@@ -64,8 +63,7 @@ pub fn atomic<'text, Sc, F, V>(mut parser: F)
         V: std::fmt::Debug
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "atomic");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "atomic").entered();
 
         let current_cursor = lexer.cursor_pos();
 
@@ -90,7 +88,7 @@ pub fn atomic<'text, Sc, F, V>(mut parser: F)
 /// Returns a parser which requires a parse to succeed if the given
 /// predicate is true.
 ///
-/// This acts like a `maybe` combinator that can be conditionally disabled:
+/// This acts like a `maybe` combinator that can be zcpconditionally disabled:
 /// `require_if(|| false, p)` is identical to `maybe(p)` and 
 /// `require_if(|| true, p)` is identical to `p`.
 pub fn require_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
@@ -101,8 +99,7 @@ pub fn require_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "require_if");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "require_if").entered();
 
         if pred() {
             parser(lexer)

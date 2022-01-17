@@ -179,8 +179,7 @@ pub fn intersperse_collect<'text, Sc, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "intersperse_collect");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "intersperse_collect").entered();
 
         event!(Level::DEBUG, "low = {:?}, high = {:?}", low, high);
 
@@ -271,8 +270,7 @@ pub fn intersperse_collect_until<'text, Sc, F, G, H, V, U, T>(
         H: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, T>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "intersperse_collect_until");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "intersperse_collect_until").entered();
 
         event!(Level::DEBUG, "low = {:?}, high = {:?}", low, high);
 

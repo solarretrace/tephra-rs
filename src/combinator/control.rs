@@ -42,8 +42,7 @@ pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
         P: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer| {
-        let span = span!(Level::DEBUG, "filter");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "filter").entered();
 
         let old_filter = lexer.take_filter();
         lexer.set_filter_fn(filter_fn.clone());
@@ -76,8 +75,7 @@ pub fn exact<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer| {
-        let span = span!(Level::DEBUG, "exact");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "exact").entered();
 
         event!(Level::TRACE, "before removing filter:\n{}", lexer);
 
@@ -107,8 +105,7 @@ pub fn section<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "section");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "section").entered();
 
         match (parser)
             (lexer.sublexer())
@@ -136,8 +133,7 @@ pub fn discard<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "discard");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "discard").entered();
 
         match (parser)
             (lexer)
@@ -164,8 +160,7 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "text");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "text").entered();
 
         let start = lexer.cursor_pos().byte;
         match (parser)
@@ -196,8 +191,7 @@ pub fn spanned<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "spanned");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "spanned").entered();
 
         event!(Level::TRACE, "before subparse:\n{}", lexer);
 

@@ -196,8 +196,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Scans to the next unfiltered token and buffers it. This method is
     /// idempotent.
     fn scan_to_buffer(&mut self) {
-        let span = span!(Level::DEBUG, "Lexer::scan_to_buffer");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "Lexer::scan_to_buffer").entered();
 
         let mut scanner = self.scanner.clone();
         while self.cursor.byte < self.source.len() {
@@ -228,16 +227,14 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// without advancing the lexer position, assuming the lexer state is
     /// unchanged by the time `next` is called.
     pub fn peek(&self) -> Option<Sc::Token> {
-        let span = span!(Level::DEBUG, "Lexer::peek");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "Lexer::peek").entered();
 
         // TODO: Make this more efficient.
         self.clone().next()
     }
 
     fn next_buffered(&mut self) -> Option<<Self as Iterator>::Item> {
-        let span = span!(Level::DEBUG, "Lexer::next_buffered");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "Lexer::next_buffered").entered();
 
         let (token, adv, scanner) = self.buffer.take()
             .expect("nonempty buffer");
@@ -256,7 +253,7 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Creates a sublexer starting at the current lex position. The returned
     /// lexer will begin a new parse and advance past any filtered tokens.
-    pub fn sublexer(&self) -> Self {
+    pub(in crate) fn sublexer(&self) -> Self {
         let mut sub = self.clone();
         sub.consume_current();
         sub
@@ -265,8 +262,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Extends the receiver lexer to include the current parse span of the
     /// given lexer. (The given lexer's Scanner state will be discarded.)
     pub fn join(mut self, other: Self) -> Self {
-        let span = span!(Level::DEBUG, "Lexer::join");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "Lexer::join").entered();
 
         // event!(Level::TRACE, "self\n{}", self);
         // event!(Level::TRACE, "other\n{}", other);
@@ -320,8 +316,7 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
     type Item = Sc::Token;
     
     fn next(&mut self) -> Option<Self::Item> {
-        let span = span!(Level::DEBUG, "Lexer::next");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "Lexer::next").entered();
 
         while self.cursor.byte < self.source.len() {
             event!(Level::TRACE, "buffer {:?}", self.buffer);

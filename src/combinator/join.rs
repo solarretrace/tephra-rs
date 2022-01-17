@@ -33,8 +33,7 @@ pub fn left<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "left");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "left").entered();
 
         let (l, succ) = (left)
             (lexer)
@@ -58,8 +57,7 @@ pub fn right<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "right");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "right").entered();
 
         let succ = (left)
             (lexer)
@@ -81,8 +79,7 @@ pub fn both<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "both");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "both").entered();
 
         let (l, succ) = (left)
             (lexer)
@@ -110,8 +107,7 @@ pub fn bracket<'text, Sc, L, C, R, X, Y, Z>(
         R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Z>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "bracket");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "bracket").entered();
 
         let succ = match (left)
             (lexer)
@@ -152,8 +148,7 @@ pub fn bracket_dynamic<'text, Sc, L, C, R, X, Y, Z>(
         R: FnMut(Lexer<'text, Sc>, X) -> ParseResult<'text, Sc, Z>,
 {
     move |lexer| {
-        let span = span!(Level::DEBUG, "bracket_dynamic");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "bracket_dynamic").entered();
 
         let (l, succ) = (left)
             (lexer)

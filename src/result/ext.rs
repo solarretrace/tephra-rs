@@ -37,19 +37,18 @@ pub trait ParseResultExt<'text, Sc, V>
     /// discarding any associated spans or lexer state.
     fn finish(self) -> Result<V, FailureOwned>;
 
-    /// Converts ParseResult<'_, _, _, V> into a ParseResult<'_, _, _, U> by
+    /// Converts `ParseResult<'_, _, _, V>` into a `ParseResult<'_, _, _, U>` by
     /// applying the given closure.
     fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, U> 
         where F: FnOnce(V) -> U;
 
-    /// Converts a ParseResult into a Result with an Option for its Err variant,
-    /// which will be None if the failure is a lexer error.
+    /// Converts a `ParseResult` into a `Result` with an `Option` for its `Err`
+    /// variant, which will be `None` if the failure is a lexer error.
     fn filter_lexer_error(self)
         -> Result<Success<'text, Sc, V>, Option<Failure<'text, Sc>>>;
 
     /// Outputs a trace event displaying the parse result.
-    fn trace_result(self, level: Level, label: &'static str)
-        -> Self where Self: Sized;
+    fn trace_result(self, level: Level, label: &'static str) -> Self;
 }
 
 impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
@@ -81,9 +80,7 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
             })
     }
 
-    fn trace_result(self, level: Level, label: &'static str)
-        -> Self where Self: Sized
-    {
+    fn trace_result(self, level: Level, label: &'static str) -> Self {
         match level {
             Level::ERROR => event!(Level::ERROR,
                 "{} {}",

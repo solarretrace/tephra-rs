@@ -51,8 +51,7 @@ pub fn fail<'text, Sc>(mut lexer: Lexer<'text, Sc>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
-    let span = span!(Level::DEBUG, "fail");
-    let _enter = span.enter();
+    let _span = span!(Level::DEBUG, "fail").entered();
 
     match lexer.next() {
         Some(token) => {
@@ -88,8 +87,7 @@ pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
-    let span = span!(Level::DEBUG, "end_of_text");
-    let _enter = span.enter();
+    let _span = span!(Level::DEBUG, "end_of_text").entered();
 
     if lexer.is_empty() {
         event!(Level::TRACE, "end of text found");
@@ -121,8 +119,7 @@ pub fn one<'text, Sc>(token: Sc::Token)
 {
 
     move |mut lexer| {
-        let span = span!(Level::DEBUG, "one", expected = ?token);
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "one", expected = ?token).entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
 
@@ -187,15 +184,13 @@ pub fn any<'text, Sc>(tokens: &[Sc::Token])
 {
     let tokens = tokens.to_vec();
     move |lexer| {
-        let span = span!(Level::DEBUG, "any",
-            expected = ?DisplayList(&tokens[..]));
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "any",
+            expected = ?DisplayList(&tokens[..])).entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
 
         for token in &tokens {
-            let span = span!(Level::TRACE, "any", expect = ?token);
-            let _enter = span.enter();
+            let _span = span!(Level::TRACE, "any", expect = ?token).entered();
 
             let mut lexer = lexer.clone();
             match lexer.next() {
@@ -277,15 +272,13 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
 {
     let tokens = tokens.to_vec();
     move |mut lexer| {
-        let span = span!(Level::DEBUG, "seq",
-            expected = ?DisplayList(&tokens[..]));
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "seq",
+            expected = ?DisplayList(&tokens[..])).entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
         
         for token in &tokens {
-            let span = span!(Level::TRACE, "seq", expect = ?token);
-            let _enter = span.enter();
+            let _span = span!(Level::TRACE, "seq", expect = ?token).entered();
 
             if lexer.is_empty() {
                 // Unexpected End-of-text.
