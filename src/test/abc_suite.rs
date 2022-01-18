@@ -32,6 +32,7 @@ use crate::result::Success;
 use pretty_assertions::assert_eq;
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Token parser.
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,12 +208,12 @@ fn xyc<'text>(lexer: Lexer<'text, Abc>)
 }
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Tests
 ////////////////////////////////////////////////////////////////////////////////
 
-
-/// Tests `Lexer` with whitespace filter.
+/// Tests Abc token lexing & filtering.
 #[test]
 fn abc_tokens() {
     use AbcToken::*;
@@ -235,9 +236,7 @@ fn abc_tokens() {
     assert_eq!(actual, expected);
 }
 
-
-
-/// Tests `Lexer` with whitespace filter.
+/// Parses a `Pattern::Abc`.
 #[test]
 fn abc_pattern() {
     use AbcToken::*;
@@ -253,6 +252,52 @@ fn abc_pattern() {
     let actual = value;
     let expected = Pattern::Abc(Spanned {
         value: "abc",
+        span: Span::full(TEXT, ColumnMetrics::default()),
+    });
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
+}
+
+/// Parses a `Pattern::Bxx`.
+#[test]
+fn bxx_pattern() {
+    use AbcToken::*;
+    const TEXT: &'static str = "baa";
+    let mut lexer = Lexer::new(Abc::new(), TEXT);
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = pattern
+        (lexer.clone())
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = Pattern::Bxx(Spanned {
+        value: "baa",
+        span: Span::full(TEXT, ColumnMetrics::default()),
+    });
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
+}
+
+/// Parses a `Pattern::Xyc`.
+#[test]
+fn xyc_pattern() {
+    use AbcToken::*;
+    const TEXT: &'static str = "bac";
+    let mut lexer = Lexer::new(Abc::new(), TEXT);
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = pattern
+        (lexer.clone())
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = Pattern::Xyc(Spanned {
+        value: "bac",
         span: Span::full(TEXT, ColumnMetrics::default()),
     });
 
