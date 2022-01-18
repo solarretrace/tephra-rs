@@ -18,6 +18,22 @@ use crate::position::ColumnMetrics;
 use crate::result::SourceDisplay;
 use crate::result::SourceSpan;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
+pub enum SectionType {
+    Atomic     = 5,
+    Bounded    = 4,
+    Delimited  = 3,
+    Unbounded  = 2,
+    Validation = 1,
+    Lexer      = 0,
+}
+
+impl Default for SectionType {
+    fn default() -> Self {
+        SectionType::Validation
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseError
@@ -26,7 +42,7 @@ use crate::result::SourceSpan;
 pub struct ParseError<'text> {
     description: &'static str,
     span: Option<(Span<'text>, String, ColumnMetrics)>,
-    is_lexer_error: bool,
+    section_type: SectionType,
 }
 
 impl<'text> ParseError<'text> {
@@ -34,7 +50,7 @@ impl<'text> ParseError<'text> {
         ParseError {
             description,
             span: None,
-            is_lexer_error: false,
+            section_type: SectionType::default(),
         }
     }
 
@@ -50,11 +66,16 @@ impl<'text> ParseError<'text> {
         self
     }
 
+    pub fn with_section_type(mut self, section_type: SectionType) -> Self {
+        self.section_type = section_type;
+        self
+    }
+
     pub fn unrecognized_token(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         ParseError {
             description: "unrecognized token",
             span: Some((span, "symbol not recognized".to_owned(), metrics)),
-            is_lexer_error: true,
+            section_type: SectionType::Lexer,
         }
     }
 
@@ -68,7 +89,7 @@ impl<'text> ParseError<'text> {
         ParseError {
             description: "unexpected token",
             span: Some((span, format!("expected {}", expected), metrics)),
-            is_lexer_error: true,
+            section_type: SectionType::Lexer,
         }
     }
 
@@ -78,15 +99,15 @@ impl<'text> ParseError<'text> {
         ParseError {
             description: "unexpected end of text",
             span: Some((span, "text ends here".to_owned(), metrics)),
-            is_lexer_error: true,
+            section_type: SectionType::Lexer,
         }
     }
 
-    pub fn unexpected_text(span: Span<'text>, metrics: ColumnMetrics) -> Self {
+    pub fn expected_end_of_text(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         ParseError {
             description: "expected end of text",
             span: Some((span, "text should end here".to_owned(), metrics)),
-            is_lexer_error: true,
+            section_type: SectionType::Lexer,
         }
     }
 
@@ -94,8 +115,8 @@ impl<'text> ParseError<'text> {
         self.description
     }
 
-    pub fn is_lexer_error(&self) -> bool {
-        self.is_lexer_error
+    pub fn section_type(&self) -> SectionType {
+        self.section_type
     }
 }
 
@@ -105,18 +126,17 @@ impl<'text> ParseError<'text> {
         ParseErrorOwned {
             description: self.description,
             span: self.span.map(|(a, b, c)| (a.into(), b, c)),
-            is_lexer_error: self.is_lexer_error,
+            section_type: self.section_type,
         }
     }
 }
-
 
 impl<'text> Default for ParseError<'text> {
     fn default() -> Self {
         ParseError {
             description: "parse error",
             span: None,
-            is_lexer_error: false,
+            section_type: SectionType::default(),
         }
     }
 }
@@ -144,11 +164,10 @@ impl<'text> From<&'static str> for ParseError<'text> {
         ParseError {
             description,
             span: None,
-            is_lexer_error: false,
+            section_type: SectionType::default(),
         }
     }
 }
-
 
 impl<'text> std::error::Error for ParseError<'text> {
     fn description(&self) -> &str {
@@ -160,6 +179,7 @@ impl<'text> std::error::Error for ParseError<'text> {
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // ParseErrorOwned
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +187,7 @@ impl<'text> std::error::Error for ParseError<'text> {
 pub struct ParseErrorOwned {
     description: &'static str,
     span: Option<(SpanOwned, String, ColumnMetrics)>,
-    is_lexer_error: bool,
+    section_type: SectionType,
 }
 
 impl ParseErrorOwned {
@@ -175,11 +195,20 @@ impl ParseErrorOwned {
         self.description
     }
 
-    pub fn is_lexer_error(&self) -> bool {
-        self.is_lexer_error
+    pub fn section_type(&self) -> SectionType {
+        self.section_type
     }
 }
 
+impl<'text> From<ParseError<'text>> for ParseErrorOwned {
+    fn from(parse_error: ParseError<'text>) -> Self {
+        ParseErrorOwned {
+            description: parse_error.description,
+            span: parse_error.span.map(|(sp, msg, cm)| (sp.into(), msg, cm)),
+            section_type: parse_error.section_type,
+        }
+    }
+}
 
 impl std::fmt::Display for ParseErrorOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

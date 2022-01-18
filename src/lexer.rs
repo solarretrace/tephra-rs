@@ -282,19 +282,20 @@ impl<'text, Sc> Lexer<'text, Sc>
         self
     }
     
-    /// Returns the span (excluding filtered text) of the token_start lexed token.
+    /// Returns the span (excluding filtered text) of the token_start lexed
+    /// token.
     pub fn token_span(&self) -> Span<'text> {
         Span::new_enclosing(self.source, self.token_start, self.end)
     }
 
-    /// Returns the span (excluding filtered text) back to the token_start consumed
-    /// position.
+    /// Returns the span (excluding filtered text) back to the token_start
+    /// consumed  position.
     pub fn parse_span(&self) -> Span<'text> {
         Span::new_enclosing(self.source, self.parse_start, self.end)
     }
 
-    /// Returns the cursor span (including filtered text) back to the token_start
-    /// consumed position.
+    /// Returns the cursor span (including filtered text) back to the
+    /// token_start consumed position.
     pub fn parse_span_unfiltered(&self) -> Span<'text> {
         Span::new_enclosing(self.source, self.parse_start, self.cursor)
     }

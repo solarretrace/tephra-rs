@@ -33,6 +33,23 @@ pub struct Failure<'text, Sc> where Sc: Scanner {
 impl<'text, Sc> Failure<'text, Sc> 
     where Sc: Scanner,
 {
+    /// Attempts to push a `ParseError` into the `Failure` as contextual
+    /// information.
+    pub fn push_context(mut self, error: ParseError<'text>) -> Self {
+        if error.section_type() > self.parse_error.section_type() {
+            // Replace current parse error.
+            self.parse_error = error;
+            self
+        } else {
+            // Convert current Failure to FailureOwned and push it into source.
+            let parse_error = std::mem::replace(&mut self.parse_error, error)
+                .into();
+            let source = self.source.take();
+            self.source = Some(Box::new(FailureOwned { parse_error, source }));
+            self
+        }
+    }
+
     #[cfg(test)]
     pub fn error_span_display(self) -> (&'static str, String) {
         (self.parse_error.description(), format!("{}", self.lexer.parse_span()))

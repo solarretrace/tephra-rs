@@ -12,6 +12,7 @@
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::result::ParseResult;
+use crate::result::ParseResultExt as _;
 use crate::result::Success;
 use crate::result::Failure;
 use crate::result::ParseError;
@@ -78,6 +79,32 @@ pub fn fail<'text, Sc>(mut lexer: Lexer<'text, Sc>)
     }
 }
 
+/// Returns a parser which converts any failure into an empty success.
+pub fn maybe<'text, Sc, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+{
+    move |lexer| {
+        let _span = span!(Level::DEBUG, "maybe").entered();
+
+        let initial = lexer.clone();
+        
+        match parser
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
+            Ok(succ) => Ok(succ.map_value(Some)),
+
+            Err(_)   => Ok(Success {
+                lexer: initial,
+                value: None,
+            }),
+        }
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // end-of-text
@@ -98,7 +125,7 @@ pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
     } else {
         event!(Level::TRACE, "end of text not found");
         Err(Failure {
-            parse_error: ParseError::unexpected_text(
+            parse_error: ParseError::expected_end_of_text(
                 lexer.end_span(),
                 lexer.column_metrics()),
             lexer,

@@ -42,11 +42,6 @@ pub trait ParseResultExt<'text, Sc, V>
     fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, U> 
         where F: FnOnce(V) -> U;
 
-    /// Converts a `ParseResult` into a `Result` with an `Option` for its `Err`
-    /// variant, which will be `None` if the failure is a lexer error.
-    fn filter_lexer_error(self)
-        -> Result<Success<'text, Sc, V>, Option<Failure<'text, Sc>>>;
-
     /// Outputs a trace event displaying the parse result.
     fn trace_result(self, level: Level, label: &'static str) -> Self;
 }
@@ -68,16 +63,6 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
             Ok(succ)  => Ok(succ.map_value(f)),
             Err(fail) => Err(fail),
         }
-    }
-
-    fn filter_lexer_error(self)
-        -> Result<Success<'text, Sc, V>, Option<Failure<'text, Sc>>>
-    {
-        self.map_err(|e| if e.parse_error.is_lexer_error() {
-                None
-            } else {
-                Some(e)
-            })
     }
 
     fn trace_result(self, level: Level, label: &'static str) -> Self {

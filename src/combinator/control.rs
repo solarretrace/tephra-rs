@@ -15,6 +15,9 @@ use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::Spanned;
 use crate::result::Success;
+use crate::result::SectionType;
+use crate::result::ParseError;
+use crate::combinator::maybe;
 
 // External library imports.
 use tracing::Level;
@@ -23,8 +26,100 @@ use tracing::event;
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Context controls
+////////////////////////////////////////////////////////////////////////////////
+
+/// A combinator which identifies a delimiter or bracket which starts a new
+/// failure span section.
+pub fn section<'text, Sc, F, V>(
+    section_name: &'static str,
+    section_type: SectionType,
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+{
+    move |lexer| {
+        let _span = span!(Level::DEBUG, "section", section_name).entered();
+
+        let sublexer = lexer.sublexer();
+
+        match (parser)
+            (sublexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
+            Ok(mut succ) => {
+                succ.lexer = lexer.join(succ.lexer);
+                Ok(succ)
+            },
+            Err(fail) => {
+                let section_error = ParseError::new("parse error")
+                    .with_span(
+                        format!("during this {}" ,section_name),
+                        lexer.clone()
+                            .join(fail.lexer.clone())
+                            .parse_span(),
+                        lexer.column_metrics())
+                    .with_section_type(section_type);
+                Err(fail.push_context(section_error))
+            },
+        }
+    }
+}
+
+/// Returns a parser which converts a failure into an empty success if no
+/// non-filtered tokens are consumed.
+///
+/// This is equivalent to `maybe` if the parser consumes at most a single token.
+pub fn atomic<'text, Sc, F, V>(
+    section_name: &'static str,
+    section_type: SectionType,
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        V: std::fmt::Debug
+{
+    move |lexer| {
+        let _span = span!(Level::DEBUG, "atomic", section_name).entered();
+
+        let sublexer = lexer.sublexer();
+        let current_cursor = lexer.cursor_pos();
+
+        event!(Level::TRACE, "before parse:\n{}", lexer);
+
+        match parser
+            (sublexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
+            Ok(succ) => Ok(succ.map_value(Some)),
+            
+            Err(fail) if fail.lexer.cursor_pos() > current_cursor => {
+                let section_error = ParseError::new("parse error")
+                    .with_span(
+                        format!("during this {}", section_name),
+                        lexer.clone()
+                            .join(fail.lexer.clone())
+                            .parse_span(),
+                        lexer.column_metrics())
+                    .with_section_type(section_type);
+                Err(fail.push_context(section_error))
+            },
+
+            Err(_) => Ok(Success {
+                lexer,
+                value: None,
+            }),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Control combinators.
 ////////////////////////////////////////////////////////////////////////////////
+
 
 /// A combinator which filters tokens during exectution of the given parser.
 ///
@@ -96,29 +191,35 @@ pub fn exact<'text, Sc, F, V>(mut parser: F)
     }
 }
 
-/// A combinator which identifies a delimiter or bracket which starts a new
-/// failure span section.
-pub fn section<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
+
+/// Returns a parser which requires a parse to succeed if the given
+/// predicate is true.
+///
+/// This acts like a `maybe` combinator that can be zcpconditionally disabled:
+/// `require_if(|| false, p)` is identical to `maybe(p)` and 
+/// `require_if(|| true, p)` is identical to `p`.
+pub fn require_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
+        P: FnMut() -> bool,
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let _span = span!(Level::DEBUG, "section").entered();
+        let _span = span!(Level::DEBUG, "require_if").entered();
 
-        match (parser)
-            (lexer.sublexer())
-            .trace_result(Level::TRACE, "subparse")
-        {
-            Ok(mut succ) => {
-                succ.lexer = lexer.join(succ.lexer);
-                Ok(succ)
-            },
-            Err(fail) => Err(fail),
+        if pred() {
+            parser(lexer)
+                .trace_result(Level::TRACE, "true branch")
+                .map_value(Some)
+        } else {
+            maybe(&mut parser)
+                (lexer)
+                .trace_result(Level::TRACE, "false branch")
         }
     }
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////////////

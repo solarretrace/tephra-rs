@@ -11,13 +11,11 @@
 // Internal modules.
 mod control;
 mod join;
-mod option;
 mod primitive;
 mod repeat;
 
 // Exports.
 pub use control::*;
 pub use join::*;
-pub use option::*;
 pub use primitive::*;
 pub use repeat::*;

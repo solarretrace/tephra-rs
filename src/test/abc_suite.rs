@@ -26,6 +26,7 @@ use crate::result::ParseResultExt as _;
 use crate::result::ParseResult;
 use crate::result::Spanned;
 use crate::result::Success;
+use crate::result::SectionType;
 
 
 // External library imports.
@@ -135,7 +136,8 @@ enum Pattern<'text> {
 fn pattern<'text>(lexer: Lexer<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
-    match atomic(spanned(text(abc)))
+    match atomic("abc pattern", SectionType::Atomic,
+        spanned(text(abc)))
         (lexer.clone())
     {
         Ok(Success { value: Some(sp), lexer })
@@ -144,7 +146,8 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>)
         _ => (),
     }
 
-    match atomic(spanned(text(bxx)))
+    match atomic("abc pattern", SectionType::Atomic,
+        spanned(text(bxx)))
         (lexer.clone())
     {
         Ok(Success { value: Some(sp), lexer })
