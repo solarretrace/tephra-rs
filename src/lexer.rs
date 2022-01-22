@@ -29,7 +29,6 @@ use std::sync::Arc;
 
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Scanner
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,8 +228,12 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn peek(&self) -> Option<Sc::Token> {
         let _span = span!(Level::DEBUG, "Lexer::peek").entered();
 
-        // TODO: Make this more efficient.
-        self.clone().next()
+        if let Some((tok, _, _)) = self.buffer.as_ref() {
+            Some(tok.clone())
+        } else {
+            // TODO: Make this more efficient.
+            self.clone().next()
+        }
     }
 
     fn next_buffered(&mut self) -> Option<<Self as Iterator>::Item> {
