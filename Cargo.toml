@@ -1,6 +1,6 @@
 [package]
 name = "tephra"
-version = "0.0.162"
+version = "0.0.163"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -31,6 +31,10 @@ unicode-width = { version = "0.1" }
 [dev-dependencies]
 color = { git = "https://github.com/skysch/color-rs" }
 pretty_assertions = "*"
+test-log = { version = "0.2", default_features = false, features = ["trace"] }
+tracing = { version = "0.1", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+
 
 # The development profile, used for `cargo build`
 [profile.dev]

@@ -11,16 +11,18 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
+use crate::result::Failure;
+use crate::result::ParseError;
 use crate::result::ParseResult;
 use crate::result::ParseResultExt as _;
 use crate::result::Success;
-use crate::result::Failure;
-use crate::result::ParseError;
 
 // External library imports.
 use tracing::event;
 use tracing::Level;
 use tracing::span;
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // empty

@@ -7,30 +7,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
+// NOTE: Run the following command to get tracing output:
+// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
 #![allow(dead_code)]
 
+
 // Local imports.
+use crate::combinator::any;
+use crate::combinator::atomic;
 use crate::combinator::both;
 use crate::combinator::one;
-use crate::combinator::text;
-use crate::combinator::any;
 use crate::combinator::seq;
 use crate::combinator::spanned;
-use crate::combinator::atomic;
+use crate::combinator::text;
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::position::ColumnMetrics;
 use crate::position::Pos;
-use crate::span::Span;
-use crate::result::ParseResultExt as _;
 use crate::result::ParseResult;
+use crate::result::ParseResultExt as _;
+use crate::result::SectionType;
 use crate::result::Spanned;
 use crate::result::Success;
-use crate::result::SectionType;
+use crate::span::Span;
 
 
 // External library imports.
 use pretty_assertions::assert_eq;
+use test_log::test;
 
 
 
@@ -218,6 +222,7 @@ fn xyc<'text>(lexer: Lexer<'text, Abc>)
 
 /// Tests Abc token lexing & filtering.
 #[test]
+#[tracing::instrument]
 fn abc_tokens() {
     use AbcToken::*;
     const TEXT: &'static str = "a b\nc d";
@@ -241,6 +246,7 @@ fn abc_tokens() {
 
 /// Parses a `Pattern::Abc`.
 #[test]
+#[tracing::instrument]
 fn abc_pattern() {
     use AbcToken::*;
     const TEXT: &'static str = "abc";
@@ -264,6 +270,7 @@ fn abc_pattern() {
 
 /// Parses a `Pattern::Bxx`.
 #[test]
+#[tracing::instrument]
 fn bxx_pattern() {
     use AbcToken::*;
     const TEXT: &'static str = "baa";
@@ -287,6 +294,7 @@ fn bxx_pattern() {
 
 /// Parses a `Pattern::Xyc`.
 #[test]
+#[tracing::instrument]
 fn xyc_pattern() {
     use AbcToken::*;
     const TEXT: &'static str = "bac";

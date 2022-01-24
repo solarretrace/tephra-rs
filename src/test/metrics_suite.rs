@@ -7,6 +7,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! ColumnMetrics tests.
 ////////////////////////////////////////////////////////////////////////////////
+// NOTE: Run the following command to get tracing output:
+// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
+
 
 // Local imports.
 use crate::position::ColumnMetrics;
@@ -14,6 +17,7 @@ use crate::position::Pos;
 
 // External library imports.
 use pretty_assertions::assert_eq;
+use test_log::test;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -23,6 +27,7 @@ use pretty_assertions::assert_eq;
 /// Performs size checks.
 #[allow(unused_qualifications)]
 #[test]
+#[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
     assert_eq!(2, size_of::<crate::position::ColumnMetrics>(), "ColumnMetrics");
@@ -30,6 +35,7 @@ fn size_checks() {
 
 /// Tests `ColumnMetrics::position_after_str` for `Lf`.
 #[test]
+#[tracing::instrument]
 fn lf_position_after_str() {
     let text = "abcd";
     let metrics = ColumnMetrics::new();
@@ -46,6 +52,7 @@ fn lf_position_after_str() {
 
 /// Tests `ColumnMetrics::position_after_char_matching` for `Lf`.
 #[test]
+#[tracing::instrument]
 fn lf_next_position_after_chars_matching() {
     let text = "    \t\tabcd";
     let metrics = ColumnMetrics::new();
@@ -68,6 +75,7 @@ fn lf_next_position_after_chars_matching() {
 
 /// Tests `ColumnMetrics::position_after_chars_matching` for `Lf`.
 #[test]
+#[tracing::instrument]
 fn lf_position_after_chars_matching() {
     let text = "    \t\tabcd";
     let metrics = ColumnMetrics::new();
@@ -90,6 +98,7 @@ fn lf_position_after_chars_matching() {
 
 /// Tests `ColumnMetrics::iter_columns` for `Lf`.
 #[test]
+#[tracing::instrument]
 fn lf_iter_columns() {
     let text = "abcd";
     let metrics = ColumnMetrics::new();

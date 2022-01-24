@@ -7,6 +7,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
+// NOTE: Run the following command to get tracing output:
+// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
+
 
 // Local imports.
 use crate::combinator::both;
@@ -20,6 +23,8 @@ use crate::result::ParseResultExt as _;
 
 // External library imports.
 use pretty_assertions::assert_eq;
+use test_log::test;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Token parser.
@@ -111,9 +116,11 @@ impl Scanner for Test {
 // Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
 
+
 /// Performs size checks.
 #[allow(unused_qualifications)]
 #[test]
+#[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
     assert_eq!(168, size_of::<crate::lexer::Lexer<'_, Test>>(), "Lexer");
@@ -121,6 +128,7 @@ fn size_checks() {
 
 /// Tests `Lexer::new`.
 #[test]
+#[tracing::instrument]
 fn empty() {
     let text = "";
     let mut lexer = Lexer::new(Test::new(), text);
@@ -132,6 +140,7 @@ fn empty() {
 
 /// Tests `Lexer::next`.
 #[test]
+#[tracing::instrument]
 fn simple() {
     use TestToken::*;
     let text = "aa b";
@@ -145,6 +154,7 @@ fn simple() {
 
 /// Tests `Lexer::peek`.
 #[test]
+#[tracing::instrument]
 fn simple_peek() {
     use TestToken::*;
     let text = "aa b";
@@ -162,6 +172,7 @@ fn simple_peek() {
 
 /// Tests `Lexer::iter_with_spans`.
 #[test]
+#[tracing::instrument]
 fn simple_iter() {
     use TestToken::*;
     let text = "aa b";
@@ -182,6 +193,7 @@ fn simple_iter() {
 
 /// Tests `Lexer`'s auto-filtering capability.
 #[test]
+#[tracing::instrument]
 fn auto_filter() {
     use TestToken::*;
     let text = "aaaabaaaab";
@@ -206,11 +218,11 @@ fn auto_filter() {
             (B,   "\"b\" (0:9-0:10, bytes 9-10)".to_string()),
         ];
 
-    for (i, act) in actual.iter().enumerate() {
-        println!("{:?}", act);
-        println!("{:?}", expected[i]);
-        println!();
-    }
+    // for (i, act) in actual.iter().enumerate() {
+    //     println!("{:?}", act);
+    //     println!("{:?}", expected[i]);
+    //     println!();
+    // }
 
     assert_eq!(actual, expected);
 }
@@ -218,6 +230,7 @@ fn auto_filter() {
 
 /// Tests `Lexer` with whitespace filter.
 #[test]
+#[tracing::instrument]
 fn whitespace_filter() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
@@ -238,11 +251,11 @@ fn whitespace_filter() {
             (A,   "\"a\" (2:3-2:4, bytes 14-15)".to_string()),
         ];
 
-    for (i, act) in actual.iter().enumerate() {
-        println!("{:?}", act);
-        println!("{:?}", expected[i]);
-        println!();
-    }
+    // for (i, act) in actual.iter().enumerate() {
+    //     println!("{:?}", act);
+    //     println!("{:?}", expected[i]);
+    //     println!();
+    // }
 
     assert_eq!(actual, expected);
 }
@@ -250,6 +263,7 @@ fn whitespace_filter() {
 
 /// Tests `both` with whitespace filter.
 #[test]
+#[tracing::instrument]
 fn atma_issue_1_both_whitespace_filter() {
     use TestToken::*;
     let input = "aa b \nbdef\n aaa";
@@ -270,6 +284,7 @@ fn atma_issue_1_both_whitespace_filter() {
 
 /// Tests `Lexer` display output formatting.
 #[test]
+#[tracing::instrument]
 fn display_formatting() {
     use TestToken::*;
     let text = "aa b \nbdef\n aaa";
@@ -374,6 +389,7 @@ note: lexer state
 
 /// Tests `Lexer` display output formatting with tabstops.
 #[test]
+#[tracing::instrument]
 fn tabstop_align() {
     use TestToken::*;
     let text = "\taa\ta\n\t\tb";

@@ -7,6 +7,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Span tests.
 ////////////////////////////////////////////////////////////////////////////////
+// NOTE: Run the following command to get tracing output:
+// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
+
 
 // Local imports.
 use crate::span::Span;
@@ -15,6 +18,8 @@ use crate::position::Pos;
 
 // External library imports.
 use pretty_assertions::assert_eq;
+use test_log::test;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Span tests.
@@ -23,6 +28,7 @@ use pretty_assertions::assert_eq;
 /// Performs size checks.
 #[allow(unused_qualifications)]
 #[test]
+#[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
     assert_eq!(64, size_of::<crate::span::Span<'_>>(), "Span");
@@ -31,6 +37,7 @@ fn size_checks() {
 
 /// Tests `Span::new`.
 #[test]
+#[tracing::instrument]
 fn empty() {
     const TEXT: &'static str = "abcd";
     let span = Span::new(TEXT);
@@ -43,6 +50,7 @@ fn empty() {
 
 /// Tests `Span::full`.
 #[test]
+#[tracing::instrument]
 fn full() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::full(TEXT, ColumnMetrics::new());
@@ -54,6 +62,7 @@ fn full() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
+#[tracing::instrument]
 fn widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::new_enclosing(
@@ -68,6 +77,7 @@ fn widen_to_line() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
+#[tracing::instrument]
 fn widen_empty_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::new_at(TEXT, Pos::new(6, 1, 4));
@@ -79,6 +89,7 @@ fn widen_empty_to_line() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
+#[tracing::instrument]
 fn widen_line_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::new_enclosing(
@@ -93,6 +104,7 @@ fn widen_line_to_line() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
+#[tracing::instrument]
 fn widen_full_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::new_enclosing(
@@ -108,6 +120,7 @@ fn widen_full_to_line() {
 
 /// Tests `Span::split_lines`.
 #[test]
+#[tracing::instrument]
 fn split_lines() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let span = Span::full(TEXT, ColumnMetrics::new());
@@ -133,6 +146,7 @@ fn split_lines() {
 
 /// Tests `Span::split_lines` with no line breaks.
 #[test]
+#[tracing::instrument]
 fn split_line_no_breaks() {
     const TEXT: &'static str = "abcd";
     let span = Span::full(TEXT, ColumnMetrics::new());
@@ -151,6 +165,7 @@ fn split_line_no_breaks() {
 
 /// Tests `Span::enclose`.
 #[test]
+#[tracing::instrument]
 fn enclose() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let a = Span::new_enclosing(
@@ -170,6 +185,7 @@ fn enclose() {
 
 /// Tests `Span::union`.
 #[test]
+#[tracing::instrument]
 fn union() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let a = Span::new_enclosing(
@@ -189,6 +205,7 @@ fn union() {
 
 /// Tests `Span::intersect`.
 #[test]
+#[tracing::instrument]
 fn intersect() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let a = Span::new_enclosing(
@@ -208,6 +225,7 @@ fn intersect() {
 
 /// Tests `Span::minus`.
 #[test]
+#[tracing::instrument]
 fn minus() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let a = Span::new_enclosing(
