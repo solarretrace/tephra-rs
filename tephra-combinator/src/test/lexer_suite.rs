@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Tephra parser library
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright 2020 Skylor R. Schermer
+// Copyright 2022 Skylor R. Schermer
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
@@ -12,14 +12,14 @@
 
 
 // Local imports.
-use crate::combinator::both;
-use crate::combinator::one;
-use crate::combinator::text;
-use crate::lexer::Lexer;
-use crate::lexer::Scanner;
-use crate::position::ColumnMetrics;
-use crate::position::Pos;
-use crate::result::ParseResultExt as _;
+use crate::both;
+use crate::one;
+use crate::text;
+use tephra::lexer::Lexer;
+use tephra::lexer::Scanner;
+use tephra::position::ColumnMetrics;
+use tephra::position::Pos;
+use tephra::result::ParseResultExt as _;
 
 // External library imports.
 use pretty_assertions::assert_eq;
@@ -123,7 +123,7 @@ impl Scanner for Test {
 #[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
-    assert_eq!(168, size_of::<crate::lexer::Lexer<'_, Test>>(), "Lexer");
+    assert_eq!(168, size_of::<Lexer<'_, Test>>(), "Lexer");
 }
 
 /// Tests `Lexer::new`.

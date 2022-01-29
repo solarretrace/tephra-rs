@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Tephra parser library
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright 2020 Skylor R. Schermer
+// Copyright 2022 Skylor R. Schermer
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
@@ -13,23 +13,23 @@
 
 
 // Local imports.
-use crate::combinator::any;
-use crate::combinator::atomic;
-use crate::combinator::both;
-use crate::combinator::one;
-use crate::combinator::seq;
-use crate::combinator::spanned;
-use crate::combinator::text;
-use crate::lexer::Lexer;
-use crate::lexer::Scanner;
-use crate::position::ColumnMetrics;
-use crate::position::Pos;
-use crate::result::ParseResult;
-use crate::result::ParseResultExt as _;
-use crate::result::SectionType;
-use crate::result::Spanned;
-use crate::result::Success;
-use crate::span::Span;
+use crate::any;
+use crate::atomic;
+use crate::both;
+use crate::one;
+use crate::seq;
+use crate::spanned;
+use crate::text;
+use tephra::lexer::Lexer;
+use tephra::lexer::Scanner;
+use tephra::position::ColumnMetrics;
+use tephra::position::Pos;
+use tephra::result::ParseResult;
+use tephra::result::ParseResultExt as _;
+use tephra::result::SectionType;
+use tephra::result::Spanned;
+use tephra::result::Success;
+use tephra::span::Span;
 
 
 // External library imports.
