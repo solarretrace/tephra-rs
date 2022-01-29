@@ -1,39 +1,9 @@
-[package]
-name = "tephra"
-version = "0.0.163"
-authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
-edition = "2018"
-license = "MIT OR Apache-2.0"
-# maintenance = { status = "experiemental" }
-repository = "https://github.com/skysch/tephra-rs"
-description = "Tephra parser library"
-readme = "readme.md"
-keywords = ["parser"]
-categories = []
-documentation = ""
-homepage = ""
-exclude = [
-	"*.sublime-project",
-	"*.sublime-workspace"]
+[workspace]
+members = [
+	"tephra",
+	"tephra-combinator",
+]
 
-[lib]
-name = "tephra"
-
-
-# Required dependencies
-[dependencies]
-colored = { version = "2.0" }
-few = { version = "0.1.4" }
-tracing = { version = "0.1" }
-unicode-width = { version = "0.1" }
-
-# Dependencies used for tests, examples, and benches.
-[dev-dependencies]
-color = { git = "https://github.com/skysch/color-rs" }
-pretty_assertions = "*"
-test-log = { version = "0.2", default_features = false, features = ["trace"] }
-tracing = { version = "0.1", default-features = false }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 
 
 # The development profile, used for `cargo build`

@@ -9,14 +9,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::combinator::discard;
-use crate::combinator::empty;
-use crate::combinator::right;
-use crate::lexer::Lexer;
-use crate::lexer::Scanner;
-use crate::result::ParseResult;
-use crate::result::ParseResultExt as _;
-use crate::result::Success;
+use crate::discard;
+use crate::empty;
+use crate::right;
+use tephra::lexer::Lexer;
+use tephra::lexer::Scanner;
+use tephra::result::ParseResult;
+use tephra::result::ParseResultExt as _;
+use tephra::result::Success;
 
 // External library imports.
 use tracing::event;

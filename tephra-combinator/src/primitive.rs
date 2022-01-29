@@ -9,13 +9,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::lexer::Lexer;
-use crate::lexer::Scanner;
-use crate::result::Failure;
-use crate::result::ParseError;
-use crate::result::ParseResult;
-use crate::result::ParseResultExt as _;
-use crate::result::Success;
+use tephra::lexer::Lexer;
+use tephra::lexer::Scanner;
+use tephra::result::Failure;
+use tephra::result::ParseError;
+use tephra::result::ParseResult;
+use tephra::result::ParseResultExt as _;
+use tephra::result::Success;
 
 // External library imports.
 use tracing::event;

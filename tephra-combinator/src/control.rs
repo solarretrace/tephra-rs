@@ -9,15 +9,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::lexer::Lexer;
-use crate::lexer::Scanner;
-use crate::result::ParseResult;
-use crate::result::ParseResultExt as _;
-use crate::result::Spanned;
-use crate::result::Success;
-use crate::result::SectionType;
-use crate::result::ParseError;
-use crate::combinator::maybe;
+use tephra::lexer::Lexer;
+use tephra::lexer::Scanner;
+use tephra::result::ParseResult;
+use tephra::result::ParseResultExt as _;
+use tephra::result::Spanned;
+use tephra::result::Success;
+use tephra::result::SectionType;
+use tephra::result::ParseError;
+use crate::maybe;
 
 // External library imports.
 use tracing::Level;
@@ -128,7 +128,7 @@ pub fn atomic<'text, Sc, F, V>(
 /// [`Scanner::Token`] to be excluded during the parse.
 /// + `parser`: The parser to run with with the applied token filter.
 ///
-/// [`Scanner::Token`]: crate::lexer::Scanner#associatedtype.Token
+/// [`Scanner::Token`]: tephra::lexer::Scanner#associatedtype.Token
 pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
     -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
     where

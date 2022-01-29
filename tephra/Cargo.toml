@@ -1,0 +1,36 @@
+[package]
+name = "tephra"
+version = "0.0.163"
+authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/skysch/tephra-rs"
+homepage = "https://github.com/skysch/tephra-rs"
+description = "Tephra parser library"
+readme = "readme.md"
+keywords = ["lexer", "scanner", "parser", "combinator"]
+categories = []
+documentation = ""
+exclude = []
+
+[lib]
+name = "tephra"
+
+
+# Required dependencies
+[dependencies]
+# tephra-combinator = { version = "*", path = "../tephra-combinator" }
+colored = { version = "2.0" }
+few = { version = "0.1.4" }
+tracing = { version = "0.1" }
+unicode-width = { version = "0.1" }
+
+# Dependencies used for tests, examples, and benches.
+[dev-dependencies]
+pretty_assertions = "*"
+test-log = { version = "0.2", default_features = false, features = ["trace"] }
+tracing = { version = "0.1", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+
+[badges]
+maintenance = { status = "experimental" }

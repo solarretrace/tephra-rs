@@ -252,7 +252,7 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Creates a sublexer starting at the current lex position. The returned
     /// lexer will begin a new parse and advance past any filtered tokens.
-    pub(in crate) fn sublexer(&self) -> Self {
+    pub fn sublexer(&self) -> Self {
         let mut sub = self.clone();
         sub.consume_current();
         sub
