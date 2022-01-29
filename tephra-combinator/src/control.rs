@@ -20,9 +20,9 @@ use tephra::result::ParseError;
 use crate::maybe;
 
 // External library imports.
-use tracing::Level;
-use tracing::span;
-use tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
+use tephra_tracing::event;
 
 
 ////////////////////////////////////////////////////////////////////////////////

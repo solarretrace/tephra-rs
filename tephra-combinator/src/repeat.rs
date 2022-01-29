@@ -19,9 +19,9 @@ use tephra::result::ParseResultExt as _;
 use tephra::result::Success;
 
 // External library imports.
-use tracing::event;
-use tracing::Level;
-use tracing::span;
+use tephra_tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -17,13 +17,19 @@ exclude = []
 name = "tephra_combinator"
 
 
-# Required dependencies
+[features]
+default = []
+trace = ["tracing", "tephra-tracing/trace", "tephra/trace"]
+
+# Required dependencies.
 [dependencies]
 tephra = { version = "*", path = "../tephra" }
 colored = { version = "2.0" }
 few = { version = "0.1.4" }
-tracing = { version = "0.1" }
 unicode-width = { version = "0.1" }
+tephra-tracing = { version = "*", path = "../tephra-tracing" }
+# Optional dependencies.
+tracing = { version = "0.1", optional = true }
 
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]

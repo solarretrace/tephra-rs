@@ -18,9 +18,9 @@ use tephra::result::ParseResultExt as _;
 use tephra::result::Success;
 
 // External library imports.
-use tracing::event;
-use tracing::Level;
-use tracing::span;
+use tephra_tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 
 
@@ -50,11 +50,12 @@ pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>)
 
 /// Parses any token and fails. Useful for failing if a peeked token doesn't
 /// match any expected tokens.
-#[tracing::instrument(level = "debug")]
 pub fn fail<'text, Sc>(mut lexer: Lexer<'text, Sc>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
+    let _span = span!(Level::DEBUG, "fail").entered();
+
     match lexer.next() {
         Some(token) => {
             event!(Level::TRACE, "success converted to failure");
@@ -111,11 +112,12 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses the end of the text.
-#[tracing::instrument(level = "debug")]
 pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
+    let _span = span!(Level::DEBUG, "end_of_text").entered();
+
     if lexer.is_empty() {
         event!(Level::TRACE, "end of text found");
         Ok(Success {

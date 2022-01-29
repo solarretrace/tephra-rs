@@ -15,8 +15,8 @@ use crate::result::Failure;
 use crate::result::FailureOwned;
 
 // External library imports.
-use tracing::Level;
-use tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::event;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseResult

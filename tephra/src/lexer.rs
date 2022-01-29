@@ -18,8 +18,9 @@ use crate::result::Highlight;
 use crate::span::Span;
 
 // External library imports.
-use tracing::Level;
-use tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::event;
+use tephra_tracing::span;
 
 // Standard library imports.
 use std::fmt::Debug;
@@ -193,8 +194,9 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Scans to the next unfiltered token and buffers it. This method is
     /// idempotent.
-    #[tracing::instrument(level = "debug")]
     fn scan_to_buffer(&mut self) {
+        let _span = span!(Level::TRACE, "scan_to_buffer").entered();
+
         let mut scanner = self.scanner.clone();
         while self.cursor.byte < self.source.len() {
             match scanner.scan(self.source, self.cursor, self.metrics) {
@@ -223,8 +225,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns the next token that would be returned by the `next` method
     /// without advancing the lexer position, assuming the lexer state is
     /// unchanged by the time `next` is called.
-    #[tracing::instrument(level = "debug")]
     pub fn peek(&self) -> Option<Sc::Token> {
+        let _span = span!(Level::TRACE, "peek").entered();
+        
         if let Some((tok, _, _)) = self.buffer.as_ref() {
             Some(tok.clone())
         } else {
@@ -233,8 +236,9 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
     }
 
-    #[tracing::instrument(level = "debug")]
     fn next_buffered(&mut self) -> Option<<Self as Iterator>::Item> {
+        let _span = span!(Level::TRACE, "next_buffered").entered();
+
         let (token, adv, scanner) = self.buffer.take()
             .expect("nonempty buffer");
 
@@ -260,8 +264,9 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Extends the receiver lexer to include the current parse span of the
     /// given lexer. (The given lexer's Scanner state will be discarded.)
-    #[tracing::instrument(level = "debug")]
     pub fn join(mut self, other: Self) -> Self {
+        let _span = span!(Level::TRACE, "join").entered();
+
         // event!(Level::TRACE, "self\n{}", self);
         // event!(Level::TRACE, "other\n{}", other);
 
@@ -314,8 +319,9 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
 {
     type Item = Sc::Token;
     
-    #[tracing::instrument(level = "debug")]
     fn next(&mut self) -> Option<Self::Item> {
+        let _span = span!(Level::DEBUG, "next").entered();
+
         while self.cursor.byte < self.source.len() {
             event!(Level::TRACE, "buffer {:?}", self.buffer);
             if self.buffer.is_some() {
