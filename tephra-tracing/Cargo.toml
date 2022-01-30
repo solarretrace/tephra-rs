@@ -18,7 +18,6 @@ name = "tephra_tracing"
 
 [features]
 default = []
-trace = ["tracing"]
 
 # Required dependencies
 [dependencies]

@@ -19,7 +19,11 @@ name = "tephra_combinator"
 
 [features]
 default = []
-trace = ["tracing", "tephra-tracing/trace", "tephra/trace"]
+trace = [
+	"tracing",
+	"tephra-tracing/tracing",
+	"tephra/trace",
+]
 
 # Required dependencies.
 [dependencies]
@@ -35,7 +39,7 @@ tracing = { version = "0.1", optional = true }
 [dev-dependencies]
 pretty_assertions = "*"
 test-log = { version = "0.2", default_features = false, features = ["trace"] }
-tracing = { version = "0.1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 
 [badges]

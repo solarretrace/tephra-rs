@@ -19,7 +19,10 @@ name = "tephra"
 
 [features]
 default = []
-trace = ["tracing", "tephra-tracing/trace"]
+trace = [
+	"tracing",
+	"tephra-tracing/tracing",
+]
 
 # Required dependencies
 [dependencies]
