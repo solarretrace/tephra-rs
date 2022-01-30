@@ -10,7 +10,6 @@
 
 // Internal library imports.
 use crate::Pos;
-use crate::Page;
 
 // External library imports.
 use tephra_tracing::event;
@@ -18,6 +17,8 @@ use tephra_tracing::Level;
 use tephra_tracing::span;
 // TODO: Use the unicode-segmentation crate instead?
 use unicode_width::UnicodeWidthChar;
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Constants
@@ -31,6 +32,7 @@ pub const DEFAULT_TAB_WIDTH: u8 = 4;
 
 /// The byte size of a tab character.
 const TAB_LEN_UTF8: usize = '\t'.len_utf8();
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +234,9 @@ impl ColumnMetrics {
 
     /// Returns the position of the start of line containing the given base
     /// position.
-    pub fn line_start_position<'text>(&self, text: &'text str, base: Pos) -> Pos {
+    pub fn line_start_position<'text>(&self, text: &'text str, base: Pos)
+        -> Pos
+    {
         let _span = span!(Level::TRACE, "line_start_position").entered();
 
         let line_break_len = self.line_ending.as_str().len();

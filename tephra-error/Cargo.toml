@@ -1,34 +1,33 @@
 [package]
-name = "tephra"
-version = "0.0.164"
+name = "tephra-error"
+version = "0.0.1"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/skysch/tephra-rs"
 homepage = "https://github.com/skysch/tephra-rs"
-description = "Tephra parser library"
+description = "Tephra parse errors library"
 readme = "readme.md"
-keywords = ["lexer", "scanner", "parser", "combinator"]
+keywords = []
 categories = []
 documentation = ""
 exclude = []
 
 [lib]
-name = "tephra"
-
+name = "tephra_error"
 
 [features]
 default = []
 trace = [
 	"tracing",
+	"tephra-span/trace",
 	"tephra-tracing/tracing",
 ]
 
 # Required dependencies
 [dependencies]
-colored = { version = "2.0" }
+tephra-span = { version = "*",  path = "../tephra-span" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
-tephra-span = { version = "*", path = "../tephra-span" }
 # Optional dependencies.
 tracing = { version = "0.1", optional = true }
 
@@ -36,8 +35,9 @@ tracing = { version = "0.1", optional = true }
 [dev-dependencies]
 pretty_assertions = "*"
 test-log = { version = "0.2", default_features = false, features = ["trace"] }
-tracing = { version = "0.1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+strip-ansi-escapes = "*"
 
 [badges]
 maintenance = { status = "experimental" }
