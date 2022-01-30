@@ -11,7 +11,7 @@
 #![allow(unused)]
 #![allow(missing_docs)]
 
-// Local imports.
+// Internal library imports.
 use tephra_span::Span;
 use tephra_span::SpanOwned;
 use tephra_span::ColumnMetrics;

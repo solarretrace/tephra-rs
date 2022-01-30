@@ -8,7 +8,7 @@
 //! Parse result trait and type.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local imports.
+// Internal library imports.
 use crate::lexer::Scanner;
 use crate::result::Success;
 use crate::result::Failure;

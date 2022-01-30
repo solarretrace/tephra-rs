@@ -8,13 +8,16 @@
 //! Text spans.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local imports.
-use crate::position::Pos;
-use crate::position::Page;
-use crate::position::ColumnMetrics;
+// Internal library imports.
+use crate::ColumnMetrics;
+use crate::Page;
+use crate::Pos;
 
 // External library imports.
 use few::Few;
+use tephra_tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,21 +58,21 @@ impl<'text> Span<'text> {
     /// Constructs a new empty span in the given source text, starting from the
     /// given byte and page.
     pub fn new_at(source: &'text str, pos: Pos) -> Self {
-        Span {
-            source,
-            byte: ByteSpan { start: pos.byte, end: pos.byte },
-            page: PageSpan { start: pos.page, end: pos.page },
-        }
+        let byte = ByteSpan { start: pos.byte, end: pos.byte };
+        let page = PageSpan { start: pos.page, end: pos.page };
+
+        event!(Level::TRACE, "new span (byte {}, page: {})", byte, page);
+        Span { source, byte, page }
     }
 
     /// Constructs a new span covering given source text.
     pub fn new_enclosing(source: &'text str, a: Pos, b: Pos) -> Self
     {
-        Span {
-            source,
-            byte: ByteSpan { start: a.byte, end: b.byte },
-            page: PageSpan { start: a.page, end: b.page },
-        }
+        let byte = ByteSpan { start: a.byte, end: b.byte };
+        let page = PageSpan { start: a.page, end: b.page };
+
+        event!(Level::TRACE, "new span (byte {}, page: {})", byte, page);
+        Span { source, byte, page }
     }
 
     /// Returns true if the span is empty
@@ -119,7 +122,11 @@ impl<'text> Span<'text> {
     pub fn widen_to_line(&self, metrics: ColumnMetrics)
         -> Self
     {
-        if self.is_full() { return self.clone(); }
+        let _span = span!(Level::TRACE, "widen_to_line").entered();
+        if self.is_full() {
+            event!(Level::TRACE, "span is full and cannot be widened");
+            return self.clone();
+        }
 
         Span::new_enclosing(
             self.source,
@@ -153,6 +160,8 @@ impl<'text> Span<'text> {
     pub fn enclose<S>(&self, other: S) -> Self 
         where S: Into<Self>,
     {
+        let _span = span!(Level::TRACE, "enclose").entered();
+
         let other = other.into();
         let a_start = self.start();
         let b_start = other.start();
@@ -179,6 +188,8 @@ impl<'text> Span<'text> {
     pub fn intersect<S>(&self, other: S) -> Option<Self>
         where S: Into<Self>,
     {
+        let _span = span!(Level::TRACE, "intersect").entered();
+
         let other = other.into();
         let a_start = self.start();
         let b_start = other.start();
@@ -209,6 +220,8 @@ impl<'text> Span<'text> {
     pub fn minus<S>(&self, other: S) -> Few<Self> 
         where S: Into<Self>,
     {
+        let _span = span!(Level::TRACE, "minus").entered();
+
         let other = other.into();
         let a_0 = self.start();
         let b_0 = other.start();
@@ -428,6 +441,8 @@ impl SpanOwned {
     pub fn intersect<'text, S>(&'text self, other: S) -> Option<Span<'text>> 
         where S: Into<Span<'text>>,
     {
+        let _span = span!(Level::TRACE, "intersect").entered();
+
         let other = other.into();
         let a_start = self.start();
         let b_start = other.start();
@@ -458,6 +473,8 @@ impl SpanOwned {
     pub fn minus<'text, S>(&'text self, other: S) -> Few<Span<'text>> 
         where S: Into<Span<'text>>,
     {
+        let _span = span!(Level::TRACE, "minus").entered();
+
         let other = other.into();
         let a_0 = self.start();
         let b_0 = other.start();
@@ -514,6 +531,9 @@ impl<'text> Iterator for SplitLines<'text> {
     type Item = Span<'text>;
     
     fn next(&mut self) -> Option<Self::Item> {
+        let _span = span!(Level::TRACE, "SplitLines::next").entered();
+        event!(Level::TRACE, "start: {}, end: {}", self.start, self.end);
+
         if self.start.page.line > self.end.page.line {
             None
         } else if self.start.page.line == self.end.page.line {

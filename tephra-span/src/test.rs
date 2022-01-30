@@ -8,21 +8,19 @@
 //! Span tests.
 ////////////////////////////////////////////////////////////////////////////////
 // NOTE: Run the following command to get tracing output:
-// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
+// RUST_LOG=TRACE cargo test --features trace -- --show-output > .trace
 
 
-// Local imports.
-use tephra_span::Span;
-use tephra_span::ColumnMetrics;
-use tephra_span::Pos;
+// Internal library imports.
+use crate::Span;
+use crate::ColumnMetrics;
+use crate::Pos;
 
 // External library imports.
 use pretty_assertions::assert_eq;
 use test_log::test;
 
-////////////////////////////////////////////////////////////////////////////////
-// Span tests.
-////////////////////////////////////////////////////////////////////////////////
+
 
 /// Performs size checks.
 #[allow(unused_qualifications)]
@@ -30,8 +28,9 @@ use test_log::test;
 #[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
-    assert_eq!(64, size_of::<tephra_span::Span<'_>>(), "Span");
-    assert_eq!(112, size_of::<tephra_span::SpanOwned>(), "SpanOwned");
+    assert_eq!(64, size_of::<crate::Span<'_>>(), "Span");
+    assert_eq!(112, size_of::<crate::SpanOwned>(), "SpanOwned");
+    assert_eq!(2, size_of::<crate::ColumnMetrics>(), "ColumnMetrics");
 }
 
 /// Tests `Span::new`.
@@ -239,5 +238,93 @@ fn minus() {
     let actual = format!("{:?}", a.minus(b).next().unwrap());
     let expected = "\"\n \" (2:0-3:1, bytes 3-5)".to_owned();
 
+    assert_eq!(actual, expected);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// ColumnMetrics tests.
+////////////////////////////////////////////////////////////////////////////////
+
+/// Tests `ColumnMetrics::position_after_str` for `Lf`.
+#[test]
+#[tracing::instrument]
+fn lf_position_after_str() {
+    let text = "abcd";
+    let metrics = ColumnMetrics::new();
+
+
+    let actual = metrics.position_after_str(text, Pos::ZERO, "ab");
+    let expected = Some(Pos::new(2, 0, 2));
+    assert_eq!(actual, expected);
+
+    let actual = metrics.position_after_str(text, Pos::new(1, 2, 3), "bc");
+    let expected = Some(Pos::new(3, 2, 5));
+    assert_eq!(actual, expected);
+}
+
+/// Tests `ColumnMetrics::position_after_char_matching` for `Lf`.
+#[test]
+#[tracing::instrument]
+fn lf_next_position_after_chars_matching() {
+    let text = "    \t\tabcd";
+    let metrics = ColumnMetrics::new();
+
+
+    let actual = metrics.next_position_after_chars_matching(
+        text,
+        Pos::ZERO,
+        char::is_whitespace);
+    let expected = Some(Pos::new(1, 0, 1));
+    assert_eq!(actual, expected);
+
+    let actual = metrics.next_position_after_chars_matching(
+        text,
+        Pos::new(4, 2, 3),
+        char::is_whitespace);
+    let expected = Some(Pos::new(5, 2, 4));
+    assert_eq!(actual, expected);
+}
+
+/// Tests `ColumnMetrics::position_after_chars_matching` for `Lf`.
+#[test]
+#[tracing::instrument]
+fn lf_position_after_chars_matching() {
+    let text = "    \t\tabcd";
+    let metrics = ColumnMetrics::new();
+
+    let actual = metrics.position_after_chars_matching(
+        text,
+        Pos::ZERO,
+        char::is_whitespace);
+    let expected = Some(Pos::new(6, 0, 12));
+    assert_eq!(actual, expected);
+
+    let actual = metrics.position_after_chars_matching(
+        text,
+        Pos::new(4, 2, 3),
+        char::is_whitespace);
+    let expected = Some(Pos::new(6, 2, 8));
+    assert_eq!(actual, expected);
+}
+
+/// Tests `ColumnMetrics::iter_columns` for `Lf`.
+#[test]
+#[tracing::instrument]
+fn lf_iter_columns() {
+    let text = "abcd";
+    let metrics = ColumnMetrics::new();
+
+
+    let actual: Vec<_> = metrics.iter_columns(text, Pos::ZERO)
+        .collect();
+
+    let expected = vec![
+        ("a", Pos::new(1, 0, 1)),
+        ("b", Pos::new(2, 0, 2)),
+        ("c", Pos::new(3, 0, 3)),
+        ("d", Pos::new(4, 0, 4)),
+    ];
     assert_eq!(actual, expected);
 }

@@ -11,7 +11,7 @@
 // RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
 
 
-// Local imports.
+// Internal library imports.
 use tephra_span::ColumnMetrics;
 use tephra_span::Pos;
 

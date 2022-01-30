@@ -8,7 +8,7 @@
 //! Result for a successful parse.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local imports.
+// Internal library imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use tephra_span::Span;

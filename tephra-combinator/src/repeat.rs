@@ -8,7 +8,7 @@
 //! Parser combinators for repeating.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local imports.
+// Internal library imports.
 use crate::discard;
 use crate::empty;
 use crate::right;

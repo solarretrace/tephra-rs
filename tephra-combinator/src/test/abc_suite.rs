@@ -12,7 +12,7 @@
 #![allow(dead_code)]
 
 
-// Local imports.
+// Internal library imports.
 use crate::any;
 use crate::atomic;
 use crate::both;

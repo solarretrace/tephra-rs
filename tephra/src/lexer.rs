@@ -8,7 +8,7 @@
 //! Lexer definitions.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local imports.
+// Internal library imports.
 use tephra_span::ColumnMetrics;
 use tephra_span::LineEnding;
 use tephra_span::Pos;

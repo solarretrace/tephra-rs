@@ -18,6 +18,10 @@ name = "tephra_span"
 
 [features]
 default = []
+trace = [
+	"tracing",
+	"tephra-tracing/tracing",
+]
 
 # Required dependencies
 [dependencies]

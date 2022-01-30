@@ -1,0 +1,6 @@
+[book]
+authors = ["Skylor R Schermer"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Tephra User's Guide"

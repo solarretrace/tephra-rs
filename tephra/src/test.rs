@@ -10,4 +10,3 @@
 
 // Internal modules.
 mod metrics_suite;
-mod span_suite;

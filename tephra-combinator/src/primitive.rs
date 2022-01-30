@@ -8,7 +8,7 @@
 //! Combinator primitives.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local imports.
+// Internal library imports.
 use tephra::lexer::Lexer;
 use tephra::lexer::Scanner;
 use tephra::result::Failure;
