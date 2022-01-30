@@ -22,13 +22,13 @@ use crate::spanned;
 use crate::text;
 use tephra::lexer::Lexer;
 use tephra::lexer::Scanner;
-use tephra::position::ColumnMetrics;
-use tephra::position::Pos;
 use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
 use tephra::result::SectionType;
 use tephra::result::Spanned;
 use tephra::result::Success;
+use tephra::span::ColumnMetrics;
+use tephra::span::Pos;
 use tephra::span::Span;
 
 
@@ -314,4 +314,36 @@ fn xyc_pattern() {
 
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
+}
+
+
+
+
+/// Parses a `Pattern::Xyc`.
+#[test]
+#[tracing::instrument]
+fn newline_start() {
+    use AbcToken::*;
+    const TEXT: &'static str = "\n    zzz";
+    let mut lexer = Lexer::new(Abc::new(), TEXT);
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = pattern
+        (lexer.clone())
+        .unwrap_err();
+
+    let error_raw  = format!("{}", actual);
+    // Strip ansi escapes from the error.
+    let error = String::from_utf8(
+            strip_ansi_escapes::strip(error_raw.as_bytes()).unwrap())
+        .unwrap();
+
+    println!("{}", error);
+    assert_eq!(error, "\
+error: unrecognized token
+ --> (1:0-1:8, bytes 0-9)
+  |
+1 |    zzz
+  |    \\ symbol not recognized
+");
 }

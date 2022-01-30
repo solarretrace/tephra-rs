@@ -12,8 +12,8 @@
 
 
 // Local imports.
-use crate::position::ColumnMetrics;
-use crate::position::Pos;
+use tephra_span::ColumnMetrics;
+use tephra_span::Pos;
 
 // External library imports.
 use pretty_assertions::assert_eq;
@@ -29,7 +29,7 @@ use test_log::test;
 #[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
-    assert_eq!(2, size_of::<crate::position::ColumnMetrics>(), "ColumnMetrics");
+    assert_eq!(2, size_of::<tephra_span::ColumnMetrics>(), "ColumnMetrics");
 }
 
 /// Tests `ColumnMetrics::position_after_str` for `Lf`.

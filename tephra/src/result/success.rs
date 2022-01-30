@@ -11,7 +11,7 @@
 // Local imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::span::Span;
+use tephra_span::Span;
 
 
 ////////////////////////////////////////////////////////////////////////////////

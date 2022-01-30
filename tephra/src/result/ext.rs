@@ -65,6 +65,9 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
         }
     }
 
+    #[cfg_attr(not(feature="tracing"),
+        allow(unused_variables),
+        allow(unused_results))]
     fn trace_result(self, level: Level, label: &'static str) -> Self {
         match level {
             Level::ERROR => event!(Level::ERROR,

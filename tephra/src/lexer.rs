@@ -9,13 +9,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::position::ColumnMetrics;
-use crate::position::LineEnding;
-use crate::position::Pos;
+use tephra_span::ColumnMetrics;
+use tephra_span::LineEnding;
+use tephra_span::Pos;
 use crate::result::SourceDisplay;
 use crate::result::SourceSpan;
 use crate::result::Highlight;
-use crate::span::Span;
+use tephra_span::Span;
 
 // External library imports.
 use tephra_tracing::Level;

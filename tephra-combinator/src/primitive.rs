@@ -170,7 +170,7 @@ pub fn one<'text, Sc>(token: Sc::Token)
                 event!(Level::TRACE, "lexer error");
                 Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.token_span(),
+                        lexer.end_span(),
                         lexer.column_metrics()),
                     lexer,
                     source: None,
@@ -187,6 +187,7 @@ pub fn one<'text, Sc>(token: Sc::Token)
             },
 
             // Incorrect token.
+            #[cfg_attr(not(feature="tracing"), allow(unused_variables))]
             Some(lex) => {
                 event!(Level::TRACE, "incorrect token {{found={:?}}}", lex);
                 Err(Failure {
@@ -226,7 +227,7 @@ pub fn any<'text, Sc>(tokens: &[Sc::Token])
                 // Lexer error.
                 None => return Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.token_span(),
+                        lexer.end_span(),
                         lexer.column_metrics()),
                     lexer,
                     source: None,
@@ -325,7 +326,7 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
                 // Lexer error.
                 None => return Err(Failure {
                     parse_error: ParseError::unrecognized_token(
-                        lexer.token_span(),
+                        lexer.end_span(),
                         lexer.column_metrics()),
                     lexer,
                     source: None,

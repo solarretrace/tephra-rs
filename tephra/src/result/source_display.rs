@@ -12,9 +12,9 @@
 #![allow(missing_docs)]
 
 // Local imports.
-use crate::span::Span;
-use crate::span::SplitLines;
-use crate::position::ColumnMetrics;
+use tephra_span::Span;
+use tephra_span::SplitLines;
+use tephra_span::ColumnMetrics;
 
 // External library imports.
 use colored::Color;

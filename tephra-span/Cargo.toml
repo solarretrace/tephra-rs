@@ -1,34 +1,26 @@
 [package]
-name = "tephra-combinator"
+name = "tephra-span"
 version = "0.0.163"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/skysch/tephra-rs"
 homepage = "https://github.com/skysch/tephra-rs"
-description = "Tephra combinators library"
+description = "Tephra span library"
 readme = "readme.md"
-keywords = ["parser", "combinator"]
+keywords = []
 categories = []
 documentation = ""
 exclude = []
 
 [lib]
-name = "tephra_combinator"
-
+name = "tephra_span"
 
 [features]
 default = []
-trace = [
-	"tracing",
-	"tephra-tracing/tracing",
-	"tephra/trace",
-]
 
-# Required dependencies.
+# Required dependencies
 [dependencies]
-tephra = { version = "*", path = "../tephra" }
-colored = { version = "2.0" }
 few = { version = "0.1.4" }
 unicode-width = { version = "0.1" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }

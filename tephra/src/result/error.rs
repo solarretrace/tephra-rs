@@ -12,9 +12,9 @@
 #![allow(missing_docs)]
 
 // Local imports.
-use crate::span::Span;
-use crate::span::SpanOwned;
-use crate::position::ColumnMetrics;
+use tephra_span::Span;
+use tephra_span::SpanOwned;
+use tephra_span::ColumnMetrics;
 use crate::result::SourceDisplay;
 use crate::result::SourceSpan;
 

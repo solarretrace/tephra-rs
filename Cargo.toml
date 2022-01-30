@@ -2,6 +2,7 @@
 members = [
 	"tephra",
 	"tephra-combinator",
+	"tephra-span",
 	"tephra-tracing",
 ]
 

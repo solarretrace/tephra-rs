@@ -17,8 +17,8 @@ use crate::one;
 use crate::text;
 use tephra::lexer::Lexer;
 use tephra::lexer::Scanner;
-use tephra::position::ColumnMetrics;
-use tephra::position::Pos;
+use tephra::span::ColumnMetrics;
+use tephra::span::Pos;
 use tephra::result::ParseResultExt as _;
 
 // External library imports.
@@ -264,7 +264,7 @@ fn whitespace_filter() {
 /// Tests `both` with whitespace filter.
 #[test]
 #[tracing::instrument]
-fn atma_issue_1_both_whitespace_filter() {
+fn both_whitespace_filter() {
     use TestToken::*;
     let input = "aa b \nbdef\n aaa";
     let mut lexer = Lexer::new(Test::new(), input);

@@ -12,9 +12,9 @@
 
 
 // Local imports.
-use crate::span::Span;
-use crate::position::ColumnMetrics;
-use crate::position::Pos;
+use tephra_span::Span;
+use tephra_span::ColumnMetrics;
+use tephra_span::Pos;
 
 // External library imports.
 use pretty_assertions::assert_eq;
@@ -30,8 +30,8 @@ use test_log::test;
 #[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
-    assert_eq!(64, size_of::<crate::span::Span<'_>>(), "Span");
-    assert_eq!(112, size_of::<crate::span::SpanOwned>(), "SpanOwned");
+    assert_eq!(64, size_of::<tephra_span::Span<'_>>(), "Span");
+    assert_eq!(112, size_of::<tephra_span::SpanOwned>(), "SpanOwned");
 }
 
 /// Tests `Span::new`.

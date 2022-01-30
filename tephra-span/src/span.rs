@@ -517,6 +517,7 @@ impl<'text> Iterator for SplitLines<'text> {
         if self.start.page.line > self.end.page.line {
             None
         } else if self.start.page.line == self.end.page.line {
+            // Last line; no need to advance the start position.
             let res = Some(Span::new_enclosing(
                 self.source,
                 self.start,

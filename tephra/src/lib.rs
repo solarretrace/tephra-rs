@@ -44,7 +44,6 @@ mod test;
 
 // Public modules.
 pub mod lexer;
-pub mod position;
 pub mod result;
-pub mod span;
 
+pub use tephra_span as span;

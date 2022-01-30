@@ -27,9 +27,8 @@ trace = [
 # Required dependencies
 [dependencies]
 colored = { version = "2.0" }
-few = { version = "0.1.4" }
-unicode-width = { version = "0.1" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
+tephra-span = { version = "*", path = "../tephra-span" }
 # Optional dependencies.
 tracing = { version = "0.1", optional = true }
 
