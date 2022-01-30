@@ -22,13 +22,15 @@ default = []
 trace = [
 	"tracing",
 	"tephra-tracing/tracing",
+	"tephra-error/trace",
+	"tephra-span/trace",
 ]
 
 # Required dependencies
 [dependencies]
-colored = { version = "2.0" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
 tephra-span = { version = "*", path = "../tephra-span" }
+tephra-error = { version = "*", path = "../tephra-error" }
 # Optional dependencies.
 tracing = { version = "0.1", optional = true }
 

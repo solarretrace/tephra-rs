@@ -15,8 +15,8 @@ use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
 use tephra::result::Spanned;
 use tephra::result::Success;
-use tephra::result::SectionType;
-use tephra::result::ParseError;
+use tephra_error::SectionType;
+use tephra_error::ParseError;
 use crate::maybe;
 
 // External library imports.

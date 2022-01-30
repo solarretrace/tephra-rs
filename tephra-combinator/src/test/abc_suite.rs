@@ -24,7 +24,7 @@ use tephra::lexer::Lexer;
 use tephra::lexer::Scanner;
 use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
-use tephra::result::SectionType;
+use tephra_error::SectionType;
 use tephra::result::Spanned;
 use tephra::result::Success;
 use tephra::span::ColumnMetrics;

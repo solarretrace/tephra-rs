@@ -22,6 +22,7 @@ default = []
 trace = [
 	"tracing",
 	"tephra-tracing/tracing",
+	"tephra-error/trace",
 	"tephra/trace",
 ]
 
@@ -31,6 +32,7 @@ tephra = { version = "*", path = "../tephra" }
 colored = { version = "2.0" }
 few = { version = "0.1.4" }
 unicode-width = { version = "0.1" }
+tephra-error = { version = "*", path = "../tephra-error" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
 # Optional dependencies.
 tracing = { version = "0.1", optional = true }

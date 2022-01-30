@@ -15,8 +15,8 @@
 use tephra_span::Span;
 use tephra_span::SpanOwned;
 use tephra_span::ColumnMetrics;
-use crate::result::SourceDisplay;
-use crate::result::SourceSpan;
+use crate::SourceDisplay;
+use crate::SourceSpan;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]

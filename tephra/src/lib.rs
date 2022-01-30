@@ -38,9 +38,6 @@
 #![warn(variant_size_differences)]
 #![warn(while_true)]
 
-// Internal modules.
-#[cfg(test)]
-mod test;
 
 // Public modules.
 pub mod lexer;

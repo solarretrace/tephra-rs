@@ -12,7 +12,7 @@
 use tephra::lexer::Lexer;
 use tephra::lexer::Scanner;
 use tephra::result::Failure;
-use tephra::result::ParseError;
+use tephra_error::ParseError;
 use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
 use tephra::result::Success;

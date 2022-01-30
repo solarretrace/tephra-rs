@@ -11,8 +11,8 @@
 // Internal library imports.
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
-use crate::result::ParseError;
-use crate::result::ParseErrorOwned;
+use tephra_error::ParseError;
+use tephra_error::ParseErrorOwned;
 
 
 
