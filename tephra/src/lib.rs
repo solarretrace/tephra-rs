@@ -40,7 +40,10 @@
 
 
 // Public modules.
-pub mod lexer;
-pub mod result;
+mod lexer;
+mod result;
 
-pub use tephra_span as span;
+pub use tephra_span::*;
+pub use tephra_error::*;
+pub use lexer::*;
+pub use result::*;

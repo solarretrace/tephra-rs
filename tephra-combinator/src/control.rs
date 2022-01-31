@@ -9,17 +9,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
-use tephra::lexer::Lexer;
-use tephra::lexer::Scanner;
-use tephra::result::ParseResult;
-use tephra::result::ParseResultExt as _;
-use tephra::result::Spanned;
-use tephra::result::Success;
-use tephra_error::SectionType;
-use tephra_error::ParseError;
 use crate::maybe;
 
 // External library imports.
+use tephra::Lexer;
+use tephra::Scanner;
+use tephra::ParseResult;
+use tephra::ParseResultExt as _;
+use tephra::Spanned;
+use tephra::Success;
+use tephra::SectionType;
+use tephra::ParseError;
 use tephra_tracing::Level;
 use tephra_tracing::span;
 use tephra_tracing::event;

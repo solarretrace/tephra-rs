@@ -8,13 +8,12 @@
 //! Parser combinators for joining and bracketting.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Internal library imports.
-use tephra::lexer::Lexer;
-use tephra::lexer::Scanner;
-use tephra::result::ParseResult;
-use tephra::result::ParseResultExt as _;
 
 // External library imports.
+use tephra::Lexer;
+use tephra::Scanner;
+use tephra::ParseResult;
+use tephra::ParseResultExt as _;
 use tephra_tracing::Level;
 use tephra_tracing::span;
 

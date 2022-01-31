@@ -9,13 +9,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
-use tephra::lexer::Lexer;
-use tephra::lexer::Scanner;
-use tephra::result::Failure;
-use tephra_error::ParseError;
-use tephra::result::ParseResult;
-use tephra::result::ParseResultExt as _;
-use tephra::result::Success;
+use tephra::Lexer;
+use tephra::Scanner;
+use tephra::Failure;
+use tephra::ParseError;
+use tephra::ParseResult;
+use tephra::ParseResultExt as _;
+use tephra::Success;
 
 // External library imports.
 use tephra_tracing::event;
