@@ -316,13 +316,13 @@ fn xyc_pattern() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
 }
 
-
-
-
-/// Parses a `Pattern::Xyc`.
+/// Ensures that a failure encountered after initial newline & whitespace
+/// doesn't include that whitespace in the error message.
 #[test]
 #[tracing::instrument]
-fn newline_start() {
+fn initial_newline_ws_skip() {
+    colored::control::set_override(false);
+
     use AbcToken::*;
     const TEXT: &'static str = "\n    zzz";
     let mut lexer = Lexer::new(Abc::new(), TEXT);
@@ -332,18 +332,11 @@ fn newline_start() {
         (lexer.clone())
         .unwrap_err();
 
-    let error_raw  = format!("{}", actual);
-    // Strip ansi escapes from the error.
-    let error = String::from_utf8(
-            strip_ansi_escapes::strip(error_raw.as_bytes()).unwrap())
-        .unwrap();
-
-    println!("{}", error);
-    assert_eq!(error, "\
+    assert_eq!(format!("{actual}"), "\
 error: unrecognized token
- --> (1:0-1:8, bytes 0-9)
-  |
-1 |    zzz
-  |    \\ symbol not recognized
+ --> (1:0-1:7, bytes 1-8)
+  | 
+1 |     zzz
+  |     \\ symbol not recognized
 ");
 }

@@ -11,14 +11,21 @@
 #![allow(unused)]
 #![allow(missing_docs)]
 
+
 // Internal library imports.
-use tephra_span::Span;
-use tephra_span::SplitLines;
-use tephra_span::ColumnMetrics;
+use crate::MessageType;
+use crate::Highlight;
+
 
 // External library imports.
 use colored::Color;
 use colored::Colorize as _;
+use tephra_span::ColumnMetrics;
+use tephra_span::Span;
+use tephra_span::SplitLines;
+use tephra_tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -216,12 +223,14 @@ impl<'text, 'msg> SourceSpan<'text, 'msg> {
         self
     }
 
-    fn write_with_color_enablement(
+    pub(in crate) fn write_with_color_enablement(
         &self,
         f: &mut std::fmt::Formatter<'_>,
         color_enabled: bool)
         -> std::fmt::Result
     {
+        let _span = span!(Level::TRACE, "SourceSpan", color_enabled).entered();
+
         let (source_name, sep) = match &self.source_name {
             Some(name) => (name.borrow(), ":"),
             None       => ("", ""),
@@ -280,7 +289,7 @@ pub struct SourceNote<'msg> {
 }
 
 impl<'msg> SourceNote<'msg> {
-    fn write_with_color_enablement(
+    pub(in crate) fn write_with_color_enablement(
         &self,
         f: &mut std::fmt::Formatter<'_>,
         color_enabled: bool)
@@ -294,345 +303,6 @@ impl<'msg> SourceNote<'msg> {
 impl<'msg> Display for SourceNote<'msg> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.write_with_color_enablement(f, true)
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// MessageType
-////////////////////////////////////////////////////////////////////////////////
-/// A `SourceDisplay`, `SourceNote`, or `Highlight` message type. Used to
-/// determine the color and format of the message.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MessageType {
-    /// An informational message.
-    Info,
-    /// An error message.
-    Error,
-    /// A warning message.
-    Warning,
-    /// A message providing additional info.
-    Note,
-    /// A message to help in correcting an error or warning.
-    Help,
-}
-
-impl MessageType {
-    /// Returns the color associated with the message type.
-    pub fn color(&self) -> Color {
-        use MessageType::*;
-        match self {
-            Info    => Color::BrightWhite,
-            Error   => Color::BrightRed,
-            Warning => Color::BrightYellow,
-            Note    => Color::BrightBlue,
-            Help    => Color::BrightGreen,
-        }
-    }
-
-    /// Returns the underline associated with the message type.
-    pub fn underline(&self) -> &'static str {
-        use MessageType::*;
-        match self {
-            Info    => "-",
-            Error   => "^",
-            Warning => "^",
-            Note    => "-",
-            Help    => "~",
-        }
-    }
-
-    fn write_with_color_enablement(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        color_enabled: bool)
-        -> std::fmt::Result
-    {
-        use MessageType::*;
-        if color_enabled {
-            let color = self.color();
-            
-            match self {
-                Info    => write!(f, "{}", "info"),
-                Error   => write!(f, "{}", "error".color(color).bold()),
-                Warning => write!(f, "{}", "warning".color(color).bold()),
-                Note    => write!(f, "{}", "note".color(color).bold()),
-                Help    => write!(f, "{}", "help".color(color).bold()),
-            }
-        } else {
-            match self {
-                Info    => write!(f, "info"),
-                Error   => write!(f, "error"),
-                Warning => write!(f, "warning"),
-                Note    => write!(f, "note"),
-                Help    => write!(f, "help"),
-            }
-        }
-    }
-}
-
-impl Display for MessageType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.write_with_color_enablement(f, true)
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Highlight
-////////////////////////////////////////////////////////////////////////////////
-/// A highlighted subsection of a `SourceSpan`.
-#[derive(Debug)]
-pub struct Highlight<'text, 'msg> {
-    /// The span to highlight.
-    span: Span<'text>,
-    /// The message to display at the start of the span.
-    start_message: Option<Cow<'msg, str>>,
-    /// The message to display at the end of the span.
-    end_message: Option<Cow<'msg, str>>,
-    /// The message type.
-    message_type: MessageType,
-    /// Whether to allow line omissions within the highlighted span.
-    allow_omissions: bool,
-}
-
-
-impl<'text, 'msg> Highlight<'text, 'msg> {
-    /// Constructs a new Highlight with the given span and message.
-    pub fn new<M>(span: Span<'text>, message: M) -> Self
-        where M: Into<Cow<'msg, str>>,
-    {
-        Highlight {
-            span,
-            start_message: None,
-            end_message: Some(message.into()),
-            message_type: MessageType::Info,
-            allow_omissions: true,
-        }
-    }
-
-    /// Returns the given SourceDisplay with the info MessageType.
-    pub fn with_info_type(mut self) -> Self {
-        self.message_type = MessageType::Info;
-        self
-    }
-
-    /// Returns the given SourceDisplay with the error MessageType.
-    pub fn with_error_type(mut self) -> Self {
-        self.message_type = MessageType::Error;
-        self
-    }
-
-    /// Returns the given SourceDisplay with the warning MessageType.
-    pub fn with_warning_type(mut self) -> Self {
-        self.message_type = MessageType::Warning;
-        self
-    }
-    
-    /// Returns the given SourceDisplay with the note MessageType.
-    pub fn with_note_type(mut self) -> Self {
-        self.message_type = MessageType::Note;
-        self
-    }
-
-    /// Returns the given SourceDisplay with the hel MessageType.
-    pub fn with_help_type(mut self) -> Self {
-        self.message_type = MessageType::Help;
-        self
-    }
-
-    /// Returns the given SourceDisplay with the given MessageType.
-    pub fn with_message_type(mut self, message_type: MessageType) -> Self {
-        self.message_type = message_type;
-        self
-    }
-
-    /// Returns true if the highlight extends across multiple lines.
-    pub fn is_multiline(&self) -> bool {
-        self.span.start().page.line != self.span.end().page.line
-    }
-
-    /// Returns true if the highlight has a message for the given line.
-    pub fn has_message_for_line(&self, line: usize) -> bool {
-        (self.span.start().page.line == line
-            && (self.start_message.is_some() 
-                || self.span.start().page.column != 0))
-        ||
-        (self.span.end().page.line == line
-            && (self.end_message.is_some() 
-                || self.span.end().page.column != 0))
-    }
-
-    /// Writes the riser symbol for the given line number.
-    fn write_riser_for_line(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        current_line: usize,
-        riser_state: &mut RiserState,
-        is_active_riser: bool,
-        color_enabled: bool)
-        -> std::fmt::Result
-    {
-        // If the span is not over multiple lines, there is no riser portion.
-        if *riser_state == RiserState::Unused { return Ok(()); }
-
-        match *riser_state {
-            RiserState::Unused  => Ok(()),
-
-            RiserState::Ended   => write!(f, " "),
-
-            RiserState::Waiting => if !is_active_riser 
-                && self.span.start().page.column == 0
-                && !self.has_message_for_line(current_line)
-            {
-                *riser_state = RiserState::Started;
-                if color_enabled {
-                    write!(f, "{}", "/".color(self.message_type.color()))
-                } else {
-                    write!(f, "/")
-                }
-
-            } else if self.has_message_for_line(current_line) {
-                *riser_state = RiserState::Started;
-                write!(f, " ")
-
-            } else {
-                write!(f, " ")
-            },
-
-            RiserState::Started => if !is_active_riser 
-                && self.span.end().page.column == 0
-                && !self.has_message_for_line(current_line)
-            {
-                *riser_state = RiserState::Ended;
-                if color_enabled {
-                    write!(f, "{}", "\\".color(self.message_type.color()))
-                } else {
-                    write!(f, "\\")
-                }
-
-            } else if self.has_message_for_line(current_line) {
-                if is_active_riser { *riser_state = RiserState::Ended; }
-                write!(f, "|")
-
-            } else {
-                write!(f, "|")
-            },
-        }
-
-    }
-
-    /// Writes the message text for the given line number.
-    fn write_message_for_line(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        line: usize,
-        write_extra_riser_spacer: bool,
-        color_enabled: bool)
-        -> std::fmt::Result
-    {
-        if self.span.start().page.line == line
-            && self.span.end().page.line == line
-        {
-            if write_extra_riser_spacer { write!(f, " ")?; }
-            for _ in 0..self.span.start().page.column {
-                write!(f, " ")?;
-            }
-            if self.span.is_empty() {
-                if color_enabled {
-                    write!(f, "{}", "\\".color(self.message_type.color()))?;
-                } else {
-                    write!(f, "\\")?;
-                }
-            } else {
-                let mut underline_count = std::cmp::max(
-                    self.span.end().page.column
-                        .checked_sub(self.span.start().page.column)
-                        .unwrap_or(0),
-                    1);
-                for _ in 0..underline_count {
-                    if color_enabled {
-                        write!(f, "{}", self.message_type
-                            .underline()
-                            .color(self.message_type.color()))?;
-                    } else {
-                        write!(f, "{}", self.message_type.underline())?;
-                    }
-                }
-            }
-            match (&self.start_message, &self.end_message) {
-                (Some(msg), None)      | 
-                (None,      Some(msg)) => if color_enabled {
-                    writeln!(f, " {}", msg.color(self.message_type.color()))?
-                } else {
-                    writeln!(f, " {}", msg)?
-                },
-                (Some(fst), Some(snd)) => unimplemented!(),
-                (None,      None)      => writeln!(f, "")?,
-            }
-
-        }  else if self.span.start().page.line == line {
-            if write_extra_riser_spacer {
-                if color_enabled {
-                    write!(f, "{}", "_".color(self.message_type.color()))?;
-                } else {
-                    write!(f, "_")?;
-                }
-            }
-            if self.span.start().page.column > 0 {
-                for _ in 0..(self.span.start().page.column - 1) {
-                    if color_enabled {
-                        write!(f, "{}", "_".color(self.message_type.color()))?;
-                    } else {
-                        write!(f, "_")?;
-                    }
-                }
-            }
-            if color_enabled {
-                write!(f, "{}", "^".color(self.message_type.color()))?;
-            } else {
-                write!(f, "^")?;
-            }
-            match &self.start_message {
-                Some(msg) => if color_enabled {
-                    writeln!(f, " {}", msg.color(self.message_type.color()))?;
-                } else {
-                    write!(f, " {}", msg)?;
-                },
-                None      => writeln!(f, "")?,
-            }
-            
-        } else if self.span.end().page.line == line {
-            if write_extra_riser_spacer {
-                if color_enabled {
-                    write!(f, "{}", "_".color(self.message_type.color()))?;
-                } else {
-                    write!(f, "_")?;
-                }
-            }
-            if self.span.end().page.column > 0 {
-                for _ in 0..(self.span.end().page.column - 1) {
-                    if color_enabled {
-                        write!(f, "{}", "_".color(self.message_type.color()))?;
-                    } else {
-                        write!(f, "_")?;
-                    }
-                }
-            }
-            if color_enabled {
-                write!(f, "{}", "^".color(self.message_type.color()))?;
-            } else {
-                write!(f, "^")?;
-            }
-            match &self.end_message {
-                Some(msg) => if color_enabled {
-                    writeln!(f, " {}", msg.color(self.message_type.color()))?;
-                } else {
-                    writeln!(f, " {}", msg)?;
-                },
-                
-                None      => writeln!(f, "")?,
-            }
-        }
-        Ok(())
     }
 }
 
@@ -658,17 +328,20 @@ impl<'text, 'msg, 'hl> MultiSplitLines<'text, 'msg, 'hl>
 {
     /// Constructs a new MultiSplitLines from the given source span and
     /// highlights.
-    fn new(
+    pub(in crate) fn new(
         source_span: Span<'text>,
         highlights: &'hl [Highlight<'text, 'msg>],
         gutter_width: usize,
         metrics: ColumnMetrics)
         -> Self
     {
+        let _span = span!(Level::TRACE, "new").entered();
+
         let riser_width = highlights
             .iter()
             .filter(|h| h.is_multiline())
             .count();
+        event!(Level::TRACE, "riser_width = {riser_width}");
 
         let source_lines = source_span.split_lines(metrics);
 
@@ -681,12 +354,15 @@ impl<'text, 'msg, 'hl> MultiSplitLines<'text, 'msg, 'hl>
     }
 
     /// Consumes the MultiSplitLines and writes all of the contained data.
-    fn write_with_color_enablement(
+    pub(in crate) fn write_with_color_enablement(
         mut self,
         f: &mut std::fmt::Formatter<'_>,
         color_enabled: bool)
         -> std::fmt::Result
     {
+        let _span = span!(Level::TRACE, "MultiSplitLines", color_enabled)
+            .entered();
+
         // Write empty line to uncramp the display.
         write_gutter(f, "", self.gutter_width, color_enabled)?;
         writeln!(f)?;
@@ -701,7 +377,9 @@ impl<'text, 'msg, 'hl> MultiSplitLines<'text, 'msg, 'hl>
                 });
         }
 
-        for span in self.source_lines {
+        for (i, span) in self.source_lines.enumerate() {
+            event!(Level::TRACE, "span {i} = {span}");
+
             let current_line = span.start().page.line;
 
             // Write gutter for source line.
@@ -790,7 +468,7 @@ fn write_gutter_omit<V>(
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RiserState {
+pub(in crate) enum RiserState {
     Unused,
     Waiting,
     Started,

@@ -23,7 +23,6 @@ use test_log::test;
 
 
 /// Performs size checks.
-#[allow(unused_qualifications)]
 #[test]
 #[tracing::instrument]
 fn size_checks() {
@@ -41,9 +40,11 @@ fn empty() {
     let span = Span::new(TEXT);
 
     assert_eq!(span.text(), "");
-    assert_eq!(
-        format!("{:?}", span),
-        "\"\" (0:0, byte 0)");
+
+    let actual = format!("{:?}", span);
+    let expected = "\"\" (0:0, byte 0)";
+
+    assert_eq!(actual, expected);
 }
 
 /// Tests `Span::full`.
@@ -53,9 +54,10 @@ fn full() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::full(TEXT, ColumnMetrics::new());
 
-    assert_eq!(
-        format!("{:?}", span),
-        "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)");
+    let actual = format!("{:?}", span);
+    let expected = "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)";
+
+    assert_eq!(actual, expected);
 }
 
 /// Tests `Span::widen_to_line`.
@@ -68,9 +70,10 @@ fn widen_to_line() {
         Pos::new(4, 1, 2),
         Pos::new(8, 1, 6));
 
-    assert_eq!(
-        format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
-        "\"  abcd  \" (1:0-1:8, bytes 2-10)");
+    let actual = format!("{:?}", span.widen_to_line(ColumnMetrics::new()));
+    let expected = "\"  abcd  \" (1:0-1:8, bytes 2-10)";
+
+    assert_eq!(actual, expected);
 }
 
 /// Tests `Span::widen_to_line`.
@@ -80,9 +83,10 @@ fn widen_empty_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let span = Span::new_at(TEXT, Pos::new(6, 1, 4));
 
-    assert_eq!(
-        format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
-        "\"  abcd  \" (1:0-1:8, bytes 2-10)");
+    let actual = format!("{:?}", span.widen_to_line(ColumnMetrics::new()));
+    let expected = "\"  abcd  \" (1:0-1:8, bytes 2-10)";
+
+    assert_eq!(actual, expected);
 }
 
 /// Tests `Span::widen_to_line`.
@@ -95,9 +99,10 @@ fn widen_line_to_line() {
         Pos::new(2, 1, 0),
         Pos::new(10, 1, 8));
 
-    assert_eq!(
-        format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
-        "\"  abcd  \" (1:0-1:8, bytes 2-10)");
+    let actual = format!("{:?}", span.widen_to_line(ColumnMetrics::new()));
+    let expected = "\"  abcd  \" (1:0-1:8, bytes 2-10)";
+
+    assert_eq!(actual, expected);
 }
 
 /// Tests `Span::widen_to_line`.
@@ -110,9 +115,10 @@ fn widen_full_to_line() {
         Pos::new(0, 0, 0),
         Pos::new(12, 2, 1));
 
-    assert_eq!(
-        format!("{:?}", span.widen_to_line(ColumnMetrics::new())),
-        "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)");
+    let actual = format!("{:?}", span.widen_to_line(ColumnMetrics::new()));
+    let expected = "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)";
+
+    assert_eq!(actual, expected);
 }
 
 

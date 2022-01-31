@@ -12,11 +12,15 @@
 #![allow(missing_docs)]
 
 // Internal library imports.
+use crate::SourceDisplay;
+use crate::SourceSpan;
+
+// External libary imports.
+use tephra_tracing::event;
+use tephra_tracing::Level;
 use tephra_span::Span;
 use tephra_span::SpanOwned;
 use tephra_span::ColumnMetrics;
-use crate::SourceDisplay;
-use crate::SourceSpan;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
@@ -72,11 +76,13 @@ impl<'text> ParseError<'text> {
     }
 
     pub fn unrecognized_token(span: Span<'text>, metrics: ColumnMetrics) -> Self {
-        ParseError {
+        let e = ParseError {
             description: "unrecognized token",
             span: Some((span, "symbol not recognized".to_owned(), metrics)),
             section_type: SectionType::Lexer,
-        }
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
     }
 
     pub fn unexpected_token<T>(
@@ -86,29 +92,35 @@ impl<'text> ParseError<'text> {
         -> Self 
         where T: std::fmt::Display
     {
-        ParseError {
+        let e = ParseError {
             description: "unexpected token",
             span: Some((span, format!("expected {}", expected), metrics)),
             section_type: SectionType::Lexer,
-        }
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
     }
 
     pub fn unexpected_end_of_text(span: Span<'text>, metrics: ColumnMetrics)
         -> Self
     {
-        ParseError {
+        let e = ParseError {
             description: "unexpected end of text",
             span: Some((span, "text ends here".to_owned(), metrics)),
             section_type: SectionType::Lexer,
-        }
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
     }
 
     pub fn expected_end_of_text(span: Span<'text>, metrics: ColumnMetrics) -> Self {
-        ParseError {
+        let e = ParseError {
             description: "expected end of text",
             span: Some((span, "text should end here".to_owned(), metrics)),
             section_type: SectionType::Lexer,
-        }
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
     }
 
     pub fn description(&self) -> &'static str {
@@ -147,14 +159,13 @@ impl<'text> std::fmt::Display for ParseError<'text> {
             let span = *span;
             let msg = &*msg;
             let metrics = *metrics;
-            write!(f, "{}", 
-                SourceDisplay::new(self.description)
-                    .with_error_type()
-                    .with_source_span(
-                        SourceSpan::new_error_highlight(span, msg, metrics)))
+            write!(f, "{}", SourceDisplay::new(self.description)
+                .with_error_type()
+                .with_source_span(
+                    SourceSpan::new_error_highlight(span, msg, metrics)))
         } else {
-            // TODO: Clean up message.
-            write!(f, "{} NO SPAN", self.description)
+            write!(f, "{}", SourceDisplay::new(self.description)
+                .with_error_type())
         }
     }
 }

@@ -118,7 +118,6 @@ impl Scanner for Test {
 
 
 /// Performs size checks.
-#[allow(unused_qualifications)]
 #[test]
 #[tracing::instrument]
 fn size_checks() {

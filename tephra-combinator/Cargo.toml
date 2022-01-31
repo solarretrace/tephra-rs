@@ -43,7 +43,6 @@ pretty_assertions = "*"
 test-log = { version = "0.2", default_features = false, features = ["trace"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
-strip-ansi-escapes = "*"
 
 [badges]
 maintenance = { status = "experimental" }

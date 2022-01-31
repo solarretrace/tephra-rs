@@ -223,7 +223,10 @@ impl ColumnMetrics {
 
         let mut end = base;
         while end.byte < text.len() {
-            if self.is_line_break(text, end.byte) { break; }
+            if self.is_line_break(text, end.byte) {
+                event!(Level::TRACE, "byte {} is line break", end.byte);
+                break;
+            }
             match self.next_position(text, end) {
                 Some(new) => end = new,
                 None      => break,
@@ -239,21 +242,23 @@ impl ColumnMetrics {
     {
         let _span = span!(Level::TRACE, "line_start_position").entered();
 
-        let line_break_len = self.line_ending.as_str().len();
-
         let mut start_byte = base.byte;
         while start_byte > 0 {
-            while !text.is_char_boundary(start_byte) {
+            while !text.is_char_boundary(start_byte - 1) {
+                event!(Level::TRACE, "byte {} is not char boundary",
+                    start_byte - 1);
                 start_byte -= 1;
             }
-            if self.is_line_break(text, start_byte) {
-                start_byte += line_break_len;
+            if self.is_line_break(text, start_byte - 1) {
+                event!(Level::TRACE, "byte {} is line break", start_byte - 1);
                 break;
             }
             if start_byte > 0 { start_byte -= 1; }
         }
 
-        Pos::new(start_byte, base.page.line, 0)
+        let res = Pos::new(start_byte, base.page.line, 0);
+        event!(Level::TRACE, "final pos = {res}");
+        res
     }
 
     /// Returns the position at the start of the next line after the given base

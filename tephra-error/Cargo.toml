@@ -1,6 +1,6 @@
 [package]
 name = "tephra-error"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -23,6 +23,9 @@ trace = [
 	"tephra-span/trace",
 	"tephra-tracing/tracing",
 ]
+no-color = [
+	"colored/no-color",
+]
 
 # Required dependencies
 [dependencies]
@@ -38,7 +41,6 @@ pretty_assertions = "*"
 test-log = { version = "0.2", default_features = false, features = ["trace"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
-strip-ansi-escapes = "*"
 
 [badges]
 maintenance = { status = "experimental" }

@@ -20,6 +20,7 @@ use tephra_tracing::Level;
 use tephra_tracing::span;
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Span
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,11 +533,14 @@ impl<'text> Iterator for SplitLines<'text> {
     
     fn next(&mut self) -> Option<Self::Item> {
         let _span = span!(Level::TRACE, "SplitLines::next").entered();
-        event!(Level::TRACE, "start: {}, end: {}", self.start, self.end);
+        event!(Level::TRACE, "current state = start: {}, end: {}",
+            self.start, self.end);
 
         if self.start.page.line > self.end.page.line {
+            event!(Level::TRACE, "fused");
             None
         } else if self.start.page.line == self.end.page.line {
+            event!(Level::TRACE, "final line");
             // Last line; no need to advance the start position.
             let res = Some(Span::new_enclosing(
                 self.source,
@@ -544,6 +548,7 @@ impl<'text> Iterator for SplitLines<'text> {
                 self.end));
 
             self.start.page.line += 1;
+
             res
         } else {
             let end = self.metrics
@@ -557,6 +562,7 @@ impl<'text> Iterator for SplitLines<'text> {
             self.start = self.metrics
                 .next_position(self.source, end)
                 .expect("next line < end line");
+
             res
         }
     }
