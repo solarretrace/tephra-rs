@@ -38,13 +38,13 @@ use std::fmt::Display;
 ////////////////////////////////////////////////////////////////////////////////
 /// A highlighted subsection of a `SourceSpan`.
 #[derive(Debug)]
-pub struct Highlight<'text, 'msg> {
+pub struct Highlight<'text> {
     /// The span to highlight.
     span: Span<'text>,
     /// The message to display at the start of the span.
-    start_message: Option<Cow<'msg, str>>,
+    start_message: Option<String>,
     /// The message to display at the end of the span.
-    end_message: Option<Cow<'msg, str>>,
+    end_message: Option<String>,
     /// The message type.
     message_type: MessageType,
     /// Whether to allow line omissions within the highlighted span.
@@ -52,10 +52,10 @@ pub struct Highlight<'text, 'msg> {
 }
 
 
-impl<'text, 'msg> Highlight<'text, 'msg> {
+impl<'text> Highlight<'text> {
     /// Constructs a new Highlight with the given span and message.
     pub fn new<M>(span: Span<'text>, message: M) -> Self
-        where M: Into<Cow<'msg, str>>,
+        where M: Into<String>,
     {
         Highlight {
             span,
