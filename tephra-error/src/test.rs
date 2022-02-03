@@ -29,8 +29,8 @@ use test_log::test;
 #[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
-    assert_eq!(120, size_of::<crate::ParseError<'_>>(), "ParseError");
-    assert_eq!(168, size_of::<crate::ParseErrorOwned>(), "ParseErrorOwned");
+    assert_eq!(128, size_of::<crate::ParseError<'_>>(), "ParseError");
+    assert_eq!(176, size_of::<crate::ParseErrorOwned>(), "ParseErrorOwned");
 }
 
 
@@ -74,8 +74,6 @@ fn single_line_spanned_error() {
     
     assert_eq!(actual, expected);
 }
-
-
 
 /// Test ParseError formatting for a spanned error over multiple lines.
 #[test]

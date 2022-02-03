@@ -15,11 +15,11 @@
 use crate::both;
 use crate::one;
 use crate::text;
-use tephra::lexer::Lexer;
-use tephra::lexer::Scanner;
-use tephra::span::ColumnMetrics;
-use tephra::span::Pos;
-use tephra::result::ParseResultExt as _;
+use tephra::Lexer;
+use tephra::Scanner;
+use tephra::ColumnMetrics;
+use tephra::Pos;
+use tephra::ParseResultExt as _;
 
 // External library imports.
 use pretty_assertions::assert_eq;
@@ -122,7 +122,7 @@ impl Scanner for Test {
 #[tracing::instrument]
 fn size_checks() {
     use std::mem::size_of;
-    assert_eq!(168, size_of::<Lexer<'_, Test>>(), "Lexer");
+    assert_eq!(176, size_of::<Lexer<'_, Test>>(), "Lexer");
 }
 
 /// Tests `Lexer::new`.

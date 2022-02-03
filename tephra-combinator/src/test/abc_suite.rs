@@ -14,22 +14,21 @@
 
 // Internal library imports.
 use crate::any;
-use crate::atomic;
+use crate::context_commit;
 use crate::both;
 use crate::one;
 use crate::seq;
 use crate::spanned;
 use crate::text;
-use tephra::lexer::Lexer;
-use tephra::lexer::Scanner;
-use tephra::result::ParseResult;
-use tephra::result::ParseResultExt as _;
-use tephra_error::SectionType;
-use tephra::result::Spanned;
-use tephra::result::Success;
-use tephra::span::ColumnMetrics;
-use tephra::span::Pos;
-use tephra::span::Span;
+use tephra::Lexer;
+use tephra::Scanner;
+use tephra::ParseResult;
+use tephra::ParseResultExt as _;
+use tephra::Spanned;
+use tephra::Success;
+use tephra::ColumnMetrics;
+use tephra::Pos;
+use tephra::Span;
 
 
 // External library imports.
@@ -140,7 +139,7 @@ enum Pattern<'text> {
 fn pattern<'text>(lexer: Lexer<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
-    match atomic("abc pattern", SectionType::Atomic,
+    match context_commit("abc pattern",
         spanned(text(abc)))
         (lexer.clone())
     {
@@ -150,7 +149,7 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>)
         _ => (),
     }
 
-    match atomic("abc pattern", SectionType::Atomic,
+    match context_commit("abc pattern",
         spanned(text(bxx)))
         (lexer.clone())
     {
