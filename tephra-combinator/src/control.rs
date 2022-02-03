@@ -18,7 +18,7 @@ use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Spanned;
 use tephra::Success;
-use tephra::SectionType;
+use tephra::Failure;
 use tephra::ParseError;
 use tephra_tracing::Level;
 use tephra_tracing::span;
@@ -29,11 +29,9 @@ use tephra_tracing::event;
 // Context controls
 ////////////////////////////////////////////////////////////////////////////////
 
-/// A combinator which identifies a delimiter or bracket which starts a new
-/// failure span section.
-pub fn section<'text, Sc, F, V>(
-    section_name: &'static str,
-    section_type: SectionType,
+/// A combinator which identifies a new span context.
+pub fn context<'text, Sc, F, V>(
+    context: &'static str,
     mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
@@ -41,7 +39,7 @@ pub fn section<'text, Sc, F, V>(
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let _span = span!(Level::DEBUG, "section", section_name).entered();
+        let _span = span!(Level::DEBUG, "context", context).entered();
 
         let sublexer = lexer.sublexer();
 
@@ -56,13 +54,12 @@ pub fn section<'text, Sc, F, V>(
             Err(fail) => {
                 let section_error = ParseError::new("parse error")
                     .with_span(
-                        format!("during this {}" ,section_name),
+                        format!("during this {}", context),
                         lexer.clone()
                             .join(fail.lexer.clone())
                             .parse_span(),
-                        lexer.column_metrics())
-                    .with_section_type(section_type);
-                Err(fail.push_context(section_error))
+                        lexer.column_metrics());
+                Err(fail.with_context(section_error))
             },
         }
     }
@@ -71,19 +68,18 @@ pub fn section<'text, Sc, F, V>(
 /// Returns a parser which converts a failure into an empty success if no
 /// non-filtered tokens are consumed.
 ///
-/// This is equivalent to `maybe` if the parser consumes at most a single token.
-pub fn atomic<'text, Sc, F, V>(
-    section_name: &'static str,
-    section_type: SectionType,
+/// This is equivalent to `context("label", maybe(..))` if the parser consumes 
+/// at most a single token.
+pub fn context_commit<'text, Sc, F, V>(
+    context: &'static str,
     mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-        V: std::fmt::Debug
 {
     move |lexer| {
-        let _span = span!(Level::DEBUG, "atomic", section_name).entered();
+        let _span = span!(Level::DEBUG, "context_commit", context).entered();
 
         let sublexer = lexer.sublexer();
         let current_cursor = lexer.cursor_pos();
@@ -99,19 +95,68 @@ pub fn atomic<'text, Sc, F, V>(
             Err(fail) if fail.lexer.cursor_pos() > current_cursor => {
                 let section_error = ParseError::new("parse error")
                     .with_span(
-                        format!("during this {}", section_name),
+                        format!("during this {}", context),
                         lexer.clone()
                             .join(fail.lexer.clone())
                             .parse_span(),
-                        lexer.column_metrics())
-                    .with_section_type(section_type);
-                Err(fail.push_context(section_error))
+                        lexer.column_metrics());
+                Err(fail.with_context(section_error))
             },
 
             Err(_) => Ok(Success {
                 lexer,
                 value: None,
             }),
+        }
+    }
+}
+
+
+
+pub fn recover_at<'text, Sc, F, V>(
+    token: Sc::Token,
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+{
+    move |lexer| {
+        let _span = span!(Level::DEBUG, "recover_at", context).entered();
+
+        match parser
+            (lexer)
+        {
+            Ok(succ) => Ok(succ.map_value(Some)),
+            Err(Failure { mut lexer, parse_error }) => {
+                lexer.send(parse_error).expect("Send error to sink");
+                lexer.advance_to(token.clone());
+                Ok(Success { lexer, value: None })
+            }
+        }
+    }
+}
+
+pub fn recover_after<'text, Sc, F, V>(
+    token: Sc::Token,
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+{
+    move |lexer| {
+        let _span = span!(Level::DEBUG, "recover_at", context).entered();
+
+        match parser
+            (lexer)
+        {
+            Ok(succ) => Ok(succ.map_value(Some)),
+            Err(Failure { mut lexer, parse_error }) => {
+                lexer.send(parse_error).expect("Send error to sink");
+                lexer.advance_past(token.clone());
+                Ok(Success { lexer, value: None })
+            }
         }
     }
 }
@@ -270,7 +315,7 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
         {
             Ok(succ) => {
                 let end = succ.lexer.end_pos().byte;
-                let value = &succ.lexer.source()[start..end];
+                let value = &succ.lexer.source_text()[start..end];
 
                 Ok(Success {
                     lexer: succ.lexer,
