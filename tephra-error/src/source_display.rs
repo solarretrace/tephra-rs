@@ -158,10 +158,10 @@ pub struct SourceSpan<'text, 'msg> {
     highlights: Vec<Highlight<'text, 'msg>>,
     /// Notes to append to the source display.
     notes: Vec<SourceNote<'msg>>,
+    /// The width of the line number gutter.
+    gutter_width: u8,
     /// Whether to allow line omissions within the source display.
     allow_omissions: bool,
-    /// The width of the line number gutter.
-    gutter_width: usize,
     /// Whether colors are enabled during writing.
     color_enabled: bool,
 }
@@ -170,7 +170,7 @@ impl<'text, 'msg> SourceSpan<'text, 'msg> {
     /// Constructs a new SourceSpan with the given span.
     pub fn new(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         let gutter_width = std::cmp::max(
-            (span.end().page.line as f32).log10().ceil() as usize, 1);
+            (span.end().page.line as f32).log10().ceil() as u8, 1);
 
         SourceSpan {
             source_name: None,
@@ -243,14 +243,14 @@ impl<'text, 'msg> SourceSpan<'text, 'msg> {
                 source_name,
                 sep,
                 self.span,
-                width=self.gutter_width)?;
+                width=self.gutter_width as usize)?;
         } else {
             writeln!(f, "{:width$}--> {}{}({})",
                 "",
                 source_name,
                 sep,
                 self.span,
-                width=self.gutter_width)?;
+                width=self.gutter_width as usize)?;
         }
 
         MultiSplitLines::new(
@@ -261,7 +261,7 @@ impl<'text, 'msg> SourceSpan<'text, 'msg> {
             .write_with_color_enablement(f, color_enabled)?;
 
         for note in &self.notes {
-            write!(f, "{:width$} = ", "", width=self.gutter_width)?;
+            write!(f, "{:width$} = ", "", width=self.gutter_width as usize)?;
             note.write_with_color_enablement(f, color_enabled)?;
             writeln!(f)?;
         }
@@ -318,9 +318,9 @@ struct MultiSplitLines<'text, 'msg, 'hl> {
     /// The highlights contained within the SourceSpan.
     highlights: &'hl [Highlight<'text, 'msg>],
     /// The width of the line number gutter.
-    gutter_width: usize,
+    gutter_width: u8,
     /// The width of the highlight riser gutter.
-    riser_width: usize,
+    riser_width: u8,
 }
 
 impl<'text, 'msg, 'hl> MultiSplitLines<'text, 'msg, 'hl> 
@@ -331,7 +331,7 @@ impl<'text, 'msg, 'hl> MultiSplitLines<'text, 'msg, 'hl>
     pub(in crate) fn new(
         source_span: Span<'text>,
         highlights: &'hl [Highlight<'text, 'msg>],
-        gutter_width: usize,
+        gutter_width: u8,
         metrics: ColumnMetrics)
         -> Self
     {
@@ -340,7 +340,9 @@ impl<'text, 'msg, 'hl> MultiSplitLines<'text, 'msg, 'hl>
         let riser_width = highlights
             .iter()
             .filter(|h| h.is_multiline())
-            .count();
+            .count()
+            .try_into()
+            .expect("riser width < 255");
         event!(Level::TRACE, "riser_width = {riser_width}");
 
         let source_lines = source_span.split_lines(metrics);
@@ -433,7 +435,7 @@ impl<'text, 'msg, 'hl> MultiSplitLines<'text, 'msg, 'hl>
 fn write_gutter<V>(
     f: &mut std::fmt::Formatter<'_>,
     value: V,
-    width: usize,
+    width: u8,
     color_enabled: bool)
     -> std::fmt::Result
     where V: Display
@@ -442,16 +444,16 @@ fn write_gutter<V>(
         write!(f, "{:>width$} {} ",
             format!("{}", value).bright_blue().bold(),
             "|".bright_blue().bold(),
-            width=width)
+            width=width as usize)
     } else {
-        write!(f, "{:>width$} | ", value, width=width)
+        write!(f, "{:>width$} | ", value, width=width as usize)
     }
 }
 
 fn write_gutter_omit<V>(
     f: &mut std::fmt::Formatter<'_>,
     value: V,
-    width: usize,
+    width: u8,
     color_enabled: bool)
     -> std::fmt::Result
     where V: Display
@@ -460,9 +462,9 @@ fn write_gutter_omit<V>(
         write!(f, "{:>width$}{}",
             "",
             "...".bright_blue().bold(),
-            width=width)
+            width=width as usize)
     } else {
-        write!(f, "{:>width$}...", "", width=width)
+        write!(f, "{:>width$}...", "", width=width as usize)
     }
 }
 
