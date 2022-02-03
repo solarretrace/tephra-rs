@@ -20,34 +20,35 @@ use tephra_error::ParseErrorOwned;
 // Failure
 ////////////////////////////////////////////////////////////////////////////////
 /// A struct representing a failed parse with borrowed data.
+#[derive(Debug)]
 pub struct Failure<'text, Sc> where Sc: Scanner {
     // TODO: Decide what lexer state to store on parse errors.
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, Sc>,
     /// The parse error.
     pub parse_error: ParseError<'text>,
-    /// The source of the failure.
-    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
 impl<'text, Sc> Failure<'text, Sc> 
     where Sc: Scanner,
 {
-    /// Attempts to push a `ParseError` into the `Failure` as contextual
-    /// information.
-    pub fn push_context(mut self, error: ParseError<'text>) -> Self {
-        if error.section_type() > self.parse_error.section_type() {
-            // Replace current parse error.
-            self.parse_error = error;
-            self
-        } else {
-            // Convert current Failure to FailureOwned and push it into source.
-            let parse_error = std::mem::replace(&mut self.parse_error, error)
-                .into();
-            let source = self.source.take();
-            self.source = Some(Box::new(FailureOwned { parse_error, source }));
-            self
+    /// Constructs a new Failure containing the given parse error and lexer
+    /// state.
+    pub fn new(parse_error: ParseError<'text>, lexer: Lexer<'text, Sc>) -> Self
+    {
+        Failure {
+            lexer,
+            parse_error,
         }
+    }
+
+    pub fn with_context(mut self, context: ParseError<'text>) -> Self {
+        self.push_context(context);
+        self
+    }
+
+    pub fn push_context(&mut self, context: ParseError<'text>) {
+        self.parse_error.push_context_error(context)
     }
 
     #[cfg(test)]
@@ -56,23 +57,11 @@ impl<'text, Sc> Failure<'text, Sc>
     }
 }
 
-impl<'text, Sc> std::fmt::Debug for Failure<'text, Sc>
-    where Sc: Scanner,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
 impl<'text, Sc> std::fmt::Display for Failure<'text, Sc>
     where Sc: Scanner,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.parse_error)?;
-        if let Some(src) = &self.source {
-            write!(f, "Caused by {}", src)?;
-        }
-        Ok(())
+        write!(f, "{}", self.parse_error)
     }
 }
 
@@ -84,11 +73,7 @@ impl<'text, Sc> std::error::Error for Failure<'text, Sc>
     }
 
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.source.as_ref().map(|src| {
-            // Cast away Send + Sync bounds.
-            let src: &(dyn std::error::Error + 'static) = src.as_ref();
-            src
-        })
+        self.parse_error.source()
     }
 }
 
@@ -117,8 +102,15 @@ impl<'text, Sc> PartialEq for Failure<'text, Sc>
 pub struct FailureOwned {
     /// The parse error.
     pub parse_error: ParseErrorOwned,
-    /// The source of the failure.
-    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+}
+
+impl FailureOwned {
+    /// Constructs a new FailureOwned containing the given parse error.
+    pub fn new(parse_error: ParseErrorOwned) -> Self {
+        FailureOwned {
+            parse_error,
+        }
+    }
 }
 
 impl<'text, Sc> From<Failure<'text, Sc>> for FailureOwned
@@ -127,7 +119,6 @@ impl<'text, Sc> From<Failure<'text, Sc>> for FailureOwned
     fn from(other: Failure<'text, Sc>) -> Self {
         FailureOwned {
             parse_error: other.parse_error.into_owned(),
-            source: other.source,
         }
     }
 }
@@ -144,11 +135,7 @@ impl std::error::Error for FailureOwned {
     }
     
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.source.as_ref().map(|src| {
-            // Cast away Send + Sync bounds.
-            let src: &(dyn std::error::Error + 'static) = src.as_ref();
-            src
-        })
+        self.parse_error.source()
     }
 }
 

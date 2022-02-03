@@ -59,24 +59,22 @@ pub fn fail<'text, Sc>(mut lexer: Lexer<'text, Sc>)
     match lexer.next() {
         Some(token) => {
             event!(Level::TRACE, "success converted to failure");
-            Err(Failure {
-                parse_error: ParseError::unexpected_token(
+            Err(Failure::new(
+                ParseError::unexpected_token(
                     lexer.token_span(),
                     &token,
                     lexer.column_metrics()),
-                lexer,
-                source: None,
-            })
+                lexer
+            ))
         },
         None => {
             event!(Level::TRACE, "no tokens");
-            Err(Failure {
-                parse_error: ParseError::unexpected_end_of_text(
+            Err(Failure::new(
+                ParseError::unexpected_end_of_text(
                     lexer.end_span(),
                     lexer.column_metrics()),
-                lexer,
-                source: None,
-            })
+                lexer
+            ))
         },
     }
 }
@@ -126,13 +124,12 @@ pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
         })
     } else {
         event!(Level::TRACE, "end of text not found");
-        Err(Failure {
-            parse_error: ParseError::expected_end_of_text(
+        Err(Failure::new(
+            ParseError::expected_end_of_text(
                 lexer.end_span(),
                 lexer.column_metrics()),
-            lexer,
-            source: None,
-        })
+            lexer
+        ))
     }
 
 }
@@ -155,26 +152,24 @@ pub fn one<'text, Sc>(token: Sc::Token)
         if lexer.is_empty() {
             event!(Level::TRACE, "lexer is empty");
             // Unexpected End-of-text.
-            return Err(Failure {
-                parse_error: ParseError::unexpected_end_of_text(
+            return Err(Failure::new(
+                ParseError::unexpected_end_of_text(
                     lexer.end_span(),
                     lexer.column_metrics()),
-                lexer,
-                source: None,
-            });
+                lexer
+            ));
         }
 
         match lexer.next() {
             // Lexer error.
             None => {
                 event!(Level::TRACE, "lexer error");
-                Err(Failure {
-                    parse_error: ParseError::unrecognized_token(
+                Err(Failure::new(
+                    ParseError::unrecognized_token(
                         lexer.end_span(),
                         lexer.column_metrics()),
                     lexer,
-                    source: None,
-                })
+                ))
             },
 
             // Matching token.
@@ -190,14 +185,13 @@ pub fn one<'text, Sc>(token: Sc::Token)
             #[cfg_attr(not(feature="tracing"), allow(unused_variables))]
             Some(lex) => {
                 event!(Level::TRACE, "incorrect token {{found={:?}}}", lex);
-                Err(Failure {
-                    parse_error: ParseError::unexpected_token(
+                Err(Failure::new(
+                    ParseError::unexpected_token(
                         lexer.token_span(),
                         &token,
                         lexer.column_metrics()),
                     lexer,
-                    source: None,
-                })
+                ))
             },
         }
     }
@@ -225,18 +219,17 @@ pub fn any<'text, Sc>(tokens: &[Sc::Token])
             let mut lexer = lexer.clone();
             match lexer.next() {
                 // Lexer error.
-                None => return Err(Failure {
-                    parse_error: ParseError::unrecognized_token(
+                None => return Err(Failure::new(
+                    ParseError::unrecognized_token(
                         lexer.end_span(),
                         lexer.column_metrics()),
-                    lexer,
-                    source: None,
-                }),
+                    lexer
+                )),
 
                 // Matching token.
                 Some(lex) if lex == *token => return Ok(Success {
-                    lexer,
                     value: token.clone(),
+                    lexer,
                 }),
 
                 // Incorrect token.
@@ -245,14 +238,13 @@ pub fn any<'text, Sc>(tokens: &[Sc::Token])
             }
         }
 
-        Err(Failure {
-            parse_error: ParseError::unexpected_token(
+        Err(Failure::new(
+            ParseError::unexpected_token(
                 lexer.token_span(),
                 format!("one of {}", DisplayList(&tokens[..])),
                 lexer.column_metrics()),
-            lexer,
-            source: None,
-        })
+            lexer
+        ))
     }
 }
 
@@ -313,37 +305,34 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
 
             if lexer.is_empty() {
                 // Unexpected End-of-text.
-                return Err(Failure {
-                    parse_error: ParseError::unexpected_end_of_text(
+                return Err(Failure::new(
+                    ParseError::unexpected_end_of_text(
                         lexer.end_span(),
                         lexer.column_metrics()),
-                    lexer,
-                    source: None,
-                });
+                    lexer
+                ));
             }
 
             match lexer.next() {
                 // Lexer error.
-                None => return Err(Failure {
-                    parse_error: ParseError::unrecognized_token(
+                None => return Err(Failure::new(
+                    ParseError::unrecognized_token(
                         lexer.end_span(),
                         lexer.column_metrics()),
-                    lexer,
-                    source: None,
-                }),
+                    lexer
+                )),
 
                 // Matching token.
                 Some(lex) if lex == *token => found.push(lex),
 
                 // Incorrect token.
-                Some(_) => return Err(Failure {
-                    parse_error: ParseError::unexpected_token(
+                Some(_) => return Err(Failure::new(
+                    ParseError::unexpected_token(
                         lexer.token_span(),
                         &token,
                         lexer.column_metrics()),
-                    lexer,
-                    source: None,
-                }),
+                    lexer
+                )),
             }
         }
 

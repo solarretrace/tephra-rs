@@ -12,6 +12,9 @@
 use tephra_error::Highlight;
 use tephra_error::SourceDisplay;
 use tephra_error::SourceSpan;
+use tephra_error::ParseError;
+use tephra_error::ErrorSink;
+use tephra_error::ErrorContext;
 use tephra_span::ColumnMetrics;
 use tephra_span::LineEnding;
 use tephra_span::Pos;
@@ -26,6 +29,7 @@ use tephra_tracing::span;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::sync::Arc;
+
 
 
 
@@ -56,11 +60,11 @@ pub trait Scanner: Debug + Clone + PartialEq {
 pub struct Lexer<'text, Sc> where Sc: Scanner {
     /// The source text to tokenize.
     source: &'text str,
-    /// The internal user-defined Scanner.
-    scanner: Sc,
     /// The token inclusion filter. Any token for which this returns false will
     /// be skipped automatically.
     filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
+    /// The error sink.
+    error_sink: Option<ErrorSink>,
 
     /// The position of the start of the last lexed token.
     token_start: Pos,
@@ -74,6 +78,8 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
     /// The next token to emit, its position, and the resulting scanner state.
     buffer: Option<(Sc::Token, Pos, Sc)>,
 
+    /// The internal user-defined Scanner.
+    scanner: Sc,
     /// The source column metrics.
     metrics: ColumnMetrics,
 }
@@ -85,13 +91,14 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn new(scanner: Sc, source: &'text str) -> Self {
         Lexer {
             source,
-            scanner,
             filter: None,
+            error_sink: None,
             token_start: Pos::ZERO,
             parse_start: Pos::ZERO,
             end: Pos::ZERO,
             cursor: Pos::ZERO,
             buffer: None,
+            scanner,
             metrics: Default::default(),
         }
     }
@@ -120,7 +127,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Returns the underlying source text.
-    pub fn source(&self) -> &'text str {
+    pub fn source_text(&self) -> &'text str {
         self.source
     }
 
@@ -137,6 +144,84 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns the tab width for the source.
     pub fn tab_width(&self) -> u8 {
         self.metrics.tab_width
+    }
+
+
+    /// Sends a `ParseError` to the sink target, wrapping it in any available
+    /// `ErrorContext`s.
+    ///
+    /// Returns an error if the internal sink [Mutex] has been poisoned.
+    ///
+    /// [Mutex]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html
+    pub fn send<'a, 't>(&'a self, parse_error: ParseError<'t>)
+        -> Result<(), Box<dyn std::error::Error + 'a>>
+    {
+        match self.error_sink.as_ref() {
+            None => {
+                event!(Level::WARN, "A parse error sent to the error sink,
+                    but no error sink is configured:\n{}", parse_error);
+                Ok(())
+            },
+            Some(sink) => sink.send(parse_error),
+        }
+    }
+
+    /// Sends a `ParseError` to the sink target without wrapping it in any
+    /// `ErrorContext`s.
+    ///
+    /// Returns an error if the internal sink [Mutex] has been poisoned.
+    ///
+    /// [Mutex]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html
+    pub fn send_direct<'a, 't>(&'a self,
+        parse_error: ParseError<'t>)
+        -> Result<(), Box<dyn std::error::Error + 'a>>
+    {
+        match self.error_sink.as_ref() {
+            None => {
+                event!(Level::WARN, "A parse error sent to the error sink,
+                    but no error sink is configured:\n{}", parse_error);
+                Ok(())
+            },
+            Some(sink) => sink.send_direct(parse_error),
+        }
+    }
+
+
+    /// Pushes a new `ErrorContext` onto the context stack, allowing any further
+    /// `ParseError`s to be processed by them. 
+    ///
+    /// Returns an error if the internal sink [Mutex] has been poisoned.
+    ///
+    /// [Mutex]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html
+    pub fn push_context<'a>(&'a mut self, error_context: ErrorContext) 
+        -> Result<(), Box<dyn std::error::Error + 'a>>
+    {
+        match self.error_sink.as_mut() {
+            None => {
+                event!(Level::WARN, "A context was pushed to the error sink,
+                    but no error sink is configured: {:?}", error_context);
+                Ok(())
+            },
+            Some(sink) => sink.push_context(error_context),
+        }
+    }
+
+    /// Pops the top `ErrorContext` from the context stack.
+    ///
+    /// Returns an error if the internal sink [Mutex] has been poisoned.
+    ///
+    /// [Mutex]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html
+    pub fn pop_context<'a>(&'a mut self) 
+        -> Result<Option<ErrorContext>, Box<dyn std::error::Error + 'a>>
+    {
+        match self.error_sink.as_mut() {
+            None => {
+                event!(Level::WARN, "A context was popped from the error sink,
+                    but no error sink is configured:");
+                Ok(None)
+            },
+            Some(sink) => sink.pop_context(),
+        }
     }
 
     /// Returns the end position for the lexer's current parse.
@@ -251,6 +336,19 @@ impl<'text, Sc> Lexer<'text, Sc>
         self.scan_to_buffer();
 
         Some(token)
+    }
+
+    pub fn advance_to(&mut self, token: Sc::Token) {
+        while let Some(tok) = self.peek() {
+            if tok == token { break; }
+            let _ = self.next();
+        }
+    }
+
+    pub fn advance_past(&mut self, token: Sc::Token) {
+        while let Some(tok) = self.next() {
+            if tok == token { break; }
+        }
     }
 
 

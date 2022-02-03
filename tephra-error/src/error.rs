@@ -22,42 +22,86 @@ use tephra_span::Span;
 use tephra_span::SpanOwned;
 use tephra_span::ColumnMetrics;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(u8)]
-pub enum SectionType {
-    Atomic     = 5,
-    Bounded    = 4,
-    Delimited  = 3,
-    Unbounded  = 2,
-    Validation = 1,
-    Lexer      = 0,
-}
-
-impl Default for SectionType {
-    fn default() -> Self {
-        SectionType::Validation
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseError
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub struct ParseError<'text> {
+    /// A description of the parse error.
     description: &'static str,
+    // TODO: Generalize this.
+    /// The span, message, and ColumnMetrics for the error highlight.
     span: Option<(Span<'text>, String, ColumnMetrics)>,
-    section_type: SectionType,
+    /// The captured source of the parse error.
+    source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
 impl<'text> ParseError<'text> {
+    /// Constructs a new `ParseError` with the given description.
     pub fn new(description: &'static str) -> Self {
         ParseError {
             description,
             span: None,
-            section_type: SectionType::default(),
+            source: None,
         }
     }
 
+    /// Constructs an `unrecognized token` lexer error.
+    pub fn unrecognized_token(span: Span<'text>, metrics: ColumnMetrics) -> Self {
+        let e = ParseError {
+            description: "unrecognized token",
+            span: Some((span, "symbol not recognized".to_owned(), metrics)),
+            source: None,
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
+    }
+
+    /// Constructs an `unexpected token` lexer error.
+    pub fn unexpected_token<T>(
+        span: Span<'text>,
+        expected: T,
+        metrics: ColumnMetrics)
+        -> Self 
+        where T: std::fmt::Display
+    {
+        let e = ParseError {
+            description: "unexpected token",
+            span: Some((span, format!("{expected}"), metrics)),
+            source: None,
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
+    }
+
+    /// Constructs an `unexpected end-of-text` lexer error.
+    pub fn unexpected_end_of_text(span: Span<'text>, metrics: ColumnMetrics)
+        -> Self
+    {
+        let e = ParseError {
+            description: "unexpected end of text",
+            span: Some((span, "text ends here".to_owned(), metrics)),
+            source: None,
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
+    }
+
+    /// Constructs an `expected end-of-text` lexer error.
+    pub fn expected_end_of_text(span: Span<'text>, metrics: ColumnMetrics)
+        -> Self
+    {
+        let e = ParseError {
+            description: "expected end of text",
+            span: Some((span, "text should end here".to_owned(), metrics)),
+            source: None,
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
+    }
+
+    /// Adds the given span to the `ParseError` and returns it.
     pub fn with_span<S>(
         mut self,
         message: S,
@@ -70,65 +114,39 @@ impl<'text> ParseError<'text> {
         self
     }
 
-    pub fn with_section_type(mut self, section_type: SectionType) -> Self {
-        self.section_type = section_type;
+    /// Adds the given error source to the `ParseError` and returns it.
+    pub fn with_source(
+        mut self, 
+        source: Box<dyn std::error::Error + Send + Sync + 'static>)
+        -> Self
+    {
+        self.source = Some(source);
         self
     }
 
-    pub fn unrecognized_token(span: Span<'text>, metrics: ColumnMetrics) -> Self {
-        let e = ParseError {
-            description: "unrecognized token",
-            span: Some((span, "symbol not recognized".to_owned(), metrics)),
-            section_type: SectionType::Lexer,
-        };
-        event!(Level::TRACE, "{e:?}");
-        e
+    pub fn with_context(mut self, description: &'static str) -> Self {
+        self.push_context(description);
+        self
     }
 
-    pub fn unexpected_token<T>(
-        span: Span<'text>,
-        expected: T,
-        metrics: ColumnMetrics)
-        -> Self 
-        where T: std::fmt::Display
-    {
-        let e = ParseError {
-            description: "unexpected token",
-            span: Some((span, format!("expected {}", expected), metrics)),
-            section_type: SectionType::Lexer,
-        };
-        event!(Level::TRACE, "{e:?}");
-        e
+    pub fn push_context(&mut self, description: &'static str) {
+        let source = std::mem::replace(self, ParseError {
+            description,
+            span: None,
+            source: None,
+        });
+        self.source = Some(Box::new(source.into_owned()));
     }
 
-    pub fn unexpected_end_of_text(span: Span<'text>, metrics: ColumnMetrics)
-        -> Self
-    {
-        let e = ParseError {
-            description: "unexpected end of text",
-            span: Some((span, "text ends here".to_owned(), metrics)),
-            section_type: SectionType::Lexer,
-        };
-        event!(Level::TRACE, "{e:?}");
-        e
+
+    pub fn push_context_error(&mut self, context: Self) {
+        let source = std::mem::replace(self, context);
+        self.source = Some(Box::new(source.into_owned()));
     }
 
-    pub fn expected_end_of_text(span: Span<'text>, metrics: ColumnMetrics) -> Self {
-        let e = ParseError {
-            description: "expected end of text",
-            span: Some((span, "text should end here".to_owned(), metrics)),
-            section_type: SectionType::Lexer,
-        };
-        event!(Level::TRACE, "{e:?}");
-        e
-    }
 
     pub fn description(&self) -> &'static str {
         self.description
-    }
-
-    pub fn section_type(&self) -> SectionType {
-        self.section_type
     }
 }
 
@@ -138,7 +156,7 @@ impl<'text> ParseError<'text> {
         ParseErrorOwned {
             description: self.description,
             span: self.span.map(|(a, b, c)| (a.into(), b, c)),
-            section_type: self.section_type,
+            source: self.source,
         }
     }
 }
@@ -148,7 +166,7 @@ impl<'text> Default for ParseError<'text> {
         ParseError {
             description: "parse error",
             span: None,
-            section_type: SectionType::default(),
+            source: None,
         }
     }
 }
@@ -175,7 +193,7 @@ impl<'text> From<&'static str> for ParseError<'text> {
         ParseError {
             description,
             span: None,
-            section_type: SectionType::default(),
+            source: None,
         }
     }
 }
@@ -186,7 +204,9 @@ impl<'text> std::error::Error for ParseError<'text> {
     }
 
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
+        self.source
+            .as_ref()
+            .map(|e| e.as_ref() as &(dyn std::error::Error + 'static))
     }
 }
 
@@ -198,16 +218,12 @@ impl<'text> std::error::Error for ParseError<'text> {
 pub struct ParseErrorOwned {
     description: &'static str,
     span: Option<(SpanOwned, String, ColumnMetrics)>,
-    section_type: SectionType,
+    source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
 impl ParseErrorOwned {
     pub fn description(&self) -> &'static str {
         self.description
-    }
-
-    pub fn section_type(&self) -> SectionType {
-        self.section_type
     }
 }
 
@@ -216,7 +232,7 @@ impl<'text> From<ParseError<'text>> for ParseErrorOwned {
         ParseErrorOwned {
             description: parse_error.description,
             span: parse_error.span.map(|(sp, msg, cm)| (sp.into(), msg, cm)),
-            section_type: parse_error.section_type,
+            source: parse_error.source,
         }
     }
 }
@@ -245,6 +261,8 @@ impl std::error::Error for ParseErrorOwned {
     }
 
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
+        self.source
+            .as_ref()
+            .map(|e| e.as_ref() as &(dyn std::error::Error + 'static))
     }
 }

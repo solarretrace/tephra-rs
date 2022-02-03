@@ -32,6 +32,14 @@ pub struct Success<'text, Sc, V>
 impl<'text, Sc, V> Success<'text, Sc, V>
     where Sc: Scanner,
 {
+    /// Constructs a new `Success` containing the given value and lexer state.
+    pub fn new(value: V, lexer: Lexer<'text, Sc>) -> Self {
+        Success {
+            value,
+            lexer,
+        }
+    }
+
     /// Consumes the Success and returns its parsed value.
     pub fn into_value(self) -> V {
         self.value
@@ -43,8 +51,8 @@ impl<'text, Sc, V> Success<'text, Sc, V>
         where F: FnOnce(V) -> U
     {
         Success {
-            lexer: self.lexer,
             value: (f)(self.value),
+            lexer: self.lexer,
         }
     }
 
@@ -52,8 +60,8 @@ impl<'text, Sc, V> Success<'text, Sc, V>
     /// other components.
     pub fn take_value(self) -> (V, Success<'text, Sc, ()>) {
         (self.value, Success {
-            lexer: self.lexer,
             value: (),
+            lexer: self.lexer,
         })
     }
 
