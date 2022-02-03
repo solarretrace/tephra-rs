@@ -43,6 +43,8 @@ pub struct SourceDisplay<'text> {
     message: String,
     /// The overall message type for all of the source spans.
     message_type: MessageType,
+    /// A error/warning code to print.
+    code: Option<&'static str>,
     /// The source spans to display.
     source_spans: Vec<SourceSpan<'text>>,
     /// Notes to append after the displayed spans.
@@ -59,6 +61,7 @@ impl<'text> SourceDisplay<'text> {
         SourceDisplay {
             message: message.into(),
             message_type: MessageType::Info,
+            code: None,
             source_spans: Vec::with_capacity(1),
             notes: Vec::new(),
             color_enabled: true,
@@ -101,6 +104,12 @@ impl<'text> SourceDisplay<'text> {
         self
     }
 
+    /// Returns the given SourceDisplay with the given error code.
+    pub fn with_code(mut self, code: Option<&'static str>) -> Self {
+        self.code = code;
+        self
+    }
+
     /// Returns the given SourceDisplay with the given SourceSpan attachment.
     pub fn with_source_span<S>(mut self, source_span: S)
         -> Self
@@ -123,8 +132,11 @@ impl<'text> SourceDisplay<'text> {
 impl<'text> Display for SourceDisplay<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.color_enabled {
-            writeln!(f, "{}{} {}", 
-                self.message_type,
+            write!(f, "{}", self.message_type)?;
+            if let Some(code) = self.code {
+                write!(f, "[{}]", code)?;
+            }
+            writeln!(f, "{} {}",
                 ":".bright_white().bold(),
                 self.message.bright_white().bold())?;
         } else {
