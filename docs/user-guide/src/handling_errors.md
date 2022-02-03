@@ -1,49 +1,104 @@
 
 # Handling Errors
 
-There's a saying in software development called the [ninety-ninety](https://en.wikipedia.org/wiki/Ninety-ninety_rule) rule, and when it comes to designing a quality parser library, it seems that ninety percent of your effort will be spent on trying to create useful error messages. This is a survey of the error handling techniques I've tried and why they don't work.
+There's a saying in software development called the [ninety-ninety](https://en.wikipedia.org/wiki/Ninety-ninety_rule) rule, and when it comes to designing a quality parser library, it seems that ninety percent of our effort will be spent on trying to create useful error messages. This is a survey of the error handling techniques I've tried and why they don't work.
 
-## Incremental Call Stack
 
-The simplest way to report errors is to simply churn along, and when you encounter a parse which can't proceed, dump the current parse location. The first problem with this is that you have almost no context about what was supposed to be parsed, so this is almost entirely useless. To fix that, you might try to collect a 'stack trace', which seems to help at first. You get error that look something like this:
+## Simple Error Handling
+
+The simplest way to report errors is to simply churn along, and when we encounter a parse which can't proceed, dump the current parse location. The first problem with this is that we have almost no context about what was supposed to be parsed, so this is almost entirely useless.
 
     parse failure at byte 126: "goodgoodbadbad..."
                                         ^
+    .. expected something good, found something bad
+
+This is an incredibly frustrating error, because we don't know *why* the parser was expecting 'good', so we don't know whether our input is wrong or the parser is wrong, and we have no idea *where* either of these might be wrong.
+
+We'll call these kinds of 'no-context' errors "Lexer Errors", because they are the direct result of encountering the wrong token in the lexer. There are four kinds of lexer errors:
+
++ Unexpected end-of-text
++ Unexpected text (AKA Expected end-of-text, AKA Unexpected non-end-of-text)
++ Invalid Token
++ Unexpected Token
+
+What we ultimately want to do with these is ignore them by trying alternative parses, or add meaningful context to them when they pass back up to the user through the parse tree. If the users are seeing these errors directly, we'll usually create a poor experience.
+
+
+## Stack Trace Error Handling
+
+To add context to the errors, we might try to collect a 'stack trace', which seems to help at first. We then get errors that look something like this:
+
+    parse failure at byte 126: "goodgoodbadbad..."
+                                        ^
+    .. expected something good, found something bad
     .. during a parse of RULE C
     .. during a parse of RULE B
     .. during a parse of RULE A
 
-What you'll probably learn pretty quickly is that is also unhelpful. Sure, you have some idea of where in your code the error occurred, but there are other problems. First, parse rules often attempt multiple things, so it is natural that they fail, and thus you'll only ever be told a rule fails if its last possible attempt fails. Secondly, most of the rules beyond the first listed are useless because they end up telling you vague things like this:
+What we'll quickly learn is that this is also usually unhelpful. Sure, we have some idea of where in our code the error occurred, but there are other problems. First, parse rules often attempt multiple alternatives, so it is natural that they fail, and with this, we'll only ever be shown an error on the last alternative tried. Secondly, most of the rules beyond the first listed are useless because they end up telling we vague things like this:
 
     parse failure at byte 126: "goodgoodbadbad..."
                                         ^
+    .. expected something good, found something bad
     .. during a parse of expression
     .. during a parse of statement
     .. during a parse of document
 
-... and clearly you can see how unhelpful that is. Often, most of your parses are going to be expressions, statements, documents, and such things. And on the bottom-most level, all you know is that none of the attempted possibilities worked.
+... which is unhelpful because it's only telling us what we what we already know, which is that certain patterns can appear in certain contexts. Often, most of our parses are going to be expressions, statements, documents, and such things. And in the end, all we really learn is that none of the attempted possibilities worked.
 
 
-## Spans
+## Error Handling with Spans
 
-The next innovation is spans. Instead of just tracking the current parse location, we track spans of text. The first obvious advantage to this is that we'll often have misplaced tokens, and now when an unexpected token occurs, we can highlight the whole thing, giving a clear outline of which token is unexpected. It's a small thing, but it helps. Ideally, we really want the ability to highlight more than a single token though.
+The next innovation is spans. Instead of just tracking the current parse location, we'll track spans of text, so we can tell where the current parse began. The first obvious advantage to this is that we'll have a better idea of what tokens are being lexed. Now when an unexpected token occurs, we can highlight the entire token, giving a clear outline of which token is unexpected. It's a small thing, but it helps.
 
 This should allow us to get errors that look marginally better:
 
     parse failure: unexpected token at bytes 126-129: "goodgoodbadbad..."
-                                                               ^^^
+                                                               ^^^ bad thing here
+    .. expected something good, found something bad
 
-To do that, we need the ability to join spans together. There are two obvious ways to do this: (1) Every parse emits a span, and then we manually join them to create larger spans; (2) Every parse takes in a span, and attaches any newly parsed tokens to the end automatically. I call (1) explicit joins, and (2) implicit joins.
+Ideally, we really want the ability to highlight more than a single token, and to do that, we need the ability to join spans together. There are two obvious ways to do this: (1) Every parse emits a span, and then we manually join them to create larger spans; (2) Every parse takes in a span, and attaches any newly parsed tokens to the end of it automatically. I'll call (1) explicit joins, and (2) implicit joins.
 
-I recommend starting with the implicit join idea, because more often than not, we want to join spans, and conveniently enough, our lexer has to track the current parse location anyway, so it may as well track the back end of the span and produce the spans we want on demand. This is arguably more efficient as well, because we don't need to actually calculate joined spans after every parse, we just advance the current position (which we would be doing anyway.)
+I recommend starting with the implicit join idea, because more often than not, we want to join spans, and conveniently enough, our lexer has to track the current parse location anyway, so it may as well track the back end of the span and produce the spans we want on demand. This is arguably more efficient as well, because we don't need to actually calculate joined spans after every parse, we just advance the current position (which we have to do regardless.)
 
-The problem with implicit joins is figuring out how and when to break them up. By default, every span will extend all the way back to the start of the text. Lexer errors are fairly straightforward to fix though:
+The problem with implicit joins is figuring out how and when to break them up. By default, every span will extend all the way back to the start of the text. Lexer errors are fairly straightforward to handle though:
 
-+ If a token is unexpected, just highlight the span of the last parsed token.
-
-+ If a EOF was encountered, just highlight the current parse position.
++ If a token is unexpected, we highlight the span of the last parsed token.
++ If a EOF was encountered, we highlight the current parse position.
 
 Outside of those, there is no obvious and automatic way to determine where spans should break.
+
+## User-defined Contexts
+
+Due to our inability to automatically break spans, we will require the user to manually break spans (hopefully without too much ceremony.) One option is to have the user cut spans directly in the lexer. Another option, which will happen quite often, will involve cloning the lexer as well as cutting the span in order to maintain the lex position for other parse alternatives. We'll call the combined clone + cut operation a 'sublexer' clone. A third option we'll often want is to add contextual information to a parse at the same time we cut the span, and we'll call this operation a `context` parse.
+
+
+## Committed Alternatives
+
+Another great idea is understanding when we've become committed to a particular branch in our parse tree. This happens when we've successfully parsed a unique prefix of one of an alternative set of parse options. Once we've done this, we know that no other alternative is valid, so any parse errors must be due to a failure to finish the alternative we're committed to.
+
+This allows us to attach context to specific alternatives, rather than to the group as a whole. This is particularly valuable when there are a large number of alternatives, because we avoid vague errors that say this:
+
+    "expected one of option A, option B, option C, ... option Z, found something bad"
+
+.. and replace them with errors that say this:
+
+    "found something bad during parse of option D."
+
+But we can only achieve this if we have some model of becoming committed to this alternative. Moreover, the implementation of this has to take into account token filtering. It would be a mistake to become committed to a branch just because we've successfully parsed a comment, for instance.
+
+
+## Error Collection
+
+All of the above analysis assumes that it is sufficient to report a single parse error for a given document. In practice, it can get very tedious to perform a full parse for every error, especially when errors can be a consequence of other errors. So we really want the ability to collect multiple errors during a parse, which means recovering from a parse failure by finding somewhere to continue the parse.
+
+Error collection introduces an interesting design decision for the parsing library. Do we want to return lists of errors and join them, or do we want to maintain a handle to an external error collector? The choice might seem arbitrary, but much like the case with our decision to automate span construction in the lexer, the work we already need may ends up deciding for us.
+
+The main problems to be solved by error recovery are (1) where in the text do we continue, and (2) what kind of parse to perform there. The first problem is not something with any automatic solution, because it depends on the structure of the language. However, the second has the obvious solution of continuing with the next parse after that which failed. This is probably an ill-defined notion except in the case where our parse is bracketed, postfixed, prefixed, or otherwise delimitted in some manner. Then we can scan ahead for the delimitter and continue from there.
+
+A secondary problem is that of constructing the errors with the appropriate context information. Up until now, we've been assuming that errors will get wrapped in contextual information as they bubble up the call stack. This means we either need to continue to allow all errors to bubble up to the root (and subsequently find a way to return back down to the parse context where we intend to recover to,) or instead store the parse contexts on the way down so that we can recover in place by wrapping the errors in that context before emitting them. The former would basically require first-class [continuations](https://en.wikipedia.org/wiki/Continuation). The latter only requires us to build & store a stack of context information, which incedentally plays nicely with the plan to store a handle to an external error collector.
+
+
 
 # Additional parse failure contexts
 In addition to the above highlightings, it is often beneficial to know what was expected, and more importantly, *why* it was expected. If a parse fails, we know what parser was running and what it is expecting to find. If some prefix of an unambiguous parse succeeds, then we also know why we're expecting something. 
@@ -68,38 +123,3 @@ A parse can fail for many reasons, and some of those failures should be ignored 
             1. use `maybe` to delineate the section
         .. because a validation condition failed
             1. use `maybe` to delineate the section
-
-## General purpose parsers
-
-Going forward, one of the central constraints is that a given parser shouldn't know anything about its span context -- the amount of span that should be reported if it fails -- unless it is failing with a lexer error. A parser doesn't really know if it parsing an entire document or a small part of one, so parsers should be as general as possible, and as much of the error handling should be pushed as high up in the grammar as possible.
-
-Another big idea is that there are such things as 'bounded' and 'unbounded' parses, determined by whether a parser is effectively recursive or not. It is much easier to push error handling for bounded parsers lower in the grammar because they take on a fewer variety of forms and the details of what was supposed to be present are much clearer. Conversely, unbounded parses can traverse through many intermediate rules, and it is often much less helpful to know what those rules were as opposed to what is bracketting those rules. So in essence, we usually want to phrase errors arrising from failures in unbounded rules in terms of the bounded rules that introduce or bracket them.
-
-Furthermore, in order to keep our parsers general purpose, we want to minimize the amount of special context handling within a parser. For example, the `bracket` combinator is not going to consider any of its arguments as inherently special; it should be suitable for parsing `abc` just as easily as `[b]`.
-
-## When to clone the lexer.
-
-Clone the lexer whenever you make and overly-general parse. This will allow `atomic` to work correctly.
-
-## Sections and Recovery
-
-Every time we're about to introduce an 'open bracket' or delimitted parse, we want to break off into a new span. 
-
-Speaking of brackets, when we have a failure within a delimitted rule, it often makes sense to log an error, advance to the next delimiter, and continue on to look for further errors.
-
-
-## Error relavance and validation
-
-Parsers frequently attempt a sequence of sub-parsers, and perhaps naively, one would expect to swallow up any intermediate errors and move on to try the next thing. This is simple to implement and it works well enough, unless none of the sub-parsers succeed and you 'drop out' at the bottom: at this point, the parse which failed is entirely ambiguous, because they *all* failed.
-
-And frequently, the problem is not due to an obvious grammatical error. All of the correct tokens may be in place, but one of the attempts may have failed in performing some necessary conversion on it, leaving the parser to swallow up that error and go on to do everything else which has no hope of succeeding.
-
-The broader point here is that there is a scaled notion of relevance when multiple sub-parses are performed. In the case that both parses would succeed, the most relevant one is the first to be applied (as one would expect and/or desire for sequential code... If we're parsing concurrently, this question might need a more serious answer.)
-
-If only one of the two succeeds, the successful one is more relevant. However, if both parses fail, the naive process above results in the last one being the most relevant, and that is often *not* what we want, unless none of the rules are gramattically correct. We could try adding a flag to the error type so we can decide whether to return or continue (or perhaps more wildly: simulate "throwing exceptions"), but we should make sure not to handle this decision at the sub-parser's call site, because there may be successful parses following a conversion failure, and we want successful parses to take priority.
-
-Another thing to bear in mind is that grammatical errors only have a few possible error states: unexpected tokens, unexpected end-of-text, unrecognized tokens. All other errors signify that only valid tokens were produced and consumed, so they must be conversion errors.
-
-As an addendum to all of the above, a lot of these kinds of headaches can be avoided by delaying any validation operations as long as possible. You might parse the entire input to validate its grammar and capture all values as text, then do a second pass to convert text values into semantically meaningful values. By doing this, you ensure that all parsers have consistent behavior, because they can only fail due to grammatical errors. The downside of this is that it becomes difficult to compose parsers, because you have to forbid calling into anything that does validation. It also means you can't easily do context-sensitive parsing where you make decisions based on the value of a previous parse, but that's probably something to avoid for other reasons.
-
-

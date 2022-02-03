@@ -1,6 +1,11 @@
 # Tephra Parse Errors
 
 
+Error recovery & multiple errors
++ Requires storing context from the parse tree to decorate errors during recovery?
++ If so, we may as well store the error list with the recovery context.
+
+
 
     Atomic     = 5,
     Bounded    = 4,
