@@ -19,11 +19,13 @@
 mod test;
 mod source_display;
 mod error;
+mod sink;
 mod highlight;
 mod message;
 
 // Exports.
 pub use error::*;
+pub use sink::*;
 pub use source_display::*;
 pub use message::*;
 pub use highlight::*;
