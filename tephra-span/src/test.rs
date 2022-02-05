@@ -15,6 +15,7 @@
 use crate::Span;
 use crate::ColumnMetrics;
 use crate::Pos;
+use crate::SourceText;
 
 // External library imports.
 use pretty_assertions::assert_eq;
@@ -26,89 +27,122 @@ use test_log::test;
 /// Tests `Span::new`.
 #[test]
 #[tracing::instrument]
-fn empty() {
+fn span_empty() {
     const TEXT: &'static str = "abcd";
-    let span = Span::new(TEXT);
+    let source = SourceText::new(TEXT);
+    let span = Span::new();
 
-    assert_eq!(span.text(), "");
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "";
+    assert_eq!(actual.as_ref(), expected);
 
-    let actual = format!("{:?}", span);
-    let expected = "\"\" (0:0, byte 0)";
-
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "0:0, byte 0";
     assert_eq!(actual, expected);
 }
 
-/// Tests `Span::full`.
+/// Tests `SourceText::full_span`.
 #[test]
 #[tracing::instrument]
-fn full() {
+fn source_text_full_span() {
     const TEXT: &'static str = " \n  abcd  \n ";
-    let span = Span::full(TEXT, ColumnMetrics::new());
+    let source = SourceText::new(TEXT);
+    let span = source.full_span();
 
-    let actual = format!("{:?}", span);
-    let expected = "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)";
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = " \n  abcd  \n ";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "0:0-2:1, bytes 0-12";
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::widen_to_line`.
 #[test]
 #[tracing::instrument]
-fn widen_to_line() {
+fn span_widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
+    let source = SourceText::new(TEXT);
     let span = Span::new_enclosing(
-        TEXT,
-        Pos::new(4, 1, 2),
-        Pos::new(8, 1, 6));
+            Pos::new(4, 1, 2),
+            Pos::new(8, 1, 6))
+        .widen_to_line(source);
 
-    let actual = format!("{:?}", span.widen_to_line(ColumnMetrics::new()));
-    let expected = "\"  abcd  \" (1:0-1:8, bytes 2-10)";
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "  abcd  ";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "1:0-1:8, bytes 2-10";
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::widen_to_line`.
 #[test]
 #[tracing::instrument]
-fn widen_empty_to_line() {
+fn span_empty_widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
-    let span = Span::new_at(TEXT, Pos::new(6, 1, 4));
+    let source = SourceText::new(TEXT);
+    let span = Span::new_at(Pos::new(6, 1, 4))
+        .widen_to_line(source);
 
-    let actual = format!("{:?}", span.widen_to_line(ColumnMetrics::new()));
-    let expected = "\"  abcd  \" (1:0-1:8, bytes 2-10)";
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "  abcd  ";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "1:0-1:8, bytes 2-10";
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::widen_to_line`.
 #[test]
 #[tracing::instrument]
-fn widen_line_to_line() {
+fn span_line_widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
+    let source = SourceText::new(TEXT);
     let span = Span::new_enclosing(
-        TEXT,
-        Pos::new(2, 1, 0),
-        Pos::new(10, 1, 8));
+            Pos::new(2, 1, 0),
+            Pos::new(10, 1, 8))
+        .widen_to_line(source);
 
-    let actual = format!("{:?}", span.widen_to_line(ColumnMetrics::new()));
-    let expected = "\"  abcd  \" (1:0-1:8, bytes 2-10)";
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "  abcd  ";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "1:0-1:8, bytes 2-10";
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::widen_to_line`.
 #[test]
 #[tracing::instrument]
-fn widen_full_to_line() {
+fn span_full_widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
-    let span = Span::new_enclosing(
-        TEXT,
-        Pos::new(0, 0, 0),
-        Pos::new(12, 2, 1));
+    let source = SourceText::new(TEXT);
+    let span = source.full_span()
+        .widen_to_line(source);
 
-    let actual = format!("{:?}", span.widen_to_line(ColumnMetrics::new()));
-    let expected = "\" \n  abcd  \n \" (0:0-2:1, bytes 0-12)";
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = " \n  abcd  \n ";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "0:0-2:1, bytes 0-12";
     assert_eq!(actual, expected);
 }
 
@@ -116,13 +150,14 @@ fn widen_full_to_line() {
 /// Tests `Span::split_lines`.
 #[test]
 #[tracing::instrument]
-fn split_lines() {
+fn span_split_lines() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
-    let span = Span::full(TEXT, ColumnMetrics::new());
+    let source = SourceText::new(TEXT);
+    let span = source.full_span();
 
     let actual = span
-        .split_lines(ColumnMetrics::new())
-        .map(|v| format!("{:?}", v))
+        .split_lines(source)
+        .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
         .collect::<Vec<_>>();
     let expected = vec![
         "\"\" (0:0, byte 0)".to_owned(),
@@ -142,13 +177,14 @@ fn split_lines() {
 /// Tests `Span::split_lines` with no line breaks.
 #[test]
 #[tracing::instrument]
-fn split_line_no_breaks() {
+fn span_no_breaks_split_line() {
     const TEXT: &'static str = "abcd";
-    let span = Span::full(TEXT, ColumnMetrics::new());
+    let source = SourceText::new(TEXT);
+    let span = source.full_span();
 
     let actual = span
-        .split_lines(ColumnMetrics::new())
-        .map(|v| format!("{:?}", v))
+        .split_lines(source)
+        .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
         .collect::<Vec<_>>();
     let expected = vec![
         "\"abcd\" (0:0-0:4, bytes 0-4)".to_owned(),
@@ -161,80 +197,104 @@ fn split_line_no_breaks() {
 /// Tests `Span::enclose`.
 #[test]
 #[tracing::instrument]
-fn enclose() {
+fn span_enclose() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT);
+
     let a = Span::new_enclosing(
-        TEXT,
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
     let b = Span::new_enclosing(
-        TEXT,
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3));
+    let span = a.enclose(b);
 
-    let actual = format!("{:?}", a.enclose(b));
-    let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "\n \nabcd\n def \nghi";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "2:0-6:3, bytes 3-20";
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::union`.
 #[test]
 #[tracing::instrument]
-fn union() {
+fn span_union() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT);
+
     let a = Span::new_enclosing(
-        TEXT,
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
     let b = Span::new_enclosing(
-        TEXT,
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3));
+    let span = a.union(b).next().unwrap();
 
-    let actual = format!("{:?}", a.union(b).next().unwrap());
-    let expected = "\"\n \nabcd\n def \nghi\" (2:0-6:3, bytes 3-20)".to_owned();
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "\n \nabcd\n def \nghi";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "2:0-6:3, bytes 3-20";
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::intersect`.
 #[test]
 #[tracing::instrument]
-fn intersect() {
+fn span_intersect() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT);
+
     let a = Span::new_enclosing(
-        TEXT,
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
     let b = Span::new_enclosing(
-        TEXT,
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3));
+    let span = a.intersect(b).unwrap();
 
-    let actual = format!("{:?}", a.intersect(b).unwrap());
-    let expected = "\"\nabcd\" (3:1-4:4, bytes 5-10)".to_owned();
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "\nabcd";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "3:1-4:4, bytes 5-10";
     assert_eq!(actual, expected);
 }
 
 /// Tests `Span::minus`.
 #[test]
 #[tracing::instrument]
-fn minus() {
+fn span_minus() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT);
+
     let a = Span::new_enclosing(
-        TEXT,
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
     let b = Span::new_enclosing(
-        TEXT,
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3));
+    let span = a.minus(b).next().unwrap();
 
-    let actual = format!("{:?}", a.minus(b).next().unwrap());
-    let expected = "\"\n \" (2:0-3:1, bytes 3-5)".to_owned();
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "\n ";
+    assert_eq!(actual.as_ref(), expected);
 
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "2:0-3:1, bytes 3-5";
     assert_eq!(actual, expected);
 }
 

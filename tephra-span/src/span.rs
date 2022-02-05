@@ -33,6 +33,12 @@ pub struct Span {
     page: PageSpan,
 }
 
+impl Default for Span {
+    fn default() -> Self {
+        Span::new()
+    }
+}
+
 impl Span {
     /// Constructs a new empty span.
     pub fn new() -> Self {
@@ -42,14 +48,7 @@ impl Span {
         }
     }
 
-    /// Constructs a new span covering given source text.
-    pub fn full<'text>(source: SourceText<'text>) -> Self {
-        Span::new_enclosing(
-            source.offset(),
-            source.end_position(Pos::ZERO))
-    }
-
-    /// Constructs a new empty span tarting from the given byte and page.
+    /// Constructs a new empty span starting from the given byte and page.
     pub fn new_at(pos: Pos) -> Self {
         let byte = ByteSpan { start: pos.byte, end: pos.byte };
         let page = PageSpan { start: pos.page, end: pos.page };
@@ -245,7 +244,6 @@ impl Span {
     }
 }
 
-
 impl std::fmt::Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.byte.is_empty() {
@@ -269,6 +267,12 @@ pub struct ByteSpan {
     pub end: usize,
 }
 
+impl Default for ByteSpan {
+    fn default() -> Self {
+        ByteSpan { start: 0, end: 0 }
+    }
+}
+
 impl ByteSpan {
     /// Returns the length of the span in bytes.
     pub fn len(&self) -> usize {
@@ -278,12 +282,6 @@ impl ByteSpan {
     /// Returns true if the span is empty.
     pub fn is_empty(&self) -> bool {
         self.start == self.end
-    }
-}
-
-impl Default for ByteSpan {
-    fn default() -> Self {
-        ByteSpan { start: 0, end: 0 }
     }
 }
 
@@ -311,16 +309,16 @@ pub struct PageSpan {
     pub end: Page,
 }
 
+impl Default for PageSpan {
+    fn default() -> Self {
+        PageSpan { start: Page::ZERO, end: Page::ZERO }
+    }
+}
+
 impl PageSpan {
     /// Returns true if the span is empty.
     pub fn is_empty(&self) -> bool {
         self.start == self.end
-    }
-}
-
-impl Default for PageSpan {
-    fn default() -> Self {
-        PageSpan { start: Page::ZERO, end: Page::ZERO }
     }
 }
 

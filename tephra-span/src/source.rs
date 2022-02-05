@@ -32,12 +32,22 @@ pub struct SourceText<'text> {
 impl<'text> SourceText<'text> {
     /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
-    pub fn new(source: &'text str, offset: Pos, metrics: ColumnMetrics) -> Self {
+    pub fn new(source: &'text str) -> Self {
         SourceText {
             source,
-            offset,
-            metrics,
+            offset: Pos::ZERO,
+            metrics: ColumnMetrics::default(),
         }
+    }
+
+    pub fn with_column_metrics(mut self, metrics: ColumnMetrics) -> Self {
+        self.metrics = metrics;
+        self
+    }
+
+    pub fn with_start_position(mut self, offset: Pos) -> Self {
+        self.offset = offset;
+        self
     }
 
     pub fn len(&self) -> usize {
@@ -48,10 +58,6 @@ impl<'text> SourceText<'text> {
         self.source.is_empty()
     }
 
-    pub fn text(&self) -> &'text str {
-        &self.source
-    }
-
     pub fn clip(&self, span: Span) -> Self {
         SourceText {
             source: &self.source[span.start().byte..span.end().byte],
@@ -60,21 +66,24 @@ impl<'text> SourceText<'text> {
         }
     }
 
-
-    pub fn offset(&self) -> Pos {
-        self.offset
-    }
-
-    pub fn offset_mut(&mut self) -> &mut Pos {
-        &mut self.offset
-    }
-
     pub fn column_metrics(&self) -> ColumnMetrics {
         self.metrics
     }
 
-    pub fn column_metrics_mut(&mut self) -> &mut ColumnMetrics {
-        &mut self.metrics
+    /// Returns the full span of the text.
+    pub fn full_span(&self) -> Span {
+        let end = self.metrics.end_position(self.source, self.offset);
+        Span::new_enclosing(self.offset, end)
+    }
+
+    /// Returns the start position of the text.
+    pub fn start_position(&self) -> Pos {
+        self.offset
+    }
+
+    /// Returns the end position of the text.
+    pub fn end_position(&self) -> Pos {
+        self.metrics.end_position(&self.source, self.offset)
     }
 
     /// Returns the next column-aligned position after the given base position
@@ -121,16 +130,6 @@ impl<'text> SourceText<'text> {
         self.metrics.next_line_start_position(self.source, base)
     }
 
-    /// Returns the start position of the text, given its end position.
-    pub fn start_position(&self, end: Pos) -> Pos {
-        self.metrics.start_position(self.source, end)
-    }
-
-    /// Returns the end position of the text, given its start position.
-    pub fn end_position(&self, start: Pos) -> Pos {
-        self.metrics.end_position(self.source, start)
-    }
-
     /// Returns the position after the given pattern string, given its start
     /// position.
     pub fn position_after_str<'a>(&self, start: Pos, pattern: &'a str)
@@ -171,6 +170,11 @@ impl<'text> SourceText<'text> {
     }
 }
 
+impl<'text> AsRef<str> for SourceText<'text> {
+    fn as_ref(&self) -> &str {
+        &self.source
+    }
+}
 
 impl<'text> std::fmt::Display for SourceText<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -224,6 +228,20 @@ impl SourceTextOwned {
         }
     }
 
+    pub fn with_column_metrics(mut self, metrics: ColumnMetrics) -> Self {
+        self.metrics = metrics;
+        self
+    }
+
+    pub fn with_start_position(mut self, offset: Pos) -> Self {
+        self.offset = offset;
+        self
+    }
+
+    pub fn column_metrics(&self) -> ColumnMetrics {
+        self.metrics
+    }
+
     pub fn len(&self) -> usize {
         self.source.len()
     }
@@ -232,28 +250,24 @@ impl SourceTextOwned {
         self.source.is_empty()
     }
 
-    pub fn text(&self) -> &str {
-        self.source.as_ref()
-    }
-
     pub fn clip<'text>(&'text self, span: Span) -> SourceText<'text> {
         self.as_borrowed().clip(span)
     }
 
-    pub fn offset(&self) -> Pos {
+    /// Returns the full span of the text.
+    pub fn full_span(&self) -> Span {
+        let end = self.metrics.end_position(&self.source, self.offset);
+        Span::new_enclosing(self.offset, end)
+    }
+
+    /// Returns the start position of the text.
+    pub fn start_position(&self) -> Pos {
         self.offset
     }
 
-    pub fn offset_mut(&mut self) -> &mut Pos {
-        &mut self.offset
-    }
-
-    pub fn column_metrics(&self) -> ColumnMetrics {
-        self.metrics
-    }
-
-    pub fn column_metrics_mut(&mut self) -> &mut ColumnMetrics {
-        &mut self.metrics
+    /// Returns the end position of the text.
+    pub fn end_position(&self) -> Pos {
+        self.metrics.end_position(&self.source, self.offset)
     }
 
     /// Returns the next column-aligned position after the given base position
@@ -300,16 +314,6 @@ impl SourceTextOwned {
         self.metrics.next_line_start_position(&self.source, base)
     }
 
-    /// Returns the start position of the text, given its end position.
-    pub fn start_position(&self, end: Pos) -> Pos {
-        self.metrics.start_position(&self.source, end)
-    }
-
-    /// Returns the end position of the text, given its start position.
-    pub fn end_position(&self, start: Pos) -> Pos {
-        self.metrics.end_position(&self.source, start)
-    }
-
     /// Returns the position after the given pattern string, given its start
     /// position.
     pub fn position_after_str<'a>(&self, start: Pos, pattern: &'a str)
@@ -350,6 +354,11 @@ impl SourceTextOwned {
     }
 }
 
+impl AsRef<str> for SourceTextOwned {
+    fn as_ref(&self) -> &str {
+        &self.source
+    }
+}
 
 impl std::fmt::Display for SourceTextOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
