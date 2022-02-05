@@ -25,16 +25,16 @@ pub struct SourceText<'text> {
     /// The column metrics of the source text.
     metrics: ColumnMetrics,
     /// The position of the start of the source text.
-    start: Pos,
+    offset: Pos,
 }
 
 impl<'text> SourceText<'text> {
-    /// Constructs a new `SourceText` with the given start `Pos` and
+    /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
-    pub fn new(source: &'text str, start: Pos, metrics: ColumnMetrics) -> Self {
+    pub fn new(source: &'text str, offset: Pos, metrics: ColumnMetrics) -> Self {
         SourceText {
             source,
-            start,
+            offset,
             metrics,
         }
     }
@@ -51,12 +51,12 @@ impl<'text> SourceText<'text> {
         &self.source
     }
 
-    pub fn start(&self) -> Pos {
-        self.start
+    pub fn offset(&self) -> Pos {
+        self.offset
     }
 
-    pub fn start_mut(&mut self) -> &mut Pos {
-        &mut self.start
+    pub fn offset_mut(&mut self) -> &mut Pos {
+        &mut self.offset
     }
 
     pub fn column_metrics(&self) -> ColumnMetrics {
@@ -155,7 +155,7 @@ impl<'text> SourceText<'text> {
     pub fn to_owned(&self) -> SourceTextOwned {
         SourceTextOwned {
             source: self.source.into(),
-            start: self.start,
+            offset: self.offset,
             metrics: self.metrics,
         }
     }
@@ -170,7 +170,7 @@ impl<'text> std::fmt::Display for SourceText<'text> {
             write!(f, "{}...", &self.source[..])?;
         };
 
-        write!(f, " ({}, {:?})", self.start, self.metrics)
+        write!(f, " ({}, {:?})", self.offset, self.metrics)
     }
 }
 
@@ -183,7 +183,7 @@ impl<'text> std::fmt::Debug for SourceText<'text> {
         };
         f.debug_struct("SourceText")
             .field("source", &src)
-            .field("start", &self.start)
+            .field("offset", &self.offset)
             .field("metrics", &self.metrics)
             .finish()
     }
@@ -200,16 +200,16 @@ pub struct SourceTextOwned {
     /// The column metrics of the source text.
     metrics: ColumnMetrics,
     /// The position of the start of the source text.
-    start: Pos,
+    offset: Pos,
 }
 
 impl SourceTextOwned {
-    /// Constructs a new `SourceTextOwned` with the given start `Pos` and
+    /// Constructs a new `SourceTextOwned` with the given offset `Pos` and
     /// `ColumnMetrics`.
-    pub fn new(source: Box<str>, start: Pos, metrics: ColumnMetrics) -> Self {
+    pub fn new(source: Box<str>, offset: Pos, metrics: ColumnMetrics) -> Self {
         SourceTextOwned {
             source,
-            start,
+            offset,
             metrics,
         }
     }
@@ -226,12 +226,12 @@ impl SourceTextOwned {
         self.source.as_ref()
     }
 
-    pub fn start(&self) -> Pos {
-        self.start
+    pub fn offset(&self) -> Pos {
+        self.offset
     }
 
-    pub fn start_mut(&mut self) -> &mut Pos {
-        &mut self.start
+    pub fn offset_mut(&mut self) -> &mut Pos {
+        &mut self.offset
     }
 
     pub fn column_metrics(&self) -> ColumnMetrics {
@@ -330,7 +330,7 @@ impl SourceTextOwned {
     pub fn as_borrowed<'text>(&'text self) -> SourceText<'text> {
         SourceText {
             source: &self.source,
-            start: self.start,
+            offset: self.offset,
             metrics: self.metrics,
         }
     }
@@ -348,11 +348,3 @@ impl std::fmt::Debug for SourceTextOwned {
         write!(f, "{:?}", self.as_borrowed())
     }
 }
-
-
-
-
-
-
-
-
