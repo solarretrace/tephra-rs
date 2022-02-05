@@ -10,8 +10,8 @@
 
 // Internal library imports.
 use tephra_error::Highlight;
-use tephra_error::SourceDisplay;
-use tephra_error::SourceSpan;
+use tephra_error::CodeDisplay;
+use tephra_error::CodeSpan;
 use tephra_error::ParseError;
 use tephra_error::ErrorSink;
 use tephra_error::ErrorContext;
@@ -505,10 +505,10 @@ impl<'text, Sc> Display for Lexer<'text, Sc>
     where Sc: Scanner,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let source_display = SourceDisplay::new("lexer state")
+        let source_display = CodeDisplay::new("lexer state")
             .with_color(false)
             .with_note_type()
-            .with_source_span(SourceSpan::new(
+            .with_source_span(CodeSpan::new(
                     self.parse_span_unfiltered(),
                     self.metrics)
                 .with_highlight(Highlight::new(self.token_span(),

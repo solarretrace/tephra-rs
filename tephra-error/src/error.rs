@@ -12,8 +12,8 @@
 #![allow(missing_docs)]
 
 // Internal library imports.
-use crate::SourceDisplay;
-use crate::SourceSpan;
+use crate::CodeDisplay;
+use crate::CodeSpan;
 
 // External libary imports.
 use tephra_tracing::event;
@@ -177,12 +177,12 @@ impl<'text> std::fmt::Display for ParseError<'text> {
             let span = *span;
             let msg = &*msg;
             let metrics = *metrics;
-            write!(f, "{}", SourceDisplay::new(self.description)
+            write!(f, "{}", CodeDisplay::new(self.description)
                 .with_error_type()
                 .with_source_span(
-                    SourceSpan::new_error_highlight(span, msg, metrics)))
+                    CodeSpan::new_error_highlight(span, msg, metrics)))
         } else {
-            write!(f, "{}", SourceDisplay::new(self.description)
+            write!(f, "{}", CodeDisplay::new(self.description)
                 .with_error_type())
         }
     }
@@ -244,10 +244,10 @@ impl std::fmt::Display for ParseErrorOwned {
             let msg = &*msg;
             let metrics = *metrics;
             write!(f, "{}", 
-                SourceDisplay::new(self.description)
+                CodeDisplay::new(self.description)
                     .with_error_type()
                     .with_source_span(
-                        SourceSpan::new_error_highlight(span, msg, metrics)))
+                        CodeSpan::new_error_highlight(span, msg, metrics)))
         } else {
             // TODO: Clean up message.
             write!(f, "{} NO SPAN", self.description)

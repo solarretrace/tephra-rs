@@ -36,7 +36,7 @@ use std::fmt::Display;
 ////////////////////////////////////////////////////////////////////////////////
 // Highlight
 ////////////////////////////////////////////////////////////////////////////////
-/// A highlighted subsection of a `SourceSpan`.
+/// A highlighted subsection of a `CodeSpan`.
 #[derive(Debug)]
 pub struct Highlight<'text> {
     /// The span to highlight.
@@ -66,37 +66,37 @@ impl<'text> Highlight<'text> {
         }
     }
 
-    /// Returns the given SourceDisplay with the info MessageType.
+    /// Returns the given CodeDisplay with the info MessageType.
     pub fn with_info_type(mut self) -> Self {
         self.message_type = MessageType::Info;
         self
     }
 
-    /// Returns the given SourceDisplay with the error MessageType.
+    /// Returns the given CodeDisplay with the error MessageType.
     pub fn with_error_type(mut self) -> Self {
         self.message_type = MessageType::Error;
         self
     }
 
-    /// Returns the given SourceDisplay with the warning MessageType.
+    /// Returns the given CodeDisplay with the warning MessageType.
     pub fn with_warning_type(mut self) -> Self {
         self.message_type = MessageType::Warning;
         self
     }
     
-    /// Returns the given SourceDisplay with the note MessageType.
+    /// Returns the given CodeDisplay with the note MessageType.
     pub fn with_note_type(mut self) -> Self {
         self.message_type = MessageType::Note;
         self
     }
 
-    /// Returns the given SourceDisplay with the hel MessageType.
+    /// Returns the given CodeDisplay with the hel MessageType.
     pub fn with_help_type(mut self) -> Self {
         self.message_type = MessageType::Help;
         self
     }
 
-    /// Returns the given SourceDisplay with the given MessageType.
+    /// Returns the given CodeDisplay with the given MessageType.
     pub fn with_message_type(mut self, message_type: MessageType) -> Self {
         self.message_type = message_type;
         self

@@ -12,7 +12,7 @@
 ## Source
 ## ParseResult / Success / Failure
 ## OwnedFailure / OwnedSpan
-## SourceSpan / Highlight
+## CodeSpan / Highlight
 
 
 # Parser design principles

@@ -34,11 +34,11 @@ use std::fmt::Display;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// SourceDisplay
+// CodeDisplay
 ////////////////////////////////////////////////////////////////////////////////
 /// A structure for displaying source text with spans, notes, and highlights.
 #[derive(Debug)]
-pub struct SourceDisplay<'text> {
+pub struct CodeDisplay<'text> {
     /// The top-level description for all of the source spans.
     message: String,
     /// The overall message type for all of the source spans.
@@ -46,19 +46,19 @@ pub struct SourceDisplay<'text> {
     /// A error/warning code to print.
     code: Option<&'static str>,
     /// The source spans to display.
-    source_spans: Vec<SourceSpan<'text>>,
+    source_spans: Vec<CodeSpan<'text>>,
     /// Notes to append after the displayed spans.
     notes: Vec<SourceNote>,
     /// Whether colors are enabled during writing.
     color_enabled: bool,
 }
 
-impl<'text> SourceDisplay<'text> {
-    /// Constructs a new info-type SourceDisplay with the given description.
+impl<'text> CodeDisplay<'text> {
+    /// Constructs a new info-type CodeDisplay with the given description.
     pub fn new<M>(message: M) -> Self 
         where M: Into<String>,
     {
-        SourceDisplay {
+        CodeDisplay {
             message: message.into(),
             message_type: MessageType::Info,
             code: None,
@@ -68,58 +68,58 @@ impl<'text> SourceDisplay<'text> {
         }
     }
 
-    /// Returns the given SourceDisplay with the given color enablement.
+    /// Returns the given CodeDisplay with the given color enablement.
     pub fn with_color(mut self, color_enabled: bool) -> Self {
         self.color_enabled = color_enabled;
         self
     }
 
-    /// Returns the given SourceDisplay with the error MessageType.
+    /// Returns the given CodeDisplay with the error MessageType.
     pub fn with_error_type(mut self) -> Self {
         self.message_type = MessageType::Error;
         self
     }
 
-    /// Returns the given SourceDisplay with the warning MessageType.
+    /// Returns the given CodeDisplay with the warning MessageType.
     pub fn with_warning_type(mut self) -> Self {
         self.message_type = MessageType::Warning;
         self
     }
     
-    /// Returns the given SourceDisplay with the note MessageType.
+    /// Returns the given CodeDisplay with the note MessageType.
     pub fn with_note_type(mut self) -> Self {
         self.message_type = MessageType::Note;
         self
     }
 
-    /// Returns the given SourceDisplay with the hel MessageType.
+    /// Returns the given CodeDisplay with the hel MessageType.
     pub fn with_help_type(mut self) -> Self {
         self.message_type = MessageType::Help;
         self
     }
 
-    /// Returns the given SourceDisplay with the given MessageType.
+    /// Returns the given CodeDisplay with the given MessageType.
     pub fn with_message_type(mut self, message_type: MessageType) -> Self {
         self.message_type = message_type;
         self
     }
 
-    /// Returns the given SourceDisplay with the given error code.
+    /// Returns the given CodeDisplay with the given error code.
     pub fn with_code(mut self, code: Option<&'static str>) -> Self {
         self.code = code;
         self
     }
 
-    /// Returns the given SourceDisplay with the given SourceSpan attachment.
+    /// Returns the given CodeDisplay with the given CodeSpan attachment.
     pub fn with_source_span<S>(mut self, source_span: S)
         -> Self
-        where S: Into<SourceSpan<'text>>
+        where S: Into<CodeSpan<'text>>
     {
         self.source_spans.push(source_span.into());
         self
     }
 
-    /// Returns the given SourceDisplay with the given note attachment.
+    /// Returns the given CodeDisplay with the given note attachment.
     pub fn with_note<N>(mut self, note: N)
         -> Self
         where N: Into<SourceNote>
@@ -129,7 +129,7 @@ impl<'text> SourceDisplay<'text> {
     }
 }
 
-impl<'text> Display for SourceDisplay<'text> {
+impl<'text> Display for CodeDisplay<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.color_enabled {
             write!(f, "{}", self.message_type)?;
@@ -155,11 +155,11 @@ impl<'text> Display for SourceDisplay<'text> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// SourceSpan
+// CodeSpan
 ////////////////////////////////////////////////////////////////////////////////
 /// A single span of source text with notes and highlights.
 #[derive(Debug)]
-pub struct SourceSpan<'text> {
+pub struct CodeSpan<'text> {
     /// The name of the file or data that is being displayed.
     source_name: Option<String>,
     /// The column metrics for the source,
@@ -178,13 +178,13 @@ pub struct SourceSpan<'text> {
     color_enabled: bool,
 }
 
-impl<'text> SourceSpan<'text> {
-    /// Constructs a new SourceSpan with the given span.
+impl<'text> CodeSpan<'text> {
+    /// Constructs a new CodeSpan with the given span.
     pub fn new(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         let gutter_width = std::cmp::max(
             (span.end().page.line as f32).log10().ceil() as u8, 1);
 
-        SourceSpan {
+        CodeSpan {
             source_name: None,
             metrics,
             span: span.widen_to_line(metrics),
@@ -196,7 +196,7 @@ impl<'text> SourceSpan<'text> {
         }
     }
 
-    /// Constructs a new SourceSpan with the given span and highlight message.
+    /// Constructs a new CodeSpan with the given span and highlight message.
     pub fn new_error_highlight<M>(
         span: Span<'text>,
         message: M,
@@ -204,18 +204,18 @@ impl<'text> SourceSpan<'text> {
         -> Self
         where M: Into<String>,
     {
-        SourceSpan::new(span, metrics)
+        CodeSpan::new(span, metrics)
             .with_highlight(Highlight::new(span, message)
                 .with_error_type())
     }
 
-    /// Returns the given SourceDisplay with the given color enablement.
+    /// Returns the given CodeDisplay with the given color enablement.
     pub fn with_color(mut self, color_enabled: bool) -> Self {
         self.color_enabled = color_enabled;
         self
     }
 
-    /// Returns the given SourceSpan with the given source name.
+    /// Returns the given CodeSpan with the given source name.
     pub fn with_source_name<M>(mut self, name: M) -> Self
         where M: Into<String>,
     {
@@ -241,7 +241,7 @@ impl<'text> SourceSpan<'text> {
         color_enabled: bool)
         -> std::fmt::Result
     {
-        let _span = span!(Level::TRACE, "SourceSpan", color_enabled).entered();
+        let _span = span!(Level::TRACE, "CodeSpan", color_enabled).entered();
 
         let (source_name, sep) = match &self.source_name {
             Some(name) => (name.borrow(), ":"),
@@ -282,7 +282,7 @@ impl<'text> SourceSpan<'text> {
     }
 }
 
-impl<'text> Display for SourceSpan<'text> {
+impl<'text> Display for CodeSpan<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.write_with_color_enablement(f, self.color_enabled)
     }
@@ -291,7 +291,7 @@ impl<'text> Display for SourceSpan<'text> {
 ////////////////////////////////////////////////////////////////////////////////
 // SourceNote
 ////////////////////////////////////////////////////////////////////////////////
-/// A note which can be attached to a `SourceSpan` or `SourceDisplay`.
+/// A note which can be attached to a `CodeSpan` or `CodeDisplay`.
 #[derive(Debug)]
 pub struct SourceNote {
     /// The message type for the note.
@@ -322,12 +322,12 @@ impl Display for SourceNote {
 ////////////////////////////////////////////////////////////////////////////////
 // MultiSplitLines
 ////////////////////////////////////////////////////////////////////////////////
-/// An iterator over the line-based data relevant to a particular SourceSpan.
+/// An iterator over the line-based data relevant to a particular CodeSpan.
 #[derive(Debug)]
 struct MultiSplitLines<'text, 'hl> {
-    /// The SplitLines iterator for the `SourceSpan`.
+    /// The SplitLines iterator for the `CodeSpan`.
     source_lines: SplitLines<'text>,
-    /// The highlights contained within the SourceSpan.
+    /// The highlights contained within the CodeSpan.
     highlights: &'hl [Highlight<'text>],
     /// The width of the line number gutter.
     gutter_width: u8,
