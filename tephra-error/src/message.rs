@@ -31,7 +31,7 @@ use std::fmt::Display;
 ////////////////////////////////////////////////////////////////////////////////
 // MessageType
 ////////////////////////////////////////////////////////////////////////////////
-/// A `CodeDisplay`, `SourceNote`, or `Highlight` message type. Used to
+/// A `CodeDisplay`, `Note`, or `Highlight` message type. Used to
 /// determine the color and format of the message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MessageType {

@@ -17,7 +17,7 @@
 // Internal modules.
 #[cfg(test)]
 mod test;
-mod code;
+mod display;
 mod error;
 mod sink;
 mod highlight;
@@ -26,6 +26,6 @@ mod message;
 // Exports.
 pub use error::*;
 pub use sink::*;
-pub use code::*;
+pub use display::*;
 pub use message::*;
 pub use highlight::*;

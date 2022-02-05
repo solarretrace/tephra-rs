@@ -13,7 +13,8 @@
 
 // Internal library imports.
 use crate::CodeDisplay;
-use crate::CodeSpan;
+use crate::Note;
+use crate::SpanDisplay;
 
 // External libary imports.
 use tephra_tracing::event;
@@ -28,11 +29,10 @@ use tephra_span::ColumnMetrics;
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub struct ParseError<'text> {
-    /// A description of the parse error.
-    description: &'static str,
     // TODO: Generalize this.
-    /// The span, message, and ColumnMetrics for the error highlight.
-    span: Option<(Span<'text>, String, ColumnMetrics)>,
+    /// The `CodeDisplay` for rendering the associated spans, highlights, and
+    /// notes.
+    code_display: CodeDisplay<'text>,
     /// The captured source of the parse error.
     source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
@@ -41,8 +41,8 @@ impl<'text> ParseError<'text> {
     /// Constructs a new `ParseError` with the given description.
     pub fn new(description: &'static str) -> Self {
         ParseError {
-            description,
-            span: None,
+            code_display: CodeDisplay::new(description)
+                .with_error_type(),
             source: None,
         }
     }
@@ -50,8 +50,12 @@ impl<'text> ParseError<'text> {
     /// Constructs an `unrecognized token` lexer error.
     pub fn unrecognized_token(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         let e = ParseError {
-            description: "unrecognized token",
-            span: Some((span, "symbol not recognized".to_owned(), metrics)),
+            code_display: CodeDisplay::new("unrecognized token")
+                .with_error_type()
+                .with_span_display(SpanDisplay::new_error_highlight(
+                    span,
+                    "symbol not recognized",
+                    metrics)),
             source: None,
         };
         event!(Level::TRACE, "{e:?}");
@@ -67,8 +71,12 @@ impl<'text> ParseError<'text> {
         where T: std::fmt::Display
     {
         let e = ParseError {
-            description: "unexpected token",
-            span: Some((span, format!("{expected}"), metrics)),
+            code_display: CodeDisplay::new("unexpected token")
+                .with_error_type()
+                .with_span_display(SpanDisplay::new_error_highlight(
+                    span,
+                    format!("expected {expected}"),
+                    metrics)),
             source: None,
         };
         event!(Level::TRACE, "{e:?}");
@@ -80,8 +88,12 @@ impl<'text> ParseError<'text> {
         -> Self
     {
         let e = ParseError {
-            description: "unexpected end of text",
-            span: Some((span, "text ends here".to_owned(), metrics)),
+            code_display: CodeDisplay::new("unexpected end of text")
+                .with_error_type()
+                .with_span_display(SpanDisplay::new_error_highlight(
+                    span,
+                    "text ends here",
+                    metrics)),
             source: None,
         };
         event!(Level::TRACE, "{e:?}");
@@ -93,8 +105,12 @@ impl<'text> ParseError<'text> {
         -> Self
     {
         let e = ParseError {
-            description: "expected end of text",
-            span: Some((span, "text should end here".to_owned(), metrics)),
+            code_display: CodeDisplay::new("expected end of text")
+                .with_error_type()
+                .with_span_display(SpanDisplay::new_error_highlight(
+                    span,
+                    "text should end here",
+                    metrics)),
             source: None,
         };
         event!(Level::TRACE, "{e:?}");
@@ -102,15 +118,13 @@ impl<'text> ParseError<'text> {
     }
 
     /// Adds the given span to the `ParseError` and returns it.
-    pub fn with_span<S>(
+    pub fn with_code_display<S>(
         mut self,
-        message: S,
-        span: Span<'text>,
-        metrics: ColumnMetrics)
+        code_display: CodeDisplay<'text>)
         -> Self 
         where S: Into<String>,
     {
-        self.span = Some((span, message.into(), metrics));
+        self.code_display = code_display;
         self
     }
 
@@ -124,6 +138,25 @@ impl<'text> ParseError<'text> {
         self
     }
 
+
+    /// Returns the given ParseError with a SpanDisplay attachment.
+    pub fn with_span_display<S>(mut self, span_display: S)
+        -> Self
+        where S: Into<SpanDisplay<'text>>
+    {
+        self.code_display.push_span_display(span_display);
+        self
+    }
+
+    /// Returns the given ParseError with a note attachment.
+    pub fn with_note<N>(mut self, note: N)
+        -> Self
+        where N: Into<Note>
+    {
+        self.code_display.push_note(note);
+        self
+    }
+
     pub fn with_context(mut self, description: &'static str) -> Self {
         self.push_context(description);
         self
@@ -131,8 +164,7 @@ impl<'text> ParseError<'text> {
 
     pub fn push_context(&mut self, description: &'static str) {
         let source = std::mem::replace(self, ParseError {
-            description,
-            span: None,
+            code_display: CodeDisplay::new(description),
             source: None,
         });
         self.source = Some(Box::new(source.into_owned()));
@@ -145,27 +177,22 @@ impl<'text> ParseError<'text> {
     }
 
 
-    pub fn description(&self) -> &'static str {
-        self.description
+    pub fn description(&self) -> &str {
+        self.code_display.message()
     }
 }
 
 impl<'text> ParseError<'text> {
     pub fn into_owned(self) -> ParseErrorOwned 
     {
-        ParseErrorOwned {
-            description: self.description,
-            span: self.span.map(|(a, b, c)| (a.into(), b, c)),
-            source: self.source,
-        }
+        ParseErrorOwned::from(self)
     }
 }
 
 impl<'text> Default for ParseError<'text> {
     fn default() -> Self {
         ParseError {
-            description: "parse error",
-            span: None,
+            code_display: CodeDisplay::new("parse error"),
             source: None,
         }
     }
@@ -173,34 +200,19 @@ impl<'text> Default for ParseError<'text> {
 
 impl<'text> std::fmt::Display for ParseError<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some((span, msg, metrics)) = &self.span {
-            let span = *span;
-            let msg = &*msg;
-            let metrics = *metrics;
-            write!(f, "{}", CodeDisplay::new(self.description)
-                .with_error_type()
-                .with_source_span(
-                    CodeSpan::new_error_highlight(span, msg, metrics)))
-        } else {
-            write!(f, "{}", CodeDisplay::new(self.description)
-                .with_error_type())
-        }
+        write!(f, "{}", self.code_display)
     }
 }
 
 impl<'text> From<&'static str> for ParseError<'text> {
     fn from(description: &'static str) -> Self {
-        ParseError {
-            description,
-            span: None,
-            source: None,
-        }
+        ParseError::new(description)
     }
 }
 
 impl<'text> std::error::Error for ParseError<'text> {
     fn description(&self) -> &str {
-        &self.description
+        self.description()
     }
 
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
@@ -216,22 +228,22 @@ impl<'text> std::error::Error for ParseError<'text> {
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub struct ParseErrorOwned {
-    description: &'static str,
-    span: Option<(SpanOwned, String, ColumnMetrics)>,
+    description: Box<str>,
+    code_display: Box<str>,
     source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
 impl ParseErrorOwned {
-    pub fn description(&self) -> &'static str {
-        self.description
+    pub fn description(&self) -> &str {
+        self.description.as_ref()
     }
 }
 
 impl<'text> From<ParseError<'text>> for ParseErrorOwned {
     fn from(parse_error: ParseError<'text>) -> Self {
         ParseErrorOwned {
-            description: parse_error.description,
-            span: parse_error.span.map(|(sp, msg, cm)| (sp.into(), msg, cm)),
+            description: parse_error.description().into(),
+            code_display: format!("{}", parse_error.code_display).into(),
             source: parse_error.source,
         }
     }
@@ -239,19 +251,7 @@ impl<'text> From<ParseError<'text>> for ParseErrorOwned {
 
 impl std::fmt::Display for ParseErrorOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some((span, msg, metrics)) = &self.span {
-            let span = span.into();
-            let msg = &*msg;
-            let metrics = *metrics;
-            write!(f, "{}", 
-                CodeDisplay::new(self.description)
-                    .with_error_type()
-                    .with_source_span(
-                        CodeSpan::new_error_highlight(span, msg, metrics)))
-        } else {
-            // TODO: Clean up message.
-            write!(f, "{} NO SPAN", self.description)
-        }
+        write!(f, "{}", self.code_display)
     }
 }
 

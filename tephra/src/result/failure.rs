@@ -52,7 +52,7 @@ impl<'text, Sc> Failure<'text, Sc>
     }
 
     #[cfg(test)]
-    pub fn error_span_display(self) -> (&'static str, String) {
+    pub fn error_span_display(&self) -> (&str, String) {
         (self.parse_error.description(), format!("{}", self.lexer.parse_span()))
     }
 }

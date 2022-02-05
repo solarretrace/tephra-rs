@@ -20,6 +20,7 @@ use tephra::Spanned;
 use tephra::Success;
 use tephra::Failure;
 use tephra::ParseError;
+use tephra::SpanDisplay;
 use tephra_tracing::Level;
 use tephra_tracing::span;
 use tephra_tracing::event;
@@ -53,12 +54,12 @@ pub fn context<'text, Sc, F, V>(
             },
             Err(fail) => {
                 let section_error = ParseError::new("parse error")
-                    .with_span(
-                        format!("during this {}", context),
+                    .with_span_display(SpanDisplay::new_error_highlight(
                         lexer.clone()
                             .join(fail.lexer.clone())
                             .parse_span(),
-                        lexer.column_metrics());
+                        format!("during this {}", context),
+                        lexer.column_metrics()));
                 Err(fail.with_context(section_error))
             },
         }
@@ -94,12 +95,12 @@ pub fn context_commit<'text, Sc, F, V>(
             
             Err(fail) if fail.lexer.cursor_pos() > current_cursor => {
                 let section_error = ParseError::new("parse error")
-                    .with_span(
-                        format!("during this {}", context),
+                    .with_span_display(SpanDisplay::new_error_highlight(
                         lexer.clone()
                             .join(fail.lexer.clone())
                             .parse_span(),
-                        lexer.column_metrics());
+                        format!("during this {}", context),
+                        lexer.column_metrics()));
                 Err(fail.with_context(section_error))
             },
 

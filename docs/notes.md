@@ -12,7 +12,7 @@
 ## Source
 ## ParseResult / Success / Failure
 ## OwnedFailure / OwnedSpan
-## CodeSpan / Highlight
+## SpanDisplay / Highlight
 
 
 # Parser design principles
@@ -50,8 +50,6 @@ Error constructing value
 ### Span message start
 ### Span message end
 
-
-a
 
     error[E0308]: mismatched types
       --> src/result/display.rs:60:17

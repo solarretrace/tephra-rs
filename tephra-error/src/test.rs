@@ -24,16 +24,6 @@ use test_log::test;
 
 
 
-/// Performs size checks.
-#[test]
-#[tracing::instrument]
-fn size_checks() {
-    use std::mem::size_of;
-    assert_eq!(128, size_of::<crate::ParseError<'_>>(), "ParseError");
-    assert_eq!(176, size_of::<crate::ParseErrorOwned>(), "ParseErrorOwned");
-}
-
-
 
 /// Test basic ParseError formatting.
 #[test]

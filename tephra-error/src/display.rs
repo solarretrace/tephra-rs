@@ -39,14 +39,14 @@ use std::fmt::Display;
 /// A structure for displaying source text with spans, notes, and highlights.
 #[derive(Debug)]
 pub struct CodeDisplay<'text> {
-    /// The top-level description for all of the source spans.
+    /// The top-level description for all of the spans.
     message: String,
-    /// The overall message type for all of the source spans.
+    /// The overall message type for all of the spans.
     message_type: MessageType,
-    /// A error/warning code to print.
-    code: Option<&'static str>,
-    /// The source spans to display.
-    source_spans: Vec<CodeSpan<'text>>,
+    /// An error number or warning code to print.
+    code_id: Option<&'static str>,
+    /// The spans to display.
+    span_displays: Vec<SpanDisplay<'text>>,
     /// Notes to append after the displayed spans.
     notes: Vec<Note>,
     /// Whether colors are enabled during writing.
@@ -61,8 +61,8 @@ impl<'text> CodeDisplay<'text> {
         CodeDisplay {
             message: message.into(),
             message_type: MessageType::Info,
-            code: None,
-            source_spans: Vec::with_capacity(1),
+            code_id: None,
+            span_displays: Vec::with_capacity(1),
             notes: Vec::new(),
             color_enabled: true,
         }
@@ -104,18 +104,18 @@ impl<'text> CodeDisplay<'text> {
         self
     }
 
-    /// Returns the given CodeDisplay with the given error code.
-    pub fn with_code(mut self, code: Option<&'static str>) -> Self {
-        self.code = code;
+    /// Returns the given CodeDisplay with the given error code id.
+    pub fn with_code_id(mut self, code_id: Option<&'static str>) -> Self {
+        self.code_id = code_id;
         self
     }
 
-    /// Returns the given CodeDisplay with the given CodeSpan attachment.
-    pub fn with_source_span<S>(mut self, source_span: S)
+    /// Returns the given CodeDisplay with the given SpanDisplay attachment.
+    pub fn with_span_display<S>(mut self, span_display: S)
         -> Self
-        where S: Into<CodeSpan<'text>>
+        where S: Into<SpanDisplay<'text>>
     {
-        self.source_spans.push(source_span.into());
+        self.span_displays.push(span_display.into());
         self
     }
 
@@ -127,14 +127,34 @@ impl<'text> CodeDisplay<'text> {
         self.notes.push(note.into());
         self
     }
+
+
+    /// Returns the given CodeDisplay with the given SpanDisplay attachment.
+    pub fn push_span_display<S>(&mut self, span_display: S)
+        where S: Into<SpanDisplay<'text>>
+    {
+        self.span_displays.push(span_display.into());
+    }
+
+
+    /// Returns the given CodeDisplay with the given note attachment.
+    pub fn push_note<N>(&mut self, note: N)
+        where N: Into<Note>
+    {
+        self.notes.push(note.into());
+    }
+
+    pub fn message(&self) -> &str {
+        self.message.as_str()
+    }
 }
 
 impl<'text> Display for CodeDisplay<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.color_enabled {
             write!(f, "{}", self.message_type)?;
-            if let Some(code) = self.code {
-                write!(f, "[{}]", code)?;
+            if let Some(code_id) = self.code_id {
+                write!(f, "[{}]", code_id)?;
             }
             writeln!(f, "{} {}",
                 ":".bright_white().bold(),
@@ -144,8 +164,8 @@ impl<'text> Display for CodeDisplay<'text> {
                 .write_with_color_enablement(f, self.color_enabled)?;
             writeln!(f, ": {}", self.message)?;
         }
-        for source_span in &self.source_spans {
-            source_span.write_with_color_enablement(f, self.color_enabled)?;
+        for span_display in &self.span_displays {
+            span_display.write_with_color_enablement(f, self.color_enabled)?;
         }
         for note in &self.notes {
             note.write_with_color_enablement(f, self.color_enabled)?;
@@ -155,11 +175,11 @@ impl<'text> Display for CodeDisplay<'text> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// CodeSpan
+// SpanDisplay
 ////////////////////////////////////////////////////////////////////////////////
 /// A single span of source text with notes and highlights.
 #[derive(Debug)]
-pub struct CodeSpan<'text> {
+pub struct SpanDisplay<'text> {
     /// The name of the file or data that is being displayed.
     source_name: Option<String>,
     /// The column metrics for the source,
@@ -178,13 +198,13 @@ pub struct CodeSpan<'text> {
     color_enabled: bool,
 }
 
-impl<'text> CodeSpan<'text> {
-    /// Constructs a new CodeSpan with the given span.
+impl<'text> SpanDisplay<'text> {
+    /// Constructs a new SpanDisplay with the given span.
     pub fn new(span: Span<'text>, metrics: ColumnMetrics) -> Self {
         let gutter_width = std::cmp::max(
             (span.end().page.line as f32).log10().ceil() as u8, 1);
 
-        CodeSpan {
+        SpanDisplay {
             source_name: None,
             metrics,
             span: span.widen_to_line(metrics),
@@ -196,7 +216,7 @@ impl<'text> CodeSpan<'text> {
         }
     }
 
-    /// Constructs a new CodeSpan with the given span and highlight message.
+    /// Constructs a new SpanDisplay with the given span and highlight message.
     pub fn new_error_highlight<M>(
         span: Span<'text>,
         message: M,
@@ -204,7 +224,7 @@ impl<'text> CodeSpan<'text> {
         -> Self
         where M: Into<String>,
     {
-        CodeSpan::new(span, metrics)
+        SpanDisplay::new(span, metrics)
             .with_highlight(Highlight::new(span, message)
                 .with_error_type())
     }
@@ -215,7 +235,7 @@ impl<'text> CodeSpan<'text> {
         self
     }
 
-    /// Returns the given CodeSpan with the given source name.
+    /// Returns the given SpanDisplay with the given source name.
     pub fn with_source_name<M>(mut self, name: M) -> Self
         where M: Into<String>,
     {
@@ -241,7 +261,7 @@ impl<'text> CodeSpan<'text> {
         color_enabled: bool)
         -> std::fmt::Result
     {
-        let _span = span!(Level::TRACE, "CodeSpan", color_enabled).entered();
+        let _span = span!(Level::TRACE, "SpanDisplay", color_enabled).entered();
 
         let (source_name, sep) = match &self.source_name {
             Some(name) => (name.borrow(), ":"),
@@ -282,7 +302,7 @@ impl<'text> CodeSpan<'text> {
     }
 }
 
-impl<'text> Display for CodeSpan<'text> {
+impl<'text> Display for SpanDisplay<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.write_with_color_enablement(f, self.color_enabled)
     }
@@ -291,7 +311,7 @@ impl<'text> Display for CodeSpan<'text> {
 ////////////////////////////////////////////////////////////////////////////////
 // Note
 ////////////////////////////////////////////////////////////////////////////////
-/// A note which can be attached to a `CodeSpan` or `CodeDisplay`.
+/// A note which can be attached to a `SpanDisplay` or `CodeDisplay`.
 #[derive(Debug)]
 pub struct Note {
     /// The message type for the note.
@@ -322,12 +342,12 @@ impl Display for Note {
 ////////////////////////////////////////////////////////////////////////////////
 // MultiSplitLines
 ////////////////////////////////////////////////////////////////////////////////
-/// An iterator over the line-based data relevant to a particular CodeSpan.
+/// An iterator over the line-based data relevant to a particular SpanDisplay.
 #[derive(Debug)]
 struct MultiSplitLines<'text, 'hl> {
-    /// The SplitLines iterator for the `CodeSpan`.
+    /// The SplitLines iterator for the `SpanDisplay`.
     source_lines: SplitLines<'text>,
-    /// The highlights contained within the CodeSpan.
+    /// The highlights contained within the SpanDisplay.
     highlights: &'hl [Highlight<'text>],
     /// The width of the line number gutter.
     gutter_width: u8,
@@ -339,7 +359,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
     /// Constructs a new MultiSplitLines from the given source span and
     /// highlights.
     pub(in crate) fn new(
-        source_span: Span<'text>,
+        span_display: Span<'text>,
         highlights: &'hl [Highlight<'text>],
         gutter_width: u8,
         metrics: ColumnMetrics)
@@ -355,7 +375,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
             .expect("riser width < 255");
         event!(Level::TRACE, "riser_width = {riser_width}");
 
-        let source_lines = source_span.split_lines(metrics);
+        let source_lines = span_display.split_lines(metrics);
 
         MultiSplitLines {
             source_lines,

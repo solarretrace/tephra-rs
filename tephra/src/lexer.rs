@@ -11,7 +11,7 @@
 // Internal library imports.
 use tephra_error::Highlight;
 use tephra_error::CodeDisplay;
-use tephra_error::CodeSpan;
+use tephra_error::SpanDisplay;
 use tephra_error::ParseError;
 use tephra_error::ErrorSink;
 use tephra_error::ErrorContext;
@@ -508,7 +508,7 @@ impl<'text, Sc> Display for Lexer<'text, Sc>
         let source_display = CodeDisplay::new("lexer state")
             .with_color(false)
             .with_note_type()
-            .with_source_span(CodeSpan::new(
+            .with_span_display(SpanDisplay::new(
                     self.parse_span_unfiltered(),
                     self.metrics)
                 .with_highlight(Highlight::new(self.token_span(),
