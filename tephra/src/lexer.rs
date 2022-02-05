@@ -19,6 +19,7 @@ use tephra_span::ColumnMetrics;
 use tephra_span::LineEnding;
 use tephra_span::Pos;
 use tephra_span::Span;
+use tephra_span::SourceText;
 
 // External library imports.
 use tephra_tracing::Level;
@@ -47,7 +48,7 @@ pub trait Scanner: Debug + Clone + PartialEq {
         &mut self,
         source: &'text str,
         base: Pos,
-        matrics: ColumnMetrics)
+        metrics: ColumnMetrics)
         -> Option<(Self::Token, Pos)>;
 }
 
@@ -59,7 +60,7 @@ pub trait Scanner: Debug + Clone + PartialEq {
 #[derive(Clone)]
 pub struct Lexer<'text, Sc> where Sc: Scanner {
     /// The source text to tokenize.
-    source: &'text str,
+    source: SourceText<'text>,
     /// The token inclusion filter. Any token for which this returns false will
     /// be skipped automatically.
     filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
@@ -80,8 +81,6 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
 
     /// The internal user-defined Scanner.
     scanner: Sc,
-    /// The source column metrics.
-    metrics: ColumnMetrics,
 }
 
 impl<'text, Sc> Lexer<'text, Sc>
@@ -90,7 +89,10 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Constructs a new Lexer for the given text.
     pub fn new(scanner: Sc, source: &'text str) -> Self {
         Lexer {
-            source,
+            source: SourceText::new(
+                source,
+                Pos::ZERO,
+                ColumnMetrics::default()),
             filter: None,
             error_sink: None,
             token_start: Pos::ZERO,
@@ -99,25 +101,24 @@ impl<'text, Sc> Lexer<'text, Sc>
             cursor: Pos::ZERO,
             buffer: None,
             scanner,
-            metrics: Default::default(),
         }
     }
 
     /// Sets the column metrics for the Lexer.
     pub fn with_column_metrics(mut self, metrics: ColumnMetrics) -> Self {
-        self.metrics = metrics;
+        *self.column_metrics_mut() = metrics;
         self
     }
 
     /// Sets the line ending style for the Lexer.
     pub fn with_line_ending(mut self, line_ending: LineEnding) -> Self {
-        self.metrics.line_ending = line_ending;
+        self.column_metrics_mut().line_ending = line_ending;
         self
     }
 
     /// Sets the tab width for the Lexer.
     pub fn with_tab_width(mut self, tab_width: u8) -> Self {
-        self.metrics.tab_width = tab_width;
+        self.column_metrics_mut().tab_width = tab_width;
         self
     }
 
@@ -128,22 +129,27 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Returns the underlying source text.
     pub fn source_text(&self) -> &'text str {
-        self.source
+        self.source.text()
     }
 
     /// Returns the column metrics for the source.
     pub fn column_metrics(&self) -> ColumnMetrics {
-        self.metrics
+        self.source.column_metrics()
+    }
+
+    /// Returns the column metrics for the source.
+    pub fn column_metrics_mut(&mut self) -> &mut ColumnMetrics {
+        self.source.column_metrics_mut()
     }
 
     /// Returns the line ending for the source.
     pub fn line_ending(&self) -> LineEnding {
-        self.metrics.line_ending
+        self.column_metrics().line_ending
     }
 
     /// Returns the tab width for the source.
     pub fn tab_width(&self) -> u8 {
-        self.metrics.tab_width
+        self.column_metrics().tab_width
     }
 
 
@@ -284,7 +290,9 @@ impl<'text, Sc> Lexer<'text, Sc>
 
         let mut scanner = self.scanner.clone();
         while self.cursor.byte < self.source.len() {
-            match scanner.scan(self.source, self.cursor, self.metrics) {
+            match scanner
+                .scan(self.source_text(), self.cursor, self.column_metrics())
+            {
                 Some((token, adv)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
@@ -386,29 +394,29 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns the span (excluding filtered text) of the token_start lexed
     /// token.
     pub fn token_span(&self) -> Span<'text> {
-        Span::new_enclosing(self.source, self.token_start, self.end)
+        Span::new_enclosing(self.source_text(), self.token_start, self.end)
     }
 
     /// Returns the span (excluding filtered text) back to the token_start
     /// consumed  position.
     pub fn parse_span(&self) -> Span<'text> {
-        Span::new_enclosing(self.source, self.parse_start, self.end)
+        Span::new_enclosing(self.source_text(), self.parse_start, self.end)
     }
 
     /// Returns the cursor span (including filtered text) back to the
     /// token_start consumed position.
     pub fn parse_span_unfiltered(&self) -> Span<'text> {
-        Span::new_enclosing(self.source, self.parse_start, self.cursor)
+        Span::new_enclosing(self.source_text(), self.parse_start, self.cursor)
     }
 
     /// Returns the span of the end of the lexed text.
     pub fn end_span(&self) -> Span<'text> {
-        Span::new_at(self.source, self.end)
+        Span::new_at(self.source_text(), self.end)
     }
 
     /// Returns the span of the lexer cursor.
     pub fn cursor_span(&self) -> Span<'text> {
-        Span::new_at(self.source, self.cursor)
+        Span::new_at(self.source_text(), self.cursor)
     }
 }
 
@@ -429,9 +437,9 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
             }
 
             match self.scanner.scan(
-                self.source,
+                self.source_text(),
                 self.cursor, 
-                self.metrics)
+                self.column_metrics())
             {
                 Some((token, adv)) if self.filter
                     .as_ref()
@@ -472,7 +480,7 @@ impl<'text, Sc> Debug for Lexer<'text, Sc>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Lexer")
-            .field("source_len", &self.source.len())
+            .field("source", &self.source)
             .field("scanner", &self.scanner)
             .field("filter_set", &self.filter.is_some())
             .field("token_start", &self.token_start)
@@ -480,7 +488,6 @@ impl<'text, Sc> Debug for Lexer<'text, Sc>
             .field("end", &self.end)
             .field("cursor", &self.cursor)
             .field("buffer", &self.buffer)
-            .field("metrics", &self.metrics)
             .finish()
     }
 }
@@ -496,8 +503,7 @@ impl<'text, Sc> PartialEq for Lexer<'text, Sc>
         self.parse_start == other.parse_start &&
         self.end == other.end && 
         self.cursor == other.cursor &&
-        self.buffer == other.buffer &&
-        self.metrics == other.metrics
+        self.buffer == other.buffer
     }
 }
 
@@ -510,7 +516,7 @@ impl<'text, Sc> Display for Lexer<'text, Sc>
             .with_note_type()
             .with_span_display(SpanDisplay::new(
                     self.parse_span_unfiltered(),
-                    self.metrics)
+                    self.column_metrics())
                 .with_highlight(Highlight::new(self.token_span(),
                     format!("token ({})", self.token_span())))
                 .with_highlight(Highlight::new(self.parse_span(),

@@ -128,7 +128,6 @@ impl<'text> CodeDisplay<'text> {
         self
     }
 
-
     /// Returns the given CodeDisplay with the given SpanDisplay attachment.
     pub fn push_span_display<S>(&mut self, span_display: S)
         where S: Into<SpanDisplay<'text>>

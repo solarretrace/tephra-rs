@@ -20,7 +20,6 @@ use tephra_tracing::Level;
 use tephra_tracing::span;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Span
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,8 +66,7 @@ impl<'text> Span<'text> {
     }
 
     /// Constructs a new span covering given source text.
-    pub fn new_enclosing(source: &'text str, a: Pos, b: Pos) -> Self
-    {
+    pub fn new_enclosing(source: &'text str, a: Pos, b: Pos) -> Self {
         let byte = ByteSpan { start: a.byte, end: b.byte };
         let page = PageSpan { start: a.page, end: b.page };
 
@@ -287,6 +285,8 @@ impl<'text> From<&'text SpanOwned> for Span<'text> {
     }
 }
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // ByteSpan
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,7 +388,6 @@ pub struct SpanOwned {
 
 
 impl SpanOwned {
-
     /// Returns the spanned text.
     pub fn text(&self) -> &str {
         &self.source[self.byte.start..self.byte.end]
@@ -513,6 +512,7 @@ impl<'text> From<Span<'text>> for SpanOwned {
         }
     }
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////////////

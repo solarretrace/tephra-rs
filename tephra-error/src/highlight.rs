@@ -12,11 +12,9 @@
 #![allow(missing_docs)]
 
 
-
 // Internal library imports.
 use crate::MessageType;
 use crate::RiserState;
-
 
 // External library imports.
 use colored::Color;
@@ -176,7 +174,6 @@ impl<'text> Highlight<'text> {
                 write!(f, "|")
             },
         }
-
     }
 
     /// Writes the message text for the given line number.

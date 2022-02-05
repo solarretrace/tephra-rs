@@ -116,15 +116,6 @@ impl Scanner for Test {
 // Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
 
-
-/// Performs size checks.
-#[test]
-#[tracing::instrument]
-fn size_checks() {
-    use std::mem::size_of;
-    assert_eq!(176, size_of::<Lexer<'_, Test>>(), "Lexer");
-}
-
 /// Tests `Lexer::new`.
 #[test]
 #[tracing::instrument]

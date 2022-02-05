@@ -105,3 +105,18 @@ Error constructing value
 
 
 
+# New error & span ownership
+
+Separate references to the source text from the spans. The span operations can be applied to arbitrary text sources, allowing for more code sharing between borrowed & owned structs.
+
+Span (text)
+SpanOwned
+Highlight (span)
+HighlightOwned
+SpanDisplay (highlight, span)
+SpanDisplayOwned
+CodeDisplay (span_display)
+CodeDisplayOwned
+ParseError
+ParseErrorOwned
+
