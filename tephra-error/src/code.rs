@@ -48,7 +48,7 @@ pub struct CodeDisplay<'text> {
     /// The source spans to display.
     source_spans: Vec<CodeSpan<'text>>,
     /// Notes to append after the displayed spans.
-    notes: Vec<SourceNote>,
+    notes: Vec<Note>,
     /// Whether colors are enabled during writing.
     color_enabled: bool,
 }
@@ -122,7 +122,7 @@ impl<'text> CodeDisplay<'text> {
     /// Returns the given CodeDisplay with the given note attachment.
     pub fn with_note<N>(mut self, note: N)
         -> Self
-        where N: Into<SourceNote>
+        where N: Into<Note>
     {
         self.notes.push(note.into());
         self
@@ -169,7 +169,7 @@ pub struct CodeSpan<'text> {
     /// The subsets of the displayed text to highlight.
     highlights: Vec<Highlight<'text>>,
     /// Notes to append to the source display.
-    notes: Vec<SourceNote>,
+    notes: Vec<Note>,
     /// The width of the line number gutter.
     gutter_width: u8,
     /// Whether to allow line omissions within the source display.
@@ -229,8 +229,8 @@ impl<'text> CodeSpan<'text> {
         self
     }
 
-    /// Attaches the given SourceNote to the source span.
-    pub fn with_note(mut self, note: SourceNote) -> Self {
+    /// Attaches the given Note to the source span.
+    pub fn with_note(mut self, note: Note) -> Self {
         self.notes.push(note);
         self
     }
@@ -289,18 +289,18 @@ impl<'text> Display for CodeSpan<'text> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// SourceNote
+// Note
 ////////////////////////////////////////////////////////////////////////////////
 /// A note which can be attached to a `CodeSpan` or `CodeDisplay`.
 #[derive(Debug)]
-pub struct SourceNote {
+pub struct Note {
     /// The message type for the note.
     note_type: MessageType,
     /// The note to display.
     note: String,
 }
 
-impl SourceNote {
+impl Note {
     pub(in crate) fn write_with_color_enablement(
         &self,
         f: &mut std::fmt::Formatter<'_>,
@@ -312,7 +312,7 @@ impl SourceNote {
     }
 }
 
-impl Display for SourceNote {
+impl Display for Note {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.write_with_color_enablement(f, true)
     }
