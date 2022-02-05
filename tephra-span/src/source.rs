@@ -12,6 +12,7 @@
 use crate::ColumnMetrics;
 use crate::Pos;
 use crate::IterColumns;
+use crate::Span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,6 +51,15 @@ impl<'text> SourceText<'text> {
     pub fn text(&self) -> &'text str {
         &self.source
     }
+
+    pub fn clip(&self, span: Span) -> Self {
+        SourceText {
+            source: &self.source[span.start().byte..span.end().byte],
+            metrics: self.metrics,
+            offset: span.start(),
+        }
+    }
+
 
     pub fn offset(&self) -> Pos {
         self.offset
@@ -224,6 +234,10 @@ impl SourceTextOwned {
 
     pub fn text(&self) -> &str {
         self.source.as_ref()
+    }
+
+    pub fn clip<'text>(&'text self, span: Span) -> SourceText<'text> {
+        self.as_borrowed().clip(span)
     }
 
     pub fn offset(&self) -> Pos {
