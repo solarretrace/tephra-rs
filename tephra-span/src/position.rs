@@ -44,24 +44,29 @@ impl Pos {
     pub fn is_line_start(self) -> bool {
         self.page.is_line_start()
     }
-}
 
-impl std::ops::Add for Pos {
-    type Output = Self;
 
-    fn add(self, other: Self) -> Self {
+    pub fn shifted(self, other: Self) -> Self {
         Pos {
             byte: self.byte + other.byte,
-            page: self.page + other.page,
+            page: self.page.shifted(other.page),
         }
     }
-}
 
-impl std::ops::AddAssign for Pos {
-    fn add_assign(&mut self, other: Self) {
+    pub fn shift(&mut self, other: Self) {
         self.byte += other.byte;
-        self.page += other.page;
+        self.page.shift(other.page);
     }
+
+    pub(in crate) fn with_byte_offset<F>(mut self, offset: usize, f: F)
+        -> Option<Self> 
+        where F: FnOnce(Self) -> Option<Self>
+    {
+        self.byte -= offset;
+        let res = (f)(self);
+        res.map(|mut r| { r.byte += offset; r })
+    }
+
 }
 
 impl Default for Pos {
@@ -90,6 +95,12 @@ pub struct Page {
     pub column: usize,
 }
 
+impl Default for Page {
+    fn default() -> Self {
+        Page::ZERO
+    }
+}
+
 impl Page {
     /// The start position.
     pub const ZERO: Page = Page { line: 0, column: 0 };
@@ -98,12 +109,8 @@ impl Page {
     pub fn is_line_start(self) -> bool {
         self.column == 0
     }
-}
 
-impl std::ops::Add for Page {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
+    pub fn shifted(self, other: Self) -> Self {
         Page {
             line: self.line + other.line,
             column: if other.is_line_start() || other.line > 0 { 
@@ -113,10 +120,8 @@ impl std::ops::Add for Page {
             },
         }
     }
-}
 
-impl std::ops::AddAssign for Page {
-    fn add_assign(&mut self, other: Self) {
+    pub fn shift(&mut self, other: Self) {
         self.line += other.line;
         if other.is_line_start() || other.line > 0 {
             self.column = other.column;
@@ -126,11 +131,6 @@ impl std::ops::AddAssign for Page {
     }
 }
 
-impl Default for Page {
-    fn default() -> Self {
-        Page::ZERO
-    }
-}
 
 impl std::fmt::Display for Page {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

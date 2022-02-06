@@ -341,8 +341,11 @@ impl std::fmt::Display for PageSpan {
 /// `Span`.
 #[derive(Debug, Clone)]
 pub struct SplitLines<'text> {
+    /// The source text to split.
     source: SourceText<'text>,
+    /// The position to start the split within the source text.
     start: Pos,
+    /// The position to end the split within the source text.
     end: Pos,
 }
 
