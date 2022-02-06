@@ -170,155 +170,181 @@ fn span_offset_full_widen_to_line() {
 }
 
 
-// /// Tests `Span::split_lines`.
-// #[test]
-// #[tracing::instrument]
-// fn span_offset_split_lines() {
-//     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
-//     let source = SourceText::new(TEXT);
-//     let span = source.full_span();
+/// Tests `Span::split_lines`.
+#[test]
+#[tracing::instrument]
+fn span_offset_split_lines() {
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT)
+        .with_start_position(Pos::new(100, 10, 10));
+    let span = source.full_span();
 
-//     let actual = span
-//         .split_lines(source)
-//         .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
-//         .collect::<Vec<_>>();
-//     let expected = vec![
-//         "\"\" (0:0, byte 0)".to_owned(),
-//         "\" \" (1:0-1:1, bytes 1-2)".to_owned(),
-//         "\"\" (2:0, byte 3)".to_owned(),
-//         "\" \" (3:0-3:1, bytes 4-5)".to_owned(),
-//         "\"abcd\" (4:0-4:4, bytes 6-10)".to_owned(),
-//         "\" def \" (5:0-5:5, bytes 11-16)".to_owned(),
-//         "\"ghi\" (6:0-6:3, bytes 17-20)".to_owned(),
-//         "\"\" (7:0, byte 21)".to_owned(),
-//     ];
+    let actual = span
+        .split_lines(source)
+        .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
+        .collect::<Vec<_>>();
+    let expected = vec![
+        "\"\" (10:10, byte 100)".to_owned(),
+        "\" \" (11:0-11:1, bytes 101-102)".to_owned(),
+        "\"\" (12:0, byte 103)".to_owned(),
+        "\" \" (13:0-13:1, bytes 104-105)".to_owned(),
+        "\"abcd\" (14:0-14:4, bytes 106-110)".to_owned(),
+        "\" def \" (15:0-15:5, bytes 111-116)".to_owned(),
+        "\"ghi\" (16:0-16:3, bytes 117-120)".to_owned(),
+        "\"\" (17:0, byte 121)".to_owned(),
+    ];
 
-//     assert_eq!(actual, expected);
-// }
-
-
-// /// Tests `Span::split_lines` with no line breaks.
-// #[test]
-// #[tracing::instrument]
-// fn span_offset_no_breaks_split_line() {
-//     const TEXT: &'static str = "abcd";
-//     let source = SourceText::new(TEXT);
-//     let span = source.full_span();
-
-//     let actual = span
-//         .split_lines(source)
-//         .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
-//         .collect::<Vec<_>>();
-//     let expected = vec![
-//         "\"abcd\" (0:0-0:4, bytes 0-4)".to_owned(),
-//     ];
-
-//     assert_eq!(actual, expected);
-// }
+    assert_eq!(actual, expected);
+}
 
 
-// /// Tests `Span::enclose`.
-// #[test]
-// #[tracing::instrument]
-// fn span_offset_enclose() {
-//     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
-//     let source = SourceText::new(TEXT);
+/// Tests `Span::split_lines` with no line breaks.
+#[test]
+#[tracing::instrument]
+fn span_offset_no_breaks_split_line() {
+    const TEXT: &'static str = "abcd";
+    let source = SourceText::new(TEXT)
+        .with_start_position(Pos::new(100, 10, 10));
+    let span = source.full_span();
 
-//     let a = Span::new_enclosing(
-//         Pos::new(3, 2, 0),
-//         Pos::new(10, 4, 4));
-//     let b = Span::new_enclosing(
-//         Pos::new(5, 3, 1),
-//         Pos::new(20, 6, 3));
-//     let span = a.enclose(b);
+    let actual = span
+        .split_lines(source)
+        .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
+        .collect::<Vec<_>>();
+    let expected = vec![
+        "\"abcd\" (10:10-10:14, bytes 100-104)".to_owned(),
+    ];
 
-//     // Check text clip.
-//     let actual = source.clip(span);
-//     let expected = "\n \nabcd\n def \nghi";
-//     assert_eq!(actual.as_ref(), expected);
-
-//     // Check span display.
-//     let actual = format!("{}", span);
-//     let expected = "2:0-6:3, bytes 3-20";
-//     assert_eq!(actual, expected);
-// }
-
-// /// Tests `Span::union`.
-// #[test]
-// #[tracing::instrument]
-// fn span_offset_union() {
-//     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
-//     let source = SourceText::new(TEXT);
-
-//     let a = Span::new_enclosing(
-//         Pos::new(3, 2, 0),
-//         Pos::new(10, 4, 4));
-//     let b = Span::new_enclosing(
-//         Pos::new(5, 3, 1),
-//         Pos::new(20, 6, 3));
-//     let span = a.union(b).next().unwrap();
-
-//     // Check text clip.
-//     let actual = source.clip(span);
-//     let expected = "\n \nabcd\n def \nghi";
-//     assert_eq!(actual.as_ref(), expected);
-
-//     // Check span display.
-//     let actual = format!("{}", span);
-//     let expected = "2:0-6:3, bytes 3-20";
-//     assert_eq!(actual, expected);
-// }
-
-// /// Tests `Span::intersect`.
-// #[test]
-// #[tracing::instrument]
-// fn span_offset_intersect() {
-//     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
-//     let source = SourceText::new(TEXT);
-
-//     let a = Span::new_enclosing(
-//         Pos::new(3, 2, 0),
-//         Pos::new(10, 4, 4));
-//     let b = Span::new_enclosing(
-//         Pos::new(5, 3, 1),
-//         Pos::new(20, 6, 3));
-//     let span = a.intersect(b).unwrap();
-
-//     // Check text clip.
-//     let actual = source.clip(span);
-//     let expected = "\nabcd";
-//     assert_eq!(actual.as_ref(), expected);
-
-//     // Check span display.
-//     let actual = format!("{}", span);
-//     let expected = "3:1-4:4, bytes 5-10";
-//     assert_eq!(actual, expected);
-// }
-
-// /// Tests `Span::minus`.
-// #[test]
-// #[tracing::instrument]
-// fn span_offset_minus() {
-//     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
-//     let source = SourceText::new(TEXT);
-
-//     let a = Span::new_enclosing(
-//         Pos::new(3, 2, 0),
-//         Pos::new(10, 4, 4));
-//     let b = Span::new_enclosing(
-//         Pos::new(5, 3, 1),
-//         Pos::new(20, 6, 3));
-//     let span = a.minus(b).next().unwrap();
-
-//     // Check text clip.
-//     let actual = source.clip(span);
-//     let expected = "\n ";
-//     assert_eq!(actual.as_ref(), expected);
-
-//     // Check span display.
-//     let actual = format!("{}", span);
-//     let expected = "2:0-3:1, bytes 3-5";
-//     assert_eq!(actual, expected);
-// }
+    assert_eq!(actual, expected);
+}
 
 
+/// Tests `Span::enclose`.
+#[test]
+#[tracing::instrument]
+fn span_offset_enclose() {
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT)
+        .with_start_position(Pos::new(100, 10, 10));
+
+    let a = Span::new_enclosing(
+        Pos::new(103, 12, 0),
+        Pos::new(110, 14, 4));
+    let b = Span::new_enclosing(
+        Pos::new(105, 13, 1),
+        Pos::new(120, 16, 3));
+    let span = a.enclose(b);
+
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "\n \nabcd\n def \nghi";
+    assert_eq!(actual.as_ref(), expected);
+
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "12:0-16:3, bytes 103-120";
+    assert_eq!(actual, expected);
+}
+
+/// Tests `Span::union`.
+#[test]
+#[tracing::instrument]
+fn span_offset_union() {
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT)
+        .with_start_position(Pos::new(100, 10, 10));
+
+    let a = Span::new_enclosing(
+        Pos::new(103, 12, 0),
+        Pos::new(110, 14, 4));
+    let b = Span::new_enclosing(
+        Pos::new(105, 13, 1),
+        Pos::new(120, 16, 3));
+    let span = a.union(b).next().unwrap();
+
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "\n \nabcd\n def \nghi";
+    assert_eq!(actual.as_ref(), expected);
+
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "12:0-16:3, bytes 103-120";
+    assert_eq!(actual, expected);
+}
+
+/// Tests `Span::intersect`.
+#[test]
+#[tracing::instrument]
+fn span_offset_intersect() {
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT)
+        .with_start_position(Pos::new(100, 10, 10));
+
+    let a = Span::new_enclosing(
+        Pos::new(103, 12, 0),
+        Pos::new(110, 14, 4));
+    let b = Span::new_enclosing(
+        Pos::new(105, 13, 1),
+        Pos::new(120, 16, 3));
+    let span = a.intersect(b).unwrap();
+
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "\nabcd";
+    assert_eq!(actual.as_ref(), expected);
+
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "13:1-14:4, bytes 105-110";
+    assert_eq!(actual, expected);
+}
+
+/// Tests `Span::minus`.
+#[test]
+#[tracing::instrument]
+fn span_offset_minus() {
+    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT)
+        .with_start_position(Pos::new(100, 10, 10));
+
+    let a = Span::new_enclosing(
+        Pos::new(103, 12, 0),
+        Pos::new(110, 14, 4));
+    let b = Span::new_enclosing(
+        Pos::new(105, 13, 1),
+        Pos::new(120, 16, 3));
+    let span = a.minus(b).next().unwrap();
+
+    // Check text clip.
+    let actual = source.clip(span);
+    let expected = "\n ";
+    assert_eq!(actual.as_ref(), expected);
+
+    // Check span display.
+    let actual = format!("{}", span);
+    let expected = "12:0-13:1, bytes 103-105";
+    assert_eq!(actual, expected);
+}
+
+
+
+/// Tests `SourceText::iter_columns` for `Lf`.
+#[test]
+#[tracing::instrument]
+fn source_text_lf_iter_columns() {
+    const TEXT: &'static str = "abcd";
+    let source = SourceText::new(TEXT)
+        .with_start_position(Pos::new(100, 10, 10));
+
+    let actual: Vec<_> = source.iter_columns(Pos::ZERO)
+        .collect();
+
+    let expected = vec![
+        ("a", Pos::new(1, 0, 1)),
+        ("b", Pos::new(2, 0, 2)),
+        ("c", Pos::new(3, 0, 3)),
+        ("d", Pos::new(4, 0, 4)),
+    ];
+    assert_eq!(actual, expected);
+}

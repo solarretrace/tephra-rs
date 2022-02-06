@@ -301,3 +301,22 @@ fn span_basic_minus() {
 }
 
 
+
+/// Tests `SourceText::iter_columns` for `Lf`.
+#[test]
+#[tracing::instrument]
+fn source_text_lf_iter_columns() {
+    const TEXT: &'static str = "abcd";
+    let source = SourceText::new(TEXT);
+
+    let actual: Vec<_> = source.iter_columns(Pos::ZERO)
+        .collect();
+
+    let expected = vec![
+        ("a", Pos::new(1, 0, 1)),
+        ("b", Pos::new(2, 0, 2)),
+        ("c", Pos::new(3, 0, 3)),
+        ("d", Pos::new(4, 0, 4)),
+    ];
+    assert_eq!(actual, expected);
+}
