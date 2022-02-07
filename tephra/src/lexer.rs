@@ -29,7 +29,7 @@ use tephra_tracing::span;
 // Standard library imports.
 use std::fmt::Debug;
 use std::fmt::Display;
-use std::sync::Arc;
+use std::rc::Rc;
 
 
 
@@ -63,7 +63,7 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
     source: SourceText<'text>,
     /// The token inclusion filter. Any token for which this returns false will
     /// be skipped automatically.
-    filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>,
+    filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>,
     /// The error sink.
     error_sink: Option<ErrorSink>,
 
@@ -153,9 +153,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Sends a `ParseError` to the sink target, wrapping it in any available
     /// `ErrorContext`s.
     ///
-    /// Returns an error if the internal sink [Mutex] has been poisoned.
+    /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
-    /// [Mutex]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html
+    /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
     pub fn send<'a, 't>(&'a self, parse_error: ParseError<'t>)
         -> Result<(), Box<dyn std::error::Error + 'a>>
     {
@@ -172,9 +172,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Sends a `ParseError` to the sink target without wrapping it in any
     /// `ErrorContext`s.
     ///
-    /// Returns an error if the internal sink [Mutex] has been poisoned.
+    /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
-    /// [Mutex]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html
+    /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
     pub fn send_direct<'a, 't>(&'a self,
         parse_error: ParseError<'t>)
         -> Result<(), Box<dyn std::error::Error + 'a>>
@@ -193,9 +193,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Pushes a new `ErrorContext` onto the context stack, allowing any further
     /// `ParseError`s to be processed by them. 
     ///
-    /// Returns an error if the internal sink [Mutex] has been poisoned.
+    /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
-    /// [Mutex]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html
+    /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
     pub fn push_context<'a>(&'a mut self, error_context: ErrorContext) 
         -> Result<(), Box<dyn std::error::Error + 'a>>
     {
@@ -211,9 +211,9 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Pops the top `ErrorContext` from the context stack.
     ///
-    /// Returns an error if the internal sink [Mutex] has been poisoned.
+    /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
-    /// [Mutex]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html
+    /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
     pub fn pop_context<'a>(&'a mut self) 
         -> Result<Option<ErrorContext>, Box<dyn std::error::Error + 'a>>
     {
@@ -260,11 +260,11 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn set_filter_fn<F>(&mut self, filter: F) 
         where F: for<'a> Fn(&'a Sc::Token) -> bool + 'static
     {
-        self.set_filter(Some(Arc::new(filter)));
+        self.set_filter(Some(Rc::new(filter)));
     }
 
     /// Returns the token filter, removing it from the lexer.
-    pub fn take_filter(&mut self) -> Option<Arc<dyn Fn(&Sc::Token) -> bool>>
+    pub fn take_filter(&mut self) -> Option<Rc<dyn Fn(&Sc::Token) -> bool>>
     {
         self.cursor = self.end;
         self.buffer = None;
@@ -274,7 +274,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Sets the token filter directly.
     pub fn set_filter(
         &mut self,
-        filter: Option<Arc<dyn Fn(&Sc::Token) -> bool>>)
+        filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>)
     {
         self.filter = filter;
         self.scan_to_buffer();

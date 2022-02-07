@@ -18,7 +18,18 @@ Different parser designs may be able to accomodate different data formats. In or
 ## Do not box/own all parse errors.
 ## Impl `PartialEq` on results for testing.
 ## Return value, lexer on success.
+
 ## Don't use generics for column metrics.
+Generics for column metrics makes it impossible to build a lexer that can auto-detect or change line endings or tab stops during a parse, and bloats the API.
+
+## Separate spans from source text.
+
+Spans and the source text they cover should be separated in order to allow error structures to refer to spans without carrying the source text lifetime. This makes it much simpler to provide ownership over errors and error formatting structures, as well as potentially more efficient copying of text when error ownership is desired. If spans refer to the source text, the entirety of error formatting code must be duplicated to provide owned variants, or else the owned variant must be pre-rendered and inflexable.
+
+## Source Text carries column metrics.
+
+Due to the above two decisions, column metrics should be associated with the source text. Anything which calculates spans must eventually have access to the column metrics, and the column metrics must compute using the source text, so it makes sense to bundle them together for all span-centric operations, which is nearly everything lexing and error construction code does.
+
 
 ## Join spans by default, explicitely separate them.
 
