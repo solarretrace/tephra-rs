@@ -23,12 +23,14 @@ use colored::Colorize as _;
 use tephra_span::ColumnMetrics;
 use tephra_span::Span;
 use tephra_span::SplitLines;
+use tephra_span::SourceText;
 use tephra_tracing::event;
 use tephra_tracing::Level;
 use tephra_tracing::span;
 
 // Standard library imports.
 use std::borrow::Cow;
+use std::fmt::Write;
 use std::borrow::Borrow as _;
 use std::fmt::Display;
 
@@ -38,7 +40,7 @@ use std::fmt::Display;
 ////////////////////////////////////////////////////////////////////////////////
 /// A structure for displaying source text with spans, notes, and highlights.
 #[derive(Debug)]
-pub struct CodeDisplay<'text> {
+pub struct CodeDisplay {
     /// The top-level description for all of the spans.
     message: String,
     /// The overall message type for all of the spans.
@@ -46,14 +48,14 @@ pub struct CodeDisplay<'text> {
     /// An error number or warning code to print.
     code_id: Option<&'static str>,
     /// The spans to display.
-    span_displays: Vec<SpanDisplay<'text>>,
+    span_displays: Vec<SpanDisplay>,
     /// Notes to append after the displayed spans.
     notes: Vec<Note>,
     /// Whether colors are enabled during writing.
     color_enabled: bool,
 }
 
-impl<'text> CodeDisplay<'text> {
+impl CodeDisplay {
     /// Constructs a new info-type CodeDisplay with the given description.
     pub fn new<M>(message: M) -> Self 
         where M: Into<String>,
@@ -73,6 +75,7 @@ impl<'text> CodeDisplay<'text> {
         self.color_enabled = color_enabled;
         self
     }
+
 
     /// Returns the given CodeDisplay with the error MessageType.
     pub fn with_error_type(mut self) -> Self {
@@ -113,7 +116,7 @@ impl<'text> CodeDisplay<'text> {
     /// Returns the given CodeDisplay with the given SpanDisplay attachment.
     pub fn with_span_display<S>(mut self, span_display: S)
         -> Self
-        where S: Into<SpanDisplay<'text>>
+        where S: Into<SpanDisplay>
     {
         self.span_displays.push(span_display.into());
         self
@@ -130,7 +133,7 @@ impl<'text> CodeDisplay<'text> {
 
     /// Returns the given CodeDisplay with the given SpanDisplay attachment.
     pub fn push_span_display<S>(&mut self, span_display: S)
-        where S: Into<SpanDisplay<'text>>
+        where S: Into<SpanDisplay>
     {
         self.span_displays.push(span_display.into());
     }
@@ -146,92 +149,101 @@ impl<'text> CodeDisplay<'text> {
     pub fn message(&self) -> &str {
         self.message.as_str()
     }
-}
 
-impl<'text> Display for CodeDisplay<'text> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.color_enabled {
-            write!(f, "{}", self.message_type)?;
+    pub fn write<W>(
+        &self,
+        out: &mut W,
+        source: SourceText<'_>)
+        -> std::fmt::Result
+        where W: Write
+    {
+        self.write_with_color_enablement(out, source, self.color_enabled)
+    }
+
+    pub(in crate) fn write_with_color_enablement<W>(
+        &self,
+        out: &mut W,
+        source: SourceText<'_>,
+        color_enabled: bool)
+        -> std::fmt::Result
+        where W: Write
+    {
+        if color_enabled {
+            write!(out, "{}", self.message_type)?;
             if let Some(code_id) = self.code_id {
-                write!(f, "[{}]", code_id)?;
+                write!(out, "[{}]", code_id)?;
             }
-            writeln!(f, "{} {}",
+            writeln!(out, "{} {}",
                 ":".bright_white().bold(),
                 self.message.bright_white().bold())?;
         } else {
             self.message_type
-                .write_with_color_enablement(f, self.color_enabled)?;
-            writeln!(f, ": {}", self.message)?;
+                .write_with_color_enablement(out, color_enabled)?;
+            writeln!(out, ": {}", self.message)?;
         }
         for span_display in &self.span_displays {
-            span_display.write_with_color_enablement(f, self.color_enabled)?;
+            span_display
+                .write_with_color_enablement(out, source, color_enabled)?;
         }
         for note in &self.notes {
-            note.write_with_color_enablement(f, self.color_enabled)?;
+            note.write_with_color_enablement(out, color_enabled)?;
         }
         Ok(())
     }
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // SpanDisplay
 ////////////////////////////////////////////////////////////////////////////////
 /// A single span of source text with notes and highlights.
 #[derive(Debug)]
-pub struct SpanDisplay<'text> {
+pub struct SpanDisplay {
     /// The name of the file or data that is being displayed.
     source_name: Option<String>,
     /// The column metrics for the source,
     metrics: ColumnMetrics,
     /// The full text span of the displayed source.
-    span: Span<'text>,
+    span: Span,
     /// The subsets of the displayed text to highlight.
-    highlights: Vec<Highlight<'text>>,
+    highlights: Vec<Highlight>,
     /// Notes to append to the source display.
     notes: Vec<Note>,
     /// The width of the line number gutter.
     gutter_width: u8,
     /// Whether to allow line omissions within the source display.
     allow_omissions: bool,
-    /// Whether colors are enabled during writing.
-    color_enabled: bool,
 }
 
-impl<'text> SpanDisplay<'text> {
+impl SpanDisplay {
     /// Constructs a new SpanDisplay with the given span.
-    pub fn new(span: Span<'text>, metrics: ColumnMetrics) -> Self {
+    pub fn new(source: SourceText<'_>, span: Span) -> Self {
         let gutter_width = std::cmp::max(
             (span.end().page.line as f32).log10().ceil() as u8, 1);
 
         SpanDisplay {
             source_name: None,
-            metrics,
-            span: span.widen_to_line(metrics),
+            metrics: source.column_metrics(),
+            span: span.widen_to_line(source),
             highlights: Vec::with_capacity(2),
             notes: Vec::new(),
             allow_omissions: true,
             gutter_width,
-            color_enabled: true,
         }
     }
 
     /// Constructs a new SpanDisplay with the given span and highlight message.
     pub fn new_error_highlight<M>(
-        span: Span<'text>,
-        message: M,
-        metrics: ColumnMetrics)
+        source: SourceText<'_>, 
+        span: Span,
+        message: M)
         -> Self
         where M: Into<String>,
     {
-        SpanDisplay::new(span, metrics)
+        SpanDisplay::new(source, span)
             .with_highlight(Highlight::new(span, message)
                 .with_error_type())
-    }
-
-    /// Returns the given CodeDisplay with the given color enablement.
-    pub fn with_color(mut self, color_enabled: bool) -> Self {
-        self.color_enabled = color_enabled;
-        self
     }
 
     /// Returns the given SpanDisplay with the given source name.
@@ -243,7 +255,7 @@ impl<'text> SpanDisplay<'text> {
     }
 
     /// Attaches the given Highlight to the source span.
-    pub fn with_highlight(mut self, highlight: Highlight<'text>) -> Self {
+    pub fn with_highlight(mut self, highlight: Highlight) -> Self {
         self.highlights.push(highlight);
         self
     }
@@ -254,11 +266,13 @@ impl<'text> SpanDisplay<'text> {
         self
     }
 
-    pub(in crate) fn write_with_color_enablement(
+    pub(in crate) fn write_with_color_enablement<W>(
         &self,
-        f: &mut std::fmt::Formatter<'_>,
+        out: &mut W,
+        source: SourceText<'_>,
         color_enabled: bool)
         -> std::fmt::Result
+        where W: Write
     {
         let _span = span!(Level::TRACE, "SpanDisplay", color_enabled).entered();
 
@@ -268,7 +282,7 @@ impl<'text> SpanDisplay<'text> {
         };
 
         if color_enabled {
-            writeln!(f, "{:width$}{} {}{}({})",
+            writeln!(out, "{:width$}{} {}{}({})",
                 "",
                 "-->".bright_blue().bold(),
                 source_name,
@@ -276,7 +290,7 @@ impl<'text> SpanDisplay<'text> {
                 self.span,
                 width=self.gutter_width as usize)?;
         } else {
-            writeln!(f, "{:width$}--> {}{}({})",
+            writeln!(out, "{:width$}--> {}{}({})",
                 "",
                 source_name,
                 sep,
@@ -285,27 +299,22 @@ impl<'text> SpanDisplay<'text> {
         }
 
         MultiSplitLines::new(
-            self.span,
-            &self.highlights[..],
-            self.gutter_width,
-            self.metrics)
-            .write_with_color_enablement(f, color_enabled)?;
+                source,
+                self.span,
+                &self.highlights[..],
+                self.gutter_width)
+            .write_with_color_enablement(out, source, color_enabled)?;
 
         for note in &self.notes {
-            write!(f, "{:width$} = ", "", width=self.gutter_width as usize)?;
-            note.write_with_color_enablement(f, color_enabled)?;
-            writeln!(f)?;
+            write!(out, "{:width$} = ", "", width=self.gutter_width as usize)?;
+            note.write_with_color_enablement(out, color_enabled)?;
+            writeln!(out)?;
         }
 
         Ok(())
     }
 }
 
-impl<'text> Display for SpanDisplay<'text> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.write_with_color_enablement(f, self.color_enabled)
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Note
@@ -320,14 +329,15 @@ pub struct Note {
 }
 
 impl Note {
-    pub(in crate) fn write_with_color_enablement(
+    pub(in crate) fn write_with_color_enablement<W>(
         &self,
-        f: &mut std::fmt::Formatter<'_>,
+        out: &mut W,
         color_enabled: bool)
         -> std::fmt::Result
+        where W: Write
     {
-        self.note_type.write_with_color_enablement(f, color_enabled)?;
-        write!(f, ": {}", self.note)
+        self.note_type.write_with_color_enablement(out, color_enabled)?;
+        write!(out, ": {}", self.note)
     }
 }
 
@@ -336,6 +346,7 @@ impl Display for Note {
         self.write_with_color_enablement(f, true)
     }
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -347,7 +358,7 @@ struct MultiSplitLines<'text, 'hl> {
     /// The SplitLines iterator for the `SpanDisplay`.
     source_lines: SplitLines<'text>,
     /// The highlights contained within the SpanDisplay.
-    highlights: &'hl [Highlight<'text>],
+    highlights: &'hl [Highlight],
     /// The width of the line number gutter.
     gutter_width: u8,
     /// The width of the highlight riser gutter.
@@ -358,10 +369,10 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
     /// Constructs a new MultiSplitLines from the given source span and
     /// highlights.
     pub(in crate) fn new(
-        span_display: Span<'text>,
-        highlights: &'hl [Highlight<'text>],
-        gutter_width: u8,
-        metrics: ColumnMetrics)
+        source: SourceText<'text>,
+        span_display: Span,
+        highlights: &'hl [Highlight],
+        gutter_width: u8)
         -> Self
     {
         let _span = span!(Level::TRACE, "new").entered();
@@ -374,7 +385,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
             .expect("riser width < 255");
         event!(Level::TRACE, "riser_width = {riser_width}");
 
-        let source_lines = span_display.split_lines(metrics);
+        let source_lines = span_display.split_lines(source);
 
         MultiSplitLines {
             source_lines,
@@ -385,18 +396,20 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
     }
 
     /// Consumes the MultiSplitLines and writes all of the contained data.
-    pub(in crate) fn write_with_color_enablement(
+    pub(in crate) fn write_with_color_enablement<W>(
         mut self,
-        f: &mut std::fmt::Formatter<'_>,
+        out: &mut W,
+        source: SourceText<'text>,
         color_enabled: bool)
         -> std::fmt::Result
+        where W: Write
     {
         let _span = span!(Level::TRACE, "MultiSplitLines", color_enabled)
             .entered();
 
         // Write empty line to uncramp the display.
-        write_gutter(f, "", self.gutter_width, color_enabled)?;
-        writeln!(f)?;
+        write_gutter(out, "", self.gutter_width, color_enabled)?;
+        writeln!(out)?;
 
         let mut riser_states = Vec::with_capacity(self.highlights.len());
         for hl in self.highlights {
@@ -414,35 +427,35 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
             let current_line = span.start().page.line;
 
             // Write gutter for source line.
-            write_gutter(f, current_line, self.gutter_width, color_enabled)?;
+            write_gutter(out, current_line, self.gutter_width, color_enabled)?;
 
             // Write risers for source line.
             let mut any_multiline = false;
             for (idx, hl) in self.highlights.iter().enumerate() {
                 hl.write_riser_for_line(
-                    f,
+                    out,
                     current_line,
                     &mut riser_states[idx],
                     false,
                     color_enabled)?;
                 if hl.is_multiline() { any_multiline = true; }
             }
-            if any_multiline { write!(f, " "); }
+            if any_multiline { write!(out, " "); }
 
             // Write source text.
-            writeln!(f, "{}", span.text())?;
+            writeln!(out, "{}", source.clip(span).as_ref())?;
 
             for (message_idx, message_hl) in self.highlights.iter().enumerate()
             {
                 if !message_hl.has_message_for_line(current_line) { continue; }
 
                 // Write message gutter.
-                write_gutter(f, "", self.gutter_width, color_enabled)?;
+                write_gutter(out, "", self.gutter_width, color_enabled)?;
                 
                 for (idx, hl) in self.highlights.iter().enumerate() {
                     // Write message risers.
                     hl.write_riser_for_line(
-                        f,
+                        out,
                         current_line,
                         &mut riser_states[idx],
                         message_idx == idx,
@@ -451,7 +464,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
                 
                 // Write message.
                 message_hl.write_message_for_line(
-                    f,
+                    out,
                     current_line,
                     any_multiline,
                     color_enabled)?;
@@ -461,39 +474,39 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
     }
 }
 
-fn write_gutter<V>(
-    f: &mut std::fmt::Formatter<'_>,
+fn write_gutter<V, W>(
+    out: &mut W,
     value: V,
     width: u8,
     color_enabled: bool)
     -> std::fmt::Result
-    where V: Display
+    where V: Display, W: Write
 {
     if color_enabled {
-        write!(f, "{:>width$} {} ",
+        write!(out, "{:>width$} {} ",
             format!("{}", value).bright_blue().bold(),
             "|".bright_blue().bold(),
             width=width as usize)
     } else {
-        write!(f, "{:>width$} | ", value, width=width as usize)
+        write!(out, "{:>width$} | ", value, width=width as usize)
     }
 }
 
-fn write_gutter_omit<V>(
-    f: &mut std::fmt::Formatter<'_>,
+fn write_gutter_omit<V, W>(
+    out: &mut W,
     value: V,
     width: u8,
     color_enabled: bool)
     -> std::fmt::Result
-    where V: Display
+    where V: Display, W: Write
 {
     if color_enabled {
-        write!(f, "{:>width$}{}",
+        write!(out, "{:>width$}{}",
             "",
             "...".bright_blue().bold(),
             width=width as usize)
     } else {
-        write!(f, "{:>width$}...", "", width=width as usize)
+        write!(out, "{:>width$}...", "", width=width as usize)
     }
 }
 

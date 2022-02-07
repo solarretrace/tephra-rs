@@ -53,13 +53,13 @@ pub fn context<'text, Sc, F, V>(
                 Ok(succ)
             },
             Err(fail) => {
-                let section_error = ParseError::new("parse error")
+                let section_error = ParseError::from("parse error")
                     .with_span_display(SpanDisplay::new_error_highlight(
+                        lexer.source(),
                         lexer.clone()
                             .join(fail.lexer.clone())
                             .parse_span(),
-                        format!("during this {}", context),
-                        lexer.column_metrics()));
+                        format!("during this {}", context)));
                 Err(fail.with_context(section_error))
             },
         }
@@ -94,13 +94,13 @@ pub fn context_commit<'text, Sc, F, V>(
             Ok(succ) => Ok(succ.map_value(Some)),
             
             Err(fail) if fail.lexer.cursor_pos() > current_cursor => {
-                let section_error = ParseError::new("parse error")
+                let section_error = ParseError::from("parse error")
                     .with_span_display(SpanDisplay::new_error_highlight(
+                        lexer.source(),
                         lexer.clone()
                             .join(fail.lexer.clone())
                             .parse_span(),
-                        format!("during this {}", context),
-                        lexer.column_metrics()));
+                        format!("during this {}", context)));
                 Err(fail.with_context(section_error))
             },
 
@@ -316,7 +316,7 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
         {
             Ok(succ) => {
                 let end = succ.lexer.end_pos().byte;
-                let value = &succ.lexer.source_text()[start..end];
+                let value = &succ.lexer.source().as_str()[start..end];
 
                 Ok(Success {
                     lexer: succ.lexer,
@@ -332,7 +332,7 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
 /// A combinator which includes the span of the parsed value.
 pub fn spanned<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>)
-        -> ParseResult<'text, Sc, Spanned<'text, V>>
+        -> ParseResult<'text, Sc, Spanned<V>>
     where
         Sc: Scanner,
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,

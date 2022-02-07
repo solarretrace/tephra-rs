@@ -61,9 +61,9 @@ pub fn fail<'text, Sc>(mut lexer: Lexer<'text, Sc>)
             event!(Level::TRACE, "success converted to failure");
             Err(Failure::new(
                 ParseError::unexpected_token(
+                    lexer.source(),
                     lexer.token_span(),
-                    &token,
-                    lexer.column_metrics()),
+                    &token),
                 lexer
             ))
         },
@@ -71,8 +71,8 @@ pub fn fail<'text, Sc>(mut lexer: Lexer<'text, Sc>)
             event!(Level::TRACE, "no tokens");
             Err(Failure::new(
                 ParseError::unexpected_end_of_text(
-                    lexer.end_span(),
-                    lexer.column_metrics()),
+                    lexer.source(),
+                    lexer.end_span()),
                 lexer
             ))
         },
@@ -126,8 +126,8 @@ pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
         event!(Level::TRACE, "end of text not found");
         Err(Failure::new(
             ParseError::expected_end_of_text(
-                lexer.end_span(),
-                lexer.column_metrics()),
+                lexer.source(),
+                lexer.end_span()),
             lexer
         ))
     }
@@ -154,8 +154,8 @@ pub fn one<'text, Sc>(token: Sc::Token)
             // Unexpected End-of-text.
             return Err(Failure::new(
                 ParseError::unexpected_end_of_text(
-                    lexer.end_span(),
-                    lexer.column_metrics()),
+                    lexer.source(),
+                    lexer.end_span()),
                 lexer
             ));
         }
@@ -166,8 +166,8 @@ pub fn one<'text, Sc>(token: Sc::Token)
                 event!(Level::TRACE, "lexer error");
                 Err(Failure::new(
                     ParseError::unrecognized_token(
-                        lexer.end_span(),
-                        lexer.column_metrics()),
+                        lexer.source(),
+                        lexer.end_span()),
                     lexer,
                 ))
             },
@@ -187,9 +187,9 @@ pub fn one<'text, Sc>(token: Sc::Token)
                 event!(Level::TRACE, "incorrect token {{found={:?}}}", lex);
                 Err(Failure::new(
                     ParseError::unexpected_token(
+                        lexer.source(),
                         lexer.token_span(),
-                        &token,
-                        lexer.column_metrics()),
+                        &token),
                     lexer,
                 ))
             },
@@ -221,8 +221,8 @@ pub fn any<'text, Sc>(tokens: &[Sc::Token])
                 // Lexer error.
                 None => return Err(Failure::new(
                     ParseError::unrecognized_token(
-                        lexer.end_span(),
-                        lexer.column_metrics()),
+                        lexer.source(),
+                        lexer.end_span()),
                     lexer
                 )),
 
@@ -240,9 +240,9 @@ pub fn any<'text, Sc>(tokens: &[Sc::Token])
 
         Err(Failure::new(
             ParseError::unexpected_token(
+                lexer.source(),
                 lexer.token_span(),
-                format!("one of {}", DisplayList(&tokens[..])),
-                lexer.column_metrics()),
+                format!("one of {}", DisplayList(&tokens[..]))),
             lexer
         ))
     }
@@ -307,8 +307,8 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
                 // Unexpected End-of-text.
                 return Err(Failure::new(
                     ParseError::unexpected_end_of_text(
-                        lexer.end_span(),
-                        lexer.column_metrics()),
+                        lexer.source(),
+                        lexer.end_span()),
                     lexer
                 ));
             }
@@ -317,8 +317,8 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
                 // Lexer error.
                 None => return Err(Failure::new(
                     ParseError::unrecognized_token(
-                        lexer.end_span(),
-                        lexer.column_metrics()),
+                        lexer.source(),
+                        lexer.end_span()),
                     lexer
                 )),
 
@@ -328,9 +328,9 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
                 // Incorrect token.
                 Some(_) => return Err(Failure::new(
                     ParseError::unexpected_token(
+                        lexer.source(),
                         lexer.token_span(),
-                        &token,
-                        lexer.column_metrics()),
+                        &token),
                     lexer
                 )),
             }

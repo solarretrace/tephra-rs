@@ -30,15 +30,18 @@ use tephra_tracing::span;
 use std::borrow::Cow;
 use std::borrow::Borrow as _;
 use std::fmt::Display;
+use std::fmt::Write;
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Highlight
 ////////////////////////////////////////////////////////////////////////////////
 /// A highlighted subsection of a `SpanDisplay`.
 #[derive(Debug)]
-pub struct Highlight<'text> {
+pub struct Highlight {
     /// The span to highlight.
-    span: Span<'text>,
+    span: Span,
     /// The message to display at the start of the span.
     start_message: Option<String>,
     /// The message to display at the end of the span.
@@ -50,9 +53,9 @@ pub struct Highlight<'text> {
 }
 
 
-impl<'text> Highlight<'text> {
+impl Highlight {
     /// Constructs a new Highlight with the given span and message.
-    pub fn new<M>(span: Span<'text>, message: M) -> Self
+    pub fn new<M>(span: Span, message: M) -> Self
         where M: Into<String>,
     {
         Highlight {
@@ -117,14 +120,15 @@ impl<'text> Highlight<'text> {
     }
 
     /// Writes the riser symbol for the given line number.
-    pub(in crate) fn write_riser_for_line(
+    pub(in crate) fn write_riser_for_line<W>(
         &self,
-        f: &mut std::fmt::Formatter<'_>,
+        out: &mut W,
         current_line: usize,
         riser_state: &mut RiserState,
         is_active_riser: bool,
         color_enabled: bool)
         -> std::fmt::Result
+        where W: Write
     {
         let _span = span!(Level::TRACE, "write_riser_for_line").entered();
 
@@ -134,7 +138,7 @@ impl<'text> Highlight<'text> {
         match *riser_state {
             RiserState::Unused  => Ok(()),
 
-            RiserState::Ended   => write!(f, " "),
+            RiserState::Ended   => write!(out, " "),
 
             RiserState::Waiting => if !is_active_riser 
                 && self.span.start().page.column == 0
@@ -142,17 +146,17 @@ impl<'text> Highlight<'text> {
             {
                 *riser_state = RiserState::Started;
                 if color_enabled {
-                    write!(f, "{}", "/".color(self.message_type.color()))
+                    write!(out, "{}", "/".color(self.message_type.color()))
                 } else {
-                    write!(f, "/")
+                    write!(out, "/")
                 }
 
             } else if self.has_message_for_line(current_line) {
                 *riser_state = RiserState::Started;
-                write!(f, " ")
+                write!(out, " ")
 
             } else {
-                write!(f, " ")
+                write!(out, " ")
             },
 
             RiserState::Started => if !is_active_riser 
@@ -161,29 +165,30 @@ impl<'text> Highlight<'text> {
             {
                 *riser_state = RiserState::Ended;
                 if color_enabled {
-                    write!(f, "{}", "\\".color(self.message_type.color()))
+                    write!(out, "{}", "\\".color(self.message_type.color()))
                 } else {
-                    write!(f, "\\")
+                    write!(out, "\\")
                 }
 
             } else if self.has_message_for_line(current_line) {
                 if is_active_riser { *riser_state = RiserState::Ended; }
-                write!(f, "|")
+                write!(out, "|")
 
             } else {
-                write!(f, "|")
+                write!(out, "|")
             },
         }
     }
 
     /// Writes the message text for the given line number.
-    pub(in crate) fn write_message_for_line(
+    pub(in crate) fn write_message_for_line<W>(
         &self,
-        f: &mut std::fmt::Formatter<'_>,
+        out: &mut W,
         line: usize,
         write_extra_riser_spacer: bool,
         color_enabled: bool)
         -> std::fmt::Result
+        where W: Write
     {
         let _span = span!(Level::TRACE,
                 "write_message_for_line",
@@ -193,15 +198,15 @@ impl<'text> Highlight<'text> {
         if self.span.start().page.line == line
             && self.span.end().page.line == line
         {
-            if write_extra_riser_spacer { write!(f, " ")?; }
+            if write_extra_riser_spacer { write!(out, " ")?; }
             for _ in 0..self.span.start().page.column {
-                write!(f, " ")?;
+                write!(out, " ")?;
             }
             if self.span.is_empty() {
                 if color_enabled {
-                    write!(f, "{}", "\\".color(self.message_type.color()))?;
+                    write!(out, "{}", "\\".color(self.message_type.color()))?;
                 } else {
-                    write!(f, "\\")?;
+                    write!(out, "\\")?;
                 }
             } else {
                 let mut underline_count = std::cmp::max(
@@ -211,86 +216,87 @@ impl<'text> Highlight<'text> {
                     1);
                 for _ in 0..underline_count {
                     if color_enabled {
-                        write!(f, "{}", self.message_type
+                        write!(out, "{}", self.message_type
                             .underline()
                             .color(self.message_type.color()))?;
                     } else {
-                        write!(f, "{}", self.message_type.underline())?;
+                        write!(out, "{}", self.message_type
+                            .underline())?;
                     }
                 }
             }
             match (&self.start_message, &self.end_message) {
                 (Some(msg), None)      | 
                 (None,      Some(msg)) => if color_enabled {
-                    writeln!(f, " {}", msg.color(self.message_type.color()))?
+                    writeln!(out, " {}", msg.color(self.message_type.color()))?
                 } else {
-                    writeln!(f, " {}", msg)?
+                    writeln!(out, " {}", msg)?
                 },
                 (Some(fst), Some(snd)) => unimplemented!(),
-                (None,      None)      => writeln!(f, "")?,
+                (None,      None)      => writeln!(out, "")?,
             }
 
         }  else if self.span.start().page.line == line {
             if write_extra_riser_spacer {
                 if color_enabled {
-                    write!(f, "{}", "_".color(self.message_type.color()))?;
+                    write!(out, "{}", "_".color(self.message_type.color()))?;
                 } else {
-                    write!(f, "_")?;
+                    write!(out, "_")?;
                 }
             }
             if self.span.start().page.column > 0 {
                 for _ in 0..(self.span.start().page.column - 1) {
                     if color_enabled {
-                        write!(f, "{}", "_".color(self.message_type.color()))?;
+                        write!(out, "{}", "_".color(self.message_type.color()))?;
                     } else {
-                        write!(f, "_")?;
+                        write!(out, "_")?;
                     }
                 }
             }
             if color_enabled {
-                write!(f, "{}", "^".color(self.message_type.color()))?;
+                write!(out, "{}", "^".color(self.message_type.color()))?;
             } else {
-                write!(f, "^")?;
+                write!(out, "^")?;
             }
             match &self.start_message {
                 Some(msg) => if color_enabled {
-                    writeln!(f, " {}", msg.color(self.message_type.color()))?;
+                    writeln!(out, " {}", msg.color(self.message_type.color()))?;
                 } else {
-                    write!(f, " {}", msg)?;
+                    write!(out, " {}", msg)?;
                 },
-                None      => writeln!(f, "")?,
+                None      => writeln!(out, "")?,
             }
             
         } else if self.span.end().page.line == line {
             if write_extra_riser_spacer {
                 if color_enabled {
-                    write!(f, "{}", "_".color(self.message_type.color()))?;
+                    write!(out, "{}", "_".color(self.message_type.color()))?;
                 } else {
-                    write!(f, "_")?;
+                    write!(out, "_")?;
                 }
             }
             if self.span.end().page.column > 0 {
                 for _ in 0..(self.span.end().page.column - 1) {
                     if color_enabled {
-                        write!(f, "{}", "_".color(self.message_type.color()))?;
+                        write!(out, "{}", "_".color(self.message_type.color()))?;
                     } else {
-                        write!(f, "_")?;
+                        write!(out, "_")?;
                     }
                 }
             }
             if color_enabled {
-                write!(f, "{}", "^".color(self.message_type.color()))?;
+                write!(out, "{}", "^".color(self.message_type.color()))?;
             } else {
-                write!(f, "^")?;
+                write!(out, "^")?;
             }
             match &self.end_message {
                 Some(msg) => if color_enabled {
-                    writeln!(f, " {}", msg.color(self.message_type.color()))?;
+                    writeln!(out, " {}", msg.color(self.message_type.color()))?;
                 } else {
-                    writeln!(f, " {}", msg)?;
+                    writeln!(out, " {}", msg)?;
                 },
                 
-                None      => writeln!(f, "")?,
+                None      => writeln!(out, "")?,
             }
         }
         Ok(())

@@ -26,6 +26,7 @@ use tephra_tracing::span;
 use std::borrow::Cow;
 use std::borrow::Borrow as _;
 use std::fmt::Display;
+use std::fmt::Write;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,11 +73,12 @@ impl MessageType {
         }
     }
 
-    pub(in crate) fn write_with_color_enablement(
+    pub(in crate) fn write_with_color_enablement<W>(
         &self,
-        f: &mut std::fmt::Formatter<'_>,
+        out: &mut W,
         color_enabled: bool)
         -> std::fmt::Result
+        where W: Write
     {
         let _span = span!(Level::TRACE, "MessageType", color_enabled).entered();
 
@@ -86,19 +88,19 @@ impl MessageType {
             event!(Level::TRACE, "{self:?}");
             
             match self {
-                Info    => write!(f, "{}", "info"),
-                Error   => write!(f, "{}", "error".color(color).bold()),
-                Warning => write!(f, "{}", "warning".color(color).bold()),
-                Note    => write!(f, "{}", "note".color(color).bold()),
-                Help    => write!(f, "{}", "help".color(color).bold()),
+                Info    => write!(out, "{}", "info"),
+                Error   => write!(out, "{}", "error".color(color).bold()),
+                Warning => write!(out, "{}", "warning".color(color).bold()),
+                Note    => write!(out, "{}", "note".color(color).bold()),
+                Help    => write!(out, "{}", "help".color(color).bold()),
             }
         } else {
             match self {
-                Info    => write!(f, "info"),
-                Error   => write!(f, "error"),
-                Warning => write!(f, "warning"),
-                Note    => write!(f, "note"),
-                Help    => write!(f, "help"),
+                Info    => write!(out, "info"),
+                Error   => write!(out, "error"),
+                Warning => write!(out, "warning"),
+                Note    => write!(out, "note"),
+                Help    => write!(out, "help"),
             }
         }
     }

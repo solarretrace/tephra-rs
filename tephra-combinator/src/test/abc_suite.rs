@@ -14,25 +14,24 @@
 
 // Internal library imports.
 use crate::any;
-use crate::context_commit;
 use crate::both;
+use crate::context_commit;
 use crate::one;
 use crate::seq;
 use crate::spanned;
 use crate::text;
-use tephra::Lexer;
-use tephra::Scanner;
-use tephra::ParseResult;
-use tephra::ParseResultExt as _;
-use tephra::Spanned;
-use tephra::Success;
-use tephra::ColumnMetrics;
-use tephra::Pos;
-use tephra::Span;
-
 
 // External library imports.
 use pretty_assertions::assert_eq;
+use tephra::ColumnMetrics;
+use tephra::Lexer;
+use tephra::ParseResult;
+use tephra::ParseResultExt as _;
+use tephra::Pos;
+use tephra::Scanner;
+use tephra::SourceText;
+use tephra::Spanned;
+use tephra::Success;
 use test_log::test;
 
 
@@ -130,9 +129,9 @@ impl Scanner for Abc {
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Pattern<'text> {
-    Abc(Spanned<'text, &'text str>),
-    Bxx(Spanned<'text, &'text str>),
-    Xyc(Spanned<'text, &'text str>),
+    Abc(Spanned<&'text str>),
+    Bxx(Spanned<&'text str>),
+    Xyc(Spanned<&'text str>),
 }
 
 
@@ -223,14 +222,19 @@ fn xyc<'text>(lexer: Lexer<'text, Abc>)
 #[test]
 #[tracing::instrument]
 fn abc_tokens() {
+    colored::control::set_override(false);
+
     use AbcToken::*;
     const TEXT: &'static str = "a b\nc d";
-    let mut lexer = Lexer::new(Abc::new(), TEXT);
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = lexer
         .iter_with_spans()
-        .map(|lex| (lex.0, format!("{:?}", lex.1)))
+        .map(|lex| (
+            lex.0,
+            format!("{:?} ({})", source.clip(lex.1).as_str(), lex.1)))
         .collect::<Vec<_>>();
 
     let expected = vec![
@@ -247,9 +251,12 @@ fn abc_tokens() {
 #[test]
 #[tracing::instrument]
 fn abc_pattern() {
+    colored::control::set_override(false);
+
     use AbcToken::*;
     const TEXT: &'static str = "abc";
-    let mut lexer = Lexer::new(Abc::new(), TEXT);
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = pattern
@@ -260,7 +267,7 @@ fn abc_pattern() {
     let actual = value;
     let expected = Pattern::Abc(Spanned {
         value: "abc",
-        span: Span::full(TEXT, ColumnMetrics::default()),
+        span: source.full_span(),
     });
 
     assert_eq!(actual, expected);
@@ -271,9 +278,12 @@ fn abc_pattern() {
 #[test]
 #[tracing::instrument]
 fn bxx_pattern() {
+    colored::control::set_override(false);
+
     use AbcToken::*;
     const TEXT: &'static str = "baa";
-    let mut lexer = Lexer::new(Abc::new(), TEXT);
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = pattern
@@ -284,7 +294,7 @@ fn bxx_pattern() {
     let actual = value;
     let expected = Pattern::Bxx(Spanned {
         value: "baa",
-        span: Span::full(TEXT, ColumnMetrics::default()),
+        span: source.full_span(),
     });
 
     assert_eq!(actual, expected);
@@ -295,9 +305,12 @@ fn bxx_pattern() {
 #[test]
 #[tracing::instrument]
 fn xyc_pattern() {
+    colored::control::set_override(false);
+
     use AbcToken::*;
     const TEXT: &'static str = "bac";
-    let mut lexer = Lexer::new(Abc::new(), TEXT);
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = pattern
@@ -308,7 +321,7 @@ fn xyc_pattern() {
     let actual = value;
     let expected = Pattern::Xyc(Spanned {
         value: "bac",
-        span: Span::full(TEXT, ColumnMetrics::default()),
+        span: source.full_span(),
     });
 
     assert_eq!(actual, expected);
@@ -324,7 +337,8 @@ fn initial_newline_ws_skip() {
 
     use AbcToken::*;
     const TEXT: &'static str = "\n    zzz";
-    let mut lexer = Lexer::new(Abc::new(), TEXT);
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = pattern

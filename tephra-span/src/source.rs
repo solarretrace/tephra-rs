@@ -33,6 +33,10 @@ pub struct SourceText<'text> {
 }
 
 impl<'text> SourceText<'text> {
+    pub fn empty() -> SourceText<'static> {
+        SourceText::new("")
+    }
+
     /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
     pub fn new(source: &'text str) -> Self {
@@ -61,6 +65,10 @@ impl<'text> SourceText<'text> {
         self.source.is_empty()
     }
 
+    pub fn as_str(&self) -> &'text str {
+        &self.source
+    }
+
     #[inline(always)]
     fn pos_in_bounds(&self, pos: Pos) -> bool {
         let end = self.end_position();
@@ -87,6 +95,10 @@ impl<'text> SourceText<'text> {
 
     pub fn column_metrics(&self) -> ColumnMetrics {
         self.metrics
+    }
+
+    pub fn column_metrics_mut(&mut self) -> &mut ColumnMetrics {
+        &mut self.metrics
     }
 
     /// Returns the full span of the text.
@@ -259,13 +271,17 @@ pub struct SourceTextOwned {
 }
 
 impl SourceTextOwned {
-    /// Constructs a new `SourceTextOwned` with the given offset `Pos` and
+    pub fn empty() -> Self {
+        SourceTextOwned::new("")
+    }
+
+    /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
-    pub fn new(source: Box<str>, offset: Pos, metrics: ColumnMetrics) -> Self {
+    pub fn new(source: &str) -> Self {
         SourceTextOwned {
-            source,
-            offset,
-            metrics,
+            source: source.into(),
+            offset: Pos::ZERO,
+            metrics: ColumnMetrics::default(),
         }
     }
 
@@ -282,6 +298,10 @@ impl SourceTextOwned {
     pub fn column_metrics(&self) -> ColumnMetrics {
         self.metrics
     }
+    
+    pub fn column_metrics_mut(&mut self) -> &mut ColumnMetrics {
+        &mut self.metrics
+    }
 
     pub fn len(&self) -> usize {
         self.source.len()
@@ -289,6 +309,10 @@ impl SourceTextOwned {
 
     pub fn is_empty(&self) -> bool {
         self.source.is_empty()
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.source
     }
 
     pub fn clip<'text>(&'text self, span: Span) -> SourceText<'text> {

@@ -77,17 +77,17 @@ impl<'text, Sc, V> Success<'text, Sc, V>
 ////////////////////////////////////////////////////////////////////////////////
 /// A parsed value with its span.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Spanned<'text, T> {
+pub struct Spanned<T> {
     /// The span of the value's source text.
-    pub span: Span<'text>,
+    pub span: Span,
     /// The parsed value.
     pub value: T,
 }
 
-impl<'text, T> Spanned<'text, T> {
+impl<T> Spanned<T> {
     /// Converts `Spanned<'_, T>` into a `Spanned<'_, U>` by applying the given
     /// closure.
-    pub fn map_value<F, U>(self, f: F) -> Spanned<'text, U> 
+    pub fn map_value<F, U>(self, f: F) -> Spanned<U> 
         where F: FnOnce(T) -> U
     {
         Spanned {

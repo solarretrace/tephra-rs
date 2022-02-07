@@ -15,14 +15,15 @@
 use crate::both;
 use crate::one;
 use crate::text;
-use tephra::Lexer;
-use tephra::Scanner;
-use tephra::ColumnMetrics;
-use tephra::Pos;
-use tephra::ParseResultExt as _;
 
 // External library imports.
 use pretty_assertions::assert_eq;
+use tephra::ColumnMetrics;
+use tephra::Lexer;
+use tephra::ParseResultExt as _;
+use tephra::Pos;
+use tephra::Scanner;
+use tephra::SourceText;
 use test_log::test;
 
 
@@ -120,8 +121,11 @@ impl Scanner for Test {
 #[test]
 #[tracing::instrument]
 fn empty() {
-    let text = "";
-    let mut lexer = Lexer::new(Test::new(), text);
+    colored::control::set_override(false);
+
+    const TEXT: &'static str = "";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
 
     assert_eq!(
         lexer.next(),
@@ -132,9 +136,12 @@ fn empty() {
 #[test]
 #[tracing::instrument]
 fn simple() {
+    colored::control::set_override(false);
+
     use TestToken::*;
-    let text = "aa b";
-    let mut lexer = Lexer::new(Test::new(), text);
+    const TEXT: &'static str = "aa b";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
 
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(lexer.next(), Some(Ws));
@@ -146,9 +153,12 @@ fn simple() {
 #[test]
 #[tracing::instrument]
 fn simple_peek() {
+    colored::control::set_override(false);
+
     use TestToken::*;
-    let text = "aa b";
-    let mut lexer = Lexer::new(Test::new(), text);
+    const TEXT: &'static str = "aa b";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
 
     assert_eq!(lexer.peek(), Some(Aa));
     assert_eq!(lexer.next(), Some(Aa));
@@ -164,14 +174,19 @@ fn simple_peek() {
 #[test]
 #[tracing::instrument]
 fn simple_iter() {
+    colored::control::set_override(false);
+
     use TestToken::*;
-    let text = "aa b";
-    let mut lexer = Lexer::new(Test::new(), text);
+    const TEXT: &'static str = "aa b";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
 
     assert_eq!(
         lexer
             .iter_with_spans()
-            .map(|lex| (lex.0, format!("{:?}", lex.1)))
+            .map(|lex| (
+                lex.0,
+                format!("{:?} ({})", source.clip(lex.1).as_str(), lex.1)))
             .collect::<Vec<_>>(),
         vec![
             (Aa, "\"aa\" (0:0-0:2, bytes 0-2)".to_string()),
@@ -185,9 +200,12 @@ fn simple_iter() {
 #[test]
 #[tracing::instrument]
 fn auto_filter() {
+    colored::control::set_override(false);
+
     use TestToken::*;
-    let text = "aaaabaaaab";
-    let mut lexer = Lexer::new(Test::new(), text);
+    const TEXT: &'static str = "aaaabaaaab";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
     lexer.set_filter_fn(|tok| *tok != Aa);
 
     assert_eq!(lexer.peek(), Some(B));
@@ -200,7 +218,9 @@ fn auto_filter() {
 
     let actual = lexer
         .iter_with_spans()
-        .map(|lex| (lex.0, format!("{:?}", lex.1)))
+        .map(|lex| (
+            lex.0,
+            format!("{:?} ({})", source.clip(lex.1).as_str(), lex.1)))
         .collect::<Vec<_>>();
 
     let expected = vec![
@@ -222,14 +242,19 @@ fn auto_filter() {
 #[test]
 #[tracing::instrument]
 fn whitespace_filter() {
+    colored::control::set_override(false);
+
     use TestToken::*;
-    let text = "aa b \nbdef\n aaa";
-    let mut lexer = Lexer::new(Test::new(), text);
+    const TEXT: &'static str = "aa b \nbdef\n aaa";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = lexer
         .iter_with_spans()
-        .map(|lex| (lex.0, format!("{:?}", lex.1)))
+        .map(|lex| (
+            lex.0,
+            format!("{:?} ({})", source.clip(lex.1).as_str(), lex.1)))
         .collect::<Vec<_>>();
 
     let expected = vec![
@@ -255,9 +280,12 @@ fn whitespace_filter() {
 #[test]
 #[tracing::instrument]
 fn both_whitespace_filter() {
+    colored::control::set_override(false);
+
     use TestToken::*;
-    let input = "aa b \nbdef\n aaa";
-    let mut lexer = Lexer::new(Test::new(), input);
+    const TEXT: &'static str = "aa b \nbdef\n aaa";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = both(
@@ -276,9 +304,12 @@ fn both_whitespace_filter() {
 #[test]
 #[tracing::instrument]
 fn display_formatting() {
+    colored::control::set_override(false);
+
     use TestToken::*;
-    let text = "aa b \nbdef\n aaa";
-    let mut lexer = Lexer::new(Test::new(), text);
+    const TEXT: &'static str = "aa b \nbdef\n aaa";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     assert_eq!(format!("{}", lexer), "\
@@ -381,9 +412,12 @@ note: lexer state
 #[test]
 #[tracing::instrument]
 fn tabstop_align() {
+    colored::control::set_override(false);
+
     use TestToken::*;
-    let text = "\taa\ta\n\t\tb";
-    let mut lexer = Lexer::new(Test::new(), text);
+    const TEXT: &'static str = "\taa\ta\n\t\tb";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
 
     assert_eq!(format!("{}", lexer), "\
 Scanner: Test(None)

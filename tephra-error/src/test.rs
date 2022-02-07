@@ -19,6 +19,7 @@ use crate::ParseErrorOwned;
 use pretty_assertions::assert_eq;
 use tephra_span::ColumnMetrics;
 use tephra_span::Pos;
+use tephra_span::SourceText;
 use tephra_span::Span;
 use test_log::test;
 
@@ -31,7 +32,7 @@ use test_log::test;
 fn spanless_error() {
     colored::control::set_override(false);
 
-    let e = ParseError::new("DESCRIPTION");
+    let e = ParseError::from("DESCRIPTION");
 
     let actual = format!("{e}");
     let expected = "error: DESCRIPTION\n";
@@ -47,12 +48,12 @@ fn single_line_spanned_error() {
     colored::control::set_override(false);
 
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT);
     let span = Span::new_enclosing(
-        TEXT,
         Pos::new(6, 4, 0),
         Pos::new(10, 4, 4));
 
-    let e = ParseError::unrecognized_token(span, ColumnMetrics::new());
+    let e = ParseError::unrecognized_token(source, span);
 
     let actual = format!("{e}");
     let expected = "error: unrecognized token
@@ -72,12 +73,12 @@ fn multi_line_spanned_error() {
     colored::control::set_override(false);
 
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    let source = SourceText::new(TEXT);
     let span = Span::new_enclosing(
-        TEXT,
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
 
-    let e = ParseError::unrecognized_token(span, ColumnMetrics::new());
+    let e = ParseError::unrecognized_token(source, span);
 
     let actual = format!("{e}");
     let expected = "error: unrecognized token

@@ -87,12 +87,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     where Sc: Scanner,
 {
     /// Constructs a new Lexer for the given text.
-    pub fn new(scanner: Sc, source: &'text str) -> Self {
+    pub fn new(scanner: Sc, source: SourceText<'text>) -> Self {
         Lexer {
-            source: SourceText::new(
-                source,
-                Pos::ZERO,
-                ColumnMetrics::default()),
+            source,
             filter: None,
             error_sink: None,
             token_start: Pos::ZERO,
@@ -128,8 +125,8 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Returns the underlying source text.
-    pub fn source_text(&self) -> &'text str {
-        self.source.text()
+    pub fn source(&self) -> SourceText<'text> {
+        self.source
     }
 
     /// Returns the column metrics for the source.
@@ -291,7 +288,7 @@ impl<'text, Sc> Lexer<'text, Sc>
         let mut scanner = self.scanner.clone();
         while self.cursor.byte < self.source.len() {
             match scanner
-                .scan(self.source_text(), self.cursor, self.column_metrics())
+                .scan(self.source().as_ref(), self.cursor, self.column_metrics())
             {
                 Some((token, adv)) if self.filter
                     .as_ref()
@@ -393,30 +390,30 @@ impl<'text, Sc> Lexer<'text, Sc>
     
     /// Returns the span (excluding filtered text) of the token_start lexed
     /// token.
-    pub fn token_span(&self) -> Span<'text> {
-        Span::new_enclosing(self.source_text(), self.token_start, self.end)
+    pub fn token_span(&self) -> Span {
+        Span::new_enclosing(self.token_start, self.end)
     }
 
     /// Returns the span (excluding filtered text) back to the token_start
     /// consumed  position.
-    pub fn parse_span(&self) -> Span<'text> {
-        Span::new_enclosing(self.source_text(), self.parse_start, self.end)
+    pub fn parse_span(&self) -> Span {
+        Span::new_enclosing(self.parse_start, self.end)
     }
 
     /// Returns the cursor span (including filtered text) back to the
     /// token_start consumed position.
-    pub fn parse_span_unfiltered(&self) -> Span<'text> {
-        Span::new_enclosing(self.source_text(), self.parse_start, self.cursor)
+    pub fn parse_span_unfiltered(&self) -> Span {
+        Span::new_enclosing(self.parse_start, self.cursor)
     }
 
     /// Returns the span of the end of the lexed text.
-    pub fn end_span(&self) -> Span<'text> {
-        Span::new_at(self.source_text(), self.end)
+    pub fn end_span(&self) -> Span {
+        Span::new_at(self.end)
     }
 
     /// Returns the span of the lexer cursor.
-    pub fn cursor_span(&self) -> Span<'text> {
-        Span::new_at(self.source_text(), self.cursor)
+    pub fn cursor_span(&self) -> Span {
+        Span::new_at(self.cursor)
     }
 }
 
@@ -437,7 +434,7 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
             }
 
             match self.scanner.scan(
-                self.source_text(),
+                self.source().as_ref(),
                 self.cursor, 
                 self.column_metrics())
             {
@@ -512,11 +509,11 @@ impl<'text, Sc> Display for Lexer<'text, Sc>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let source_display = CodeDisplay::new("lexer state")
-            .with_color(false)
+            .with_color(true)
             .with_note_type()
             .with_span_display(SpanDisplay::new(
-                    self.parse_span_unfiltered(),
-                    self.column_metrics())
+                    self.source,
+                    self.parse_span_unfiltered())
                 .with_highlight(Highlight::new(self.token_span(),
                     format!("token ({})", self.token_span())))
                 .with_highlight(Highlight::new(self.parse_span(),
@@ -525,7 +522,7 @@ impl<'text, Sc> Display for Lexer<'text, Sc>
                     format!("cursor ({})", self.cursor_span()))));
 
         writeln!(f, "Scanner: {:?}", self.scanner)?;
-        write!(f, "{}", source_display)
+        source_display.write(f, self.source)
     }
 }
 
@@ -544,7 +541,7 @@ pub struct IterWithSpans<'text, 'l, Sc>
 impl<'text, 'l, Sc> Iterator for IterWithSpans<'text, 'l, Sc>
     where Sc: Scanner,
 {
-    type Item = (Sc::Token, Span<'text>);
+    type Item = (Sc::Token, Span);
     
     fn next(&mut self) -> Option<Self::Item> {
         self.lexer

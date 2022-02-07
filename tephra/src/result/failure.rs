@@ -48,7 +48,7 @@ impl<'text, Sc> Failure<'text, Sc>
     }
 
     pub fn push_context(&mut self, context: ParseError<'text>) {
-        self.parse_error.push_context_error(context)
+        self.parse_error.push_error_context(context)
     }
 
     #[cfg(test)]
