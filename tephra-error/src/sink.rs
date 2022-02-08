@@ -3,7 +3,7 @@
 use crate::ParseError;
 
 use std::rc::Rc;
-use std::sync::RwLock;
+use parking_lot::RwLock;
 
 
 
@@ -42,7 +42,7 @@ impl ErrorSink {
         let inner = self.0.as_ref();
 
         let mut e = parse_error;
-        let contexts = inner.contexts.read()?;
+        let contexts = inner.contexts.read();
         for context in contexts.iter().rev() {
             e = context.apply(e);
         }
@@ -57,15 +57,11 @@ impl ErrorSink {
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn send_direct<'a, 'text>(&'a self,
-        parse_error: ParseError<'text>)
-        -> Result<(), Box<dyn std::error::Error + 'a>>
-    {
+    pub fn send_direct<'a, 'text>(&'a self, parse_error: ParseError<'text>) {
         let inner = self.0.as_ref();
         let e = parse_error;
 
         (inner.target)(e);
-        Ok(())
     }
 
     /// Pushes a new `ErrorContext` onto the context stack, allowing any further
@@ -74,12 +70,9 @@ impl ErrorSink {
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn push_context<'a>(&'a mut self, error_context: ErrorContext) 
-        -> Result<(), Box<dyn std::error::Error + 'a>>
-    {
-        let mut contexts = self.0.as_ref().contexts.write()?;
+    pub fn push_context<'a>(&'a mut self, error_context: ErrorContext) {
+        let mut contexts = self.0.as_ref().contexts.write();
         contexts.push(error_context);
-        Ok(())
     }
 
     /// Pops the top `ErrorContext` from the context stack.
@@ -87,11 +80,9 @@ impl ErrorSink {
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn pop_context<'a>(&'a mut self) 
-        -> Result<Option<ErrorContext>, Box<dyn std::error::Error + 'a>>
-    {
-        let mut contexts = self.0.as_ref().contexts.write()?;
-        Ok(contexts.pop())
+    pub fn pop_context<'a>(&'a mut self) -> Option<ErrorContext> {
+        let mut contexts = self.0.as_ref().contexts.write();
+        contexts.pop()
     }
 }
 
