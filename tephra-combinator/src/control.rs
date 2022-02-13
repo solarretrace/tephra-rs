@@ -123,8 +123,6 @@ pub fn recover_at<'text, Sc, F, V>(
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let _span = span!(Level::DEBUG, "recover_at", context).entered();
-
         match parser
             (lexer)
         {
@@ -147,8 +145,6 @@ pub fn recover_after<'text, Sc, F, V>(
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        let _span = span!(Level::DEBUG, "recover_at", context).entered();
-
         match parser
             (lexer)
         {
