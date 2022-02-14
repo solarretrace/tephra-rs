@@ -43,12 +43,8 @@ pub trait Scanner: Debug + Clone + PartialEq {
     /// The parse token type.
     type Token: Display + Debug + Clone + PartialEq + Send + Sync + 'static;
 
-    /// Parses a token from the given string.
-    fn scan<'text>(
-        &mut self,
-        source: &'text str,
-        base: Pos,
-        metrics: ColumnMetrics)
+    /// Parses a token from the given source text.
+    fn scan<'text>(&mut self, source: SourceText<'text>, base: Pos)
         -> Option<(Self::Token, Pos)>;
 }
 
@@ -278,9 +274,7 @@ impl<'text, Sc> Lexer<'text, Sc>
 
         let mut scanner = self.scanner.clone();
         while self.cursor.byte < self.source.len() {
-            match scanner
-                .scan(self.source().as_ref(), self.cursor, self.column_metrics())
-            {
+            match scanner.scan(self.source(), self.cursor) {
                 Some((token, adv)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
@@ -334,6 +328,7 @@ impl<'text, Sc> Lexer<'text, Sc>
         Some(token)
     }
 
+    /// Advances the lexer state up to the next instance of the given token.
     pub fn advance_to(&mut self, token: Sc::Token) {
         while let Some(tok) = self.peek() {
             if tok == token { break; }
@@ -341,6 +336,7 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
     }
 
+    /// Advances the lexer state past the next instance of the given token.
     pub fn advance_past(&mut self, token: Sc::Token) {
         while let Some(tok) = self.next() {
             if tok == token { break; }
@@ -424,11 +420,7 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
                 return res;
             }
 
-            match self.scanner.scan(
-                self.source().as_ref(),
-                self.cursor, 
-                self.column_metrics())
-            {
+            match self.scanner.scan(self.source, self.cursor) {
                 Some((token, adv)) if self.filter
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 

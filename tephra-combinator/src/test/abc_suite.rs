@@ -23,7 +23,6 @@ use crate::text;
 
 // External library imports.
 use pretty_assertions::assert_eq;
-use tephra::ColumnMetrics;
 use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
@@ -74,45 +73,42 @@ impl std::fmt::Display for AbcToken {
 impl Scanner for Abc {
     type Token = AbcToken;
 
-    fn scan<'text>(
-        &mut self,
-        source: &'text str,
-        base: Pos,
-        metrics: ColumnMetrics)
+    fn scan<'text>(&mut self, source: SourceText<'text>, base: Pos)
         -> Option<(Self::Token, Pos)>
     {
-        let text = &source[base.byte..];
+        let text = &source.as_ref()[base.byte..];
+        let metrics = source.column_metrics();
 
         if text.starts_with('a') {
             self.0 = Some(AbcToken::A);
             Some((
                 AbcToken::A,
-                metrics.end_position(&source[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
 
         } else if text.starts_with('b') {
             self.0 = Some(AbcToken::B);
             Some((
                 AbcToken::B,
-                metrics.end_position(&source[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
 
         } else if text.starts_with('c') {
             self.0 = Some(AbcToken::C);
             Some((
                 AbcToken::C,
-                metrics.end_position(&source[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
 
         } else if text.starts_with("d") {
             self.0 = Some(AbcToken::D);
             Some((
                 AbcToken::D,
-                metrics.end_position(&source[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
             
         } else {
             self.0 = Some(AbcToken::Ws);
             let rest = text.trim_start_matches(char::is_whitespace);
             if rest.len() < text.len() {
                 let substr_len = text.len() - rest.len();
-                let substr = &source[0.. base.byte + substr_len];
+                let substr = &source.as_ref()[0.. base.byte + substr_len];
                 Some((AbcToken::Ws, metrics.end_position(substr, base)))
             } else {
                 self.0 = None;

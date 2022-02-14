@@ -164,11 +164,15 @@ impl<'text> ParseError<'text> {
         self
     }
 
+    /// Applies the given `ParseError` as a contextual wrapper around the
+    /// contained error.
     pub fn with_error_context(mut self, error: Self) -> Self {
         self.push_error_context(error);
         self
     }
 
+    /// Applies the given `ParseError` as a contextual wrapper around the
+    /// contained error.
     pub fn push_error_context(&mut self, error: Self) {
         let source = std::mem::replace(self, error);
         self.source = Some(Box::new(source.into_owned()));

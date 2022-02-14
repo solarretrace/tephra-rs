@@ -42,11 +42,15 @@ impl<'text, Sc> Failure<'text, Sc>
         }
     }
 
+    /// Applies the given `ParseError` as a contextual wrapper around the
+    /// contained error.
     pub fn with_context(mut self, context: ParseError<'text>) -> Self {
         self.push_context(context);
         self
     }
 
+    /// Applies the given `ParseError` as a contextual wrapper around the
+    /// contained error.
     pub fn push_context(&mut self, context: ParseError<'text>) {
         self.parse_error.push_error_context(context)
     }

@@ -18,7 +18,6 @@ use crate::text;
 
 // External library imports.
 use pretty_assertions::assert_eq;
-use tephra::ColumnMetrics;
 use tephra::Lexer;
 use tephra::ParseResultExt as _;
 use tephra::Pos;
@@ -65,45 +64,42 @@ impl Test {
 impl Scanner for Test {
     type Token = TestToken;
 
-    fn scan<'text>(
-        &mut self,
-        source: &'text str,
-        base: Pos,
-        metrics: ColumnMetrics)
+    fn scan<'text>(&mut self, source: SourceText<'text>, base: Pos)
         -> Option<(Self::Token, Pos)>
     {
-        let text = &source[base.byte..];
+        let text = &source.as_ref()[base.byte..];
+        let metrics = source.column_metrics();
 
         if text.starts_with("aa") {
             self.0 = Some(TestToken::Aa);
             Some((
                 TestToken::Aa,
-                metrics.end_position(&source[..base.byte + 2], base)))
+                metrics.end_position(&source.as_ref()[..base.byte + 2], base)))
 
         } else if text.starts_with('a') {
             self.0 = Some(TestToken::A);
             Some((
                 TestToken::A,
-                metrics.end_position(&source[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
 
         } else if text.starts_with('b') {
             self.0 = Some(TestToken::B);
             Some((
                 TestToken::B,
-                metrics.end_position(&source[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
 
         } else if text.starts_with("def") {
             self.0 = Some(TestToken::Def);
             Some((
                 TestToken::Def,
-                metrics.end_position(&source[..base.byte + 3], base)))
+                metrics.end_position(&source.as_ref()[..base.byte + 3], base)))
             
         } else {
             self.0 = Some(TestToken::Ws);
             let rest = text.trim_start_matches(char::is_whitespace);
             if rest.len() < text.len() {
                 let substr_len = text.len() - rest.len();
-                let substr = &source[0.. base.byte + substr_len];
+                let substr = &source.as_ref()[0.. base.byte + substr_len];
                 Some((TestToken::Ws, metrics.end_position(substr, base)))
             } else {
                 self.0 = None;
