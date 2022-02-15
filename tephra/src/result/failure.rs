@@ -12,7 +12,6 @@
 use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use tephra_error::ParseError;
-use tephra_error::ParseErrorOwned;
 
 
 
@@ -87,59 +86,6 @@ impl<'text, Sc> PartialEq for Failure<'text, Sc>
 {
     fn eq(&self, other: &Self) -> bool {
         format!("{:?}", self) == format!("{:?}", other)
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// FailureOwned
-////////////////////////////////////////////////////////////////////////////////
-/// A struct representing a failed parse with owned data.
-///
-/// Similar to [`Failure`], except this  version owns all of its data, and can
-/// thus  be used as an [`Error`] [`source`].
-///
-/// [`Failure`]: struct.Failure.html
-/// [`Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
-/// [`source`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html#method.source
-#[derive(Debug)]
-pub struct FailureOwned {
-    /// The parse error.
-    pub parse_error: ParseErrorOwned,
-}
-
-impl FailureOwned {
-    /// Constructs a new FailureOwned containing the given parse error.
-    pub fn new(parse_error: ParseErrorOwned) -> Self {
-        FailureOwned {
-            parse_error,
-        }
-    }
-}
-
-impl<'text, Sc> From<Failure<'text, Sc>> for FailureOwned
-    where Sc: Scanner,
-{
-    fn from(other: Failure<'text, Sc>) -> Self {
-        FailureOwned {
-            parse_error: other.parse_error.into_owned(),
-        }
-    }
-}
-
-impl std::fmt::Display for FailureOwned {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.parse_error)
-    }
-}
-
-impl std::error::Error for FailureOwned {
-    fn description(&self) -> &str {
-        &self.parse_error.description()
-    }
-    
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.parse_error.source()
     }
 }
 

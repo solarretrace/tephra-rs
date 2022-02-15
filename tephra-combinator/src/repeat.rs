@@ -31,7 +31,7 @@ use tephra_tracing::span;
 /// Returns a parser which repeats the given number of times, interspersed by
 /// parse attempts from a secondary parser. The parsed value is the number of
 /// successful parses.
-pub fn repeat<'text, Sc, F, V>(
+pub fn repeat_count<'text, Sc, F, V>(
     low: usize,
     high: Option<usize>,
     mut parser: F)
@@ -41,7 +41,7 @@ pub fn repeat<'text, Sc, F, V>(
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        intersperse_collect(low, high, 
+        intersperse(low, high, 
                 discard(&mut parser),
                 empty)
             (lexer)
@@ -52,7 +52,7 @@ pub fn repeat<'text, Sc, F, V>(
 /// Returns a parser which repeats the given number of times, interspersed by
 /// parse attempts from a secondary parser. The parsed value is the number of
 /// successful parses.
-pub fn repeat_until<'text, Sc, F, G, V, U>(
+pub fn repeat_count_until<'text, Sc, F, G, V, U>(
     low: usize,
     high: Option<usize>,
     mut stop_parser: F,
@@ -64,7 +64,7 @@ pub fn repeat_until<'text, Sc, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer| {
-        intersperse_collect_until(low, high, 
+        intersperse_until(low, high, 
                 &mut stop_parser,
                 discard(&mut parser),
                 empty)
@@ -75,7 +75,7 @@ pub fn repeat_until<'text, Sc, F, G, V, U>(
 
 /// Returns a parser which repeats the given number of times. Each parsed value
 /// is collected into a `Vec`.
-pub fn repeat_collect<'text, Sc, F, V>(
+pub fn repeat<'text, Sc, F, V>(
     low: usize,
     high: Option<usize>,
     mut parser: F)
@@ -85,7 +85,7 @@ pub fn repeat_collect<'text, Sc, F, V>(
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer| {
-        intersperse_collect(low, high,
+        intersperse(low, high,
             &mut parser,
             empty)
             (lexer)
@@ -96,7 +96,7 @@ pub fn repeat_collect<'text, Sc, F, V>(
 /// parser succeeds, interspersed by parse attempts from a secondary parser.
 /// Each parsed value is collected into a `Vec`. The stop parse is not included
 /// in the result.
-pub fn repeat_collect_until<'text, Sc, F, G, V, U>(
+pub fn repeat_until<'text, Sc, F, G, V, U>(
     low: usize,
     high: Option<usize>,
     mut stop_parser: F,
@@ -108,7 +108,7 @@ pub fn repeat_collect_until<'text, Sc, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer| {
-        intersperse_collect_until(low, high, &mut stop_parser,
+        intersperse_until(low, high, &mut stop_parser,
             &mut parser,
             empty)
             (lexer)
@@ -118,7 +118,7 @@ pub fn repeat_collect_until<'text, Sc, F, G, V, U>(
 /// Returns a parser which repeats the given number of times, interspersed by
 /// parse attempts from a secondary parser. The parsed value is the number of
 /// successful parses.
-pub fn intersperse<'text, Sc, F, G, V, U>(
+pub fn intersperse_count<'text, Sc, F, G, V, U>(
     low: usize,
     high: Option<usize>,
     mut parser: F,
@@ -130,7 +130,7 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer| {
-        intersperse_collect(low, high, 
+        intersperse(low, high, 
                 discard(&mut parser),
                 &mut inter_parser)
             (lexer)
@@ -141,7 +141,7 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
 /// Returns a parser which repeats the given number of times, interspersed by
 /// parse attempts from a secondary parser. The parsed value is the number of
 /// successful parses.
-pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
+pub fn intersperse_count_until<'text, Sc, F, G, H, V, U, T>(
     low: usize,
     high: Option<usize>,
     mut stop_parser: F,
@@ -155,7 +155,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
         H: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, T>,
 {
     move |lexer| {
-        intersperse_collect_until(low, high, 
+        intersperse_until(low, high, 
                 &mut stop_parser,
                 discard(&mut parser),
                 &mut inter_parser)
@@ -167,7 +167,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
 /// Returns a parser which repeats the given number of times, interspersed by
 /// parse attempts from a secondary parser. Each parsed value is collected into
 /// a `Vec`.
-pub fn intersperse_collect<'text, Sc, F, G, V, U>(
+pub fn intersperse<'text, Sc, F, G, V, U>(
     low: usize,
     high: Option<usize>,
     mut parser: F,
@@ -179,12 +179,12 @@ pub fn intersperse_collect<'text, Sc, F, G, V, U>(
         G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer| {
-        let _span = span!(Level::DEBUG, "intersperse_collect").entered();
+        let _span = span!(Level::DEBUG, "intersperse").entered();
 
         event!(Level::DEBUG, "low = {:?}, high = {:?}", low, high);
 
         if let Some(h) = high {
-            if h < low { panic!("intersperse_collect with high < low") }
+            if h < low { panic!("intersperse with high < low") }
             if h == 0 {
                 event!(Level::TRACE, "Ok with 0 repetitions");
                 return Ok(Success {
@@ -256,7 +256,7 @@ pub fn intersperse_collect<'text, Sc, F, G, V, U>(
 /// parser succeeds, interspersed by parse attempts from a secondary parser.
 /// Each parsed value is collected into a `Vec`. The stop parse is not included
 /// in the result.
-pub fn intersperse_collect_until<'text, Sc, F, G, H, V, U, T>(
+pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
     low: usize,
     high: Option<usize>,
     mut stop_parser: F,
@@ -270,12 +270,12 @@ pub fn intersperse_collect_until<'text, Sc, F, G, H, V, U, T>(
         H: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, T>,
 {
     move |lexer| {
-        let _span = span!(Level::DEBUG, "intersperse_collect_until").entered();
+        let _span = span!(Level::DEBUG, "intersperse_until").entered();
 
         event!(Level::DEBUG, "low = {:?}, high = {:?}", low, high);
 
         if let Some(h) = high {
-            if h < low { panic!("intersperse_collect with high < low") }
+            if h < low { panic!("intersperse with high < low") }
             if h == 0 {
                 event!(Level::TRACE, "Ok with 0 repetitions");
                 return Ok(Success {

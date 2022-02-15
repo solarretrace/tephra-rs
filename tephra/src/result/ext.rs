@@ -12,9 +12,9 @@
 use crate::lexer::Scanner;
 use crate::result::Success;
 use crate::result::Failure;
-use crate::result::FailureOwned;
 
 // External library imports.
+use tephra_error::ParseErrorOwned;
 use tephra_tracing::Level;
 use tephra_tracing::event;
 
@@ -35,7 +35,7 @@ pub trait ParseResultExt<'text, Sc, V>
 {
     /// Converts the ParseResult into a Result containing the parsed value,
     /// discarding any associated spans or lexer state.
-    fn finish(self) -> Result<V, FailureOwned>;
+    fn finish(self) -> Result<V, ParseErrorOwned>;
 
     /// Converts `ParseResult<'_, _, _, V>` into a `ParseResult<'_, _, _, U>` by
     /// applying the given closure.
@@ -50,10 +50,10 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
         for ParseResult<'text, Sc, V>
     where Sc: Scanner,
 {
-    fn finish(self) -> Result<V, FailureOwned> {
+    fn finish(self) -> Result<V, ParseErrorOwned> {
         self
             .map(Success::into_value)
-            .map_err(FailureOwned::from)
+            .map_err(|e| ParseErrorOwned::from(e.parse_error))
     }
 
     fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, U> 
