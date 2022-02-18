@@ -157,7 +157,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     {
         match self.error_sink.as_ref() {
             None => {
-                event!(Level::WARN, "A parse error sent to the error sink,
+                event!(Level::WARN, "A parse error sent to the error sink, \
                     but no error sink is configured:\n{}", parse_error);
                 Ok(())
             },
@@ -174,7 +174,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn send_direct<'a, 't>(&'a self, parse_error: ParseError<'t>) {
         match self.error_sink.as_ref() {
             None => {
-                event!(Level::WARN, "A parse error sent to the error sink,
+                event!(Level::WARN, "A parse error sent to the error sink, \
                     but no error sink is configured:\n{}", parse_error);
             },
             Some(sink) => sink.send_direct(parse_error),
@@ -191,7 +191,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn push_context<'a>(&'a mut self, error_context: ErrorContext) {
         match self.error_sink.as_mut() {
             None => {
-                event!(Level::WARN, "A context was pushed to the error sink,
+                event!(Level::WARN, "A context was pushed to the error sink, \
                     but no error sink is configured: {:?}", error_context);
             },
             Some(sink) => sink.push_context(error_context),
@@ -206,7 +206,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn pop_context<'a>(&'a mut self) -> Option<ErrorContext> {
         match self.error_sink.as_mut() {
             None => {
-                event!(Level::WARN, "A context was popped from the error sink,
+                event!(Level::WARN, "A context was popped from the error sink, \
                     but no error sink is configured:");
                 None
             },
