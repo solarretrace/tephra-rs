@@ -23,7 +23,7 @@
 // #![warn(improper_ctypes)]
 // #![warn(missing_copy_implementations)]
 // #![warn(missing_debug_implementations)]
-// #![warn(missing_doc_code_examples)]
+// #![warn(rustdoc::missing_doc_code_examples)]
 // #![warn(missing_docs)]
 // #![warn(no_mangle_generic_items)]
 // #![warn(non_shorthand_field_patterns)]

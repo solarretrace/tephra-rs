@@ -458,7 +458,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
                         out,
                         current_line,
                         &mut riser_states[idx],
-                        message_idx == idx,
+                        message_idx != idx,
                         color_enabled)?;
                 }
                 

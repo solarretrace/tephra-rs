@@ -166,6 +166,44 @@ fn simple_peek() {
     assert_eq!(lexer.next(), None);
 }
 
+/// Tests `Lexer::advance_to`.
+#[test]
+#[tracing::instrument]
+fn simple_advance_to() {
+    colored::control::set_override(false);
+
+    use TestToken::*;
+    const TEXT: &'static str = "aa b";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
+    lexer.advance_to(B);
+
+    assert_eq!(lexer.peek(), Some(B));
+    assert_eq!(lexer.next(), Some(B));
+    assert_eq!(lexer.peek(), None);
+    assert_eq!(lexer.next(), None);
+}
+
+/// Tests `Lexer::advance_past`.
+#[test]
+#[tracing::instrument]
+fn simple_advance_past() {
+    colored::control::set_override(false);
+
+    use TestToken::*;
+    const TEXT: &'static str = "aa b";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Test::new(), source);
+    lexer.advance_past(Aa);
+
+    assert_eq!(lexer.peek(), Some(Ws));
+    assert_eq!(lexer.next(), Some(Ws));
+    assert_eq!(lexer.peek(), Some(B));
+    assert_eq!(lexer.next(), Some(B));
+    assert_eq!(lexer.peek(), None);
+    assert_eq!(lexer.next(), None);
+}
+
 /// Tests `Lexer::iter_with_spans`.
 #[test]
 #[tracing::instrument]

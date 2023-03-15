@@ -330,17 +330,25 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Advances the lexer state up to the next instance of the given token.
     pub fn advance_to(&mut self, token: Sc::Token) {
+        let _span = span!(Level::TRACE, "advance_to").entered();
+        event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
         while let Some(tok) = self.peek() {
+            event!(Level::TRACE, "found {:?}", token);
             if tok == token { break; }
             let _ = self.next();
         }
+        event!(Level::TRACE, "after: \n{}", self);
     }
 
     /// Advances the lexer state past the next instance of the given token.
     pub fn advance_past(&mut self, token: Sc::Token) {
+        let _span = span!(Level::TRACE, "advance_past").entered();
+        event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
         while let Some(tok) = self.next() {
+            event!(Level::TRACE, "found {:?}", token);
             if tok == token { break; }
         }
+        event!(Level::TRACE, "after: \n{}", self);
     }
 
 
