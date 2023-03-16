@@ -15,10 +15,10 @@
 // Internal library imports.
 use crate::any;
 use crate::both;
-use crate::context_commit;
 use crate::one;
 use crate::seq;
 use crate::spanned;
+use crate::atomic;
 use crate::text;
 
 // External library imports.
@@ -134,8 +134,7 @@ enum Pattern<'text> {
 fn pattern<'text>(lexer: Lexer<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
-    match context_commit("abc pattern",
-        spanned(text(abc)))
+    match atomic(spanned(text(abc)))
         (lexer.clone())
     {
         Ok(Success { value: Some(sp), lexer })
@@ -144,8 +143,7 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>)
         _ => (),
     }
 
-    match context_commit("abc pattern",
-        spanned(text(bxx)))
+    match atomic(spanned(text(bxx)))
         (lexer.clone())
     {
         Ok(Success { value: Some(sp), lexer })

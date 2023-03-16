@@ -430,7 +430,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
             write_gutter(out, current_line, self.gutter_width, color_enabled)?;
 
             // Write risers for source line.
-            let mut any_multiline = false;
+            let mut multiline_highlights_present = false;
             for (idx, hl) in self.highlights.iter().enumerate() {
                 hl.write_riser_for_line(
                     out,
@@ -438,9 +438,9 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
                     &mut riser_states[idx],
                     false,
                     color_enabled)?;
-                if hl.is_multiline() { any_multiline = true; }
+                if hl.is_multiline() { multiline_highlights_present = true; }
             }
-            if any_multiline { write!(out, " "); }
+            if multiline_highlights_present { write!(out, " "); }
 
             // Write source text.
             writeln!(out, "{}", source.clip(span).as_ref())?;
@@ -458,7 +458,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
                         out,
                         current_line,
                         &mut riser_states[idx],
-                        message_idx != idx,
+                        message_idx == idx,
                         color_enabled)?;
                 }
                 
@@ -466,7 +466,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
                 message_hl.write_message_for_line(
                     out,
                     current_line,
-                    any_multiline,
+                    multiline_highlights_present,
                     color_enabled)?;
             }
         }

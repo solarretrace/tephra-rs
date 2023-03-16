@@ -110,9 +110,13 @@ mod control;
 mod join;
 mod primitive;
 mod repeat;
+mod alt;
+mod imp;
 
 // Exports.
 pub use control::*;
 pub use join::*;
 pub use primitive::*;
 pub use repeat::*;
+pub use alt::*;
+pub use imp::*;

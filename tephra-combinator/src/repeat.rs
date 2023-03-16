@@ -12,8 +12,6 @@
 use crate::discard;
 use crate::empty;
 use crate::right;
-use crate::one;
-use crate::recover_at;
 
 // External library imports.
 use tephra::Lexer;
@@ -30,9 +28,8 @@ use tephra_tracing::span;
 // Repetition combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Returns a parser which repeats the given number of times, interspersed by
-/// parse attempts from a secondary parser. The parsed value is the number of
-/// successful parses.
+/// Returns a parser which repeats the given number of times. The parsed value
+/// is the number of successful parses.
 ///
 /// # Panics
 ///
@@ -54,9 +51,8 @@ pub fn repeat_count<'text, Sc, F, V>(
     }
 }
 
-/// Returns a parser which repeats the given number of times, interspersed by
-/// parse attempts from a secondary parser. The parsed value is the number of
-/// successful parses.
+/// Returns a parser which repeats the given number of times. The parsed value
+/// is the number of successful parses.
 ///
 /// # Panics
 ///
@@ -386,105 +382,3 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
     }
 }
 
-
-
-/// Returns a parser which repeats the given number of times, interspersed by
-/// a token. Errors are collected into a sink, recovered from, and each parsed
-/// value is collected into a `Vec`.
-///
-/// # Panics
-///
-/// Panics if `high` < `low`.
-pub fn delimit<'text, Sc, F, V>(
-    low: usize,
-    high: Option<usize>,
-    mut parser: F,
-    delimiter: Sc::Token)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<V>>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-{
-    move |lexer| {
-        let _span = span!(Level::DEBUG, "delimit").entered();
-
-        event!(Level::DEBUG, "low = {:?}, high = {:?}", low, high);
-
-        if let Some(h) = high {
-            if h < low { panic!("delimit with high < low") }
-            if h == 0 {
-                event!(Level::TRACE, "Ok with 0 repetitions");
-                return Ok(Success {
-                    lexer,
-                    value: Vec::new(),
-                });
-            }
-        }
-
-        let mut vals = Vec::with_capacity(4);
-        let mut count = 0;
-
-        let (val, mut succ) = match recover_at(delimiter.clone(), &mut parser)
-            (lexer.clone())
-            .trace_result(Level::TRACE, "first subparse")
-        {
-            Ok(Success { value, lexer: succ_lexer }) => {
-                (value, Success { value: (), lexer: succ_lexer })
-            },
-            Err(fail) => return if low == 0 {
-                event!(Level::TRACE, "Ok with 0 repetitions");
-                Ok(Success { lexer, value: vals })
-            } else {
-                event!(Level::TRACE, "Err with 0 repetitions");
-                Err(fail)
-            },
-        };
-
-        count += 1;
-        if let Some(val) = val { vals.push(val); }
-        event!(Level::TRACE, "1 repetition...");
-
-        while count < low {
-            let (val, next) = right(
-                    one(delimiter.clone()),
-                    recover_at(delimiter.clone(), &mut parser))
-                (succ.lexer)
-                .trace_result(Level::TRACE, "continuing subparse")?
-                .take_value();
-
-            count += 1;
-            if let Some(val) = val { vals.push(val); }
-            event!(Level::TRACE, "{} repetitions...", count);
-            succ = next;
-        }
-
-        event!(Level::TRACE, "minimum count satisfied");
-
-        while high.map_or(true, |h| count < h) {
-            match right(
-                    one(delimiter.clone()),
-                    recover_at(delimiter.clone(), &mut parser))
-                (succ.lexer.clone())
-                .trace_result(Level::TRACE, "continuing subparse")
-            {
-                Ok(next) => {
-                    let (val, next) = next.take_value();
-                    
-                    count += 1;
-                    if let Some(val) = val { vals.push(val); }
-                    event!(Level::TRACE, "{} repetitions...", count);
-                    succ = next;
-                }
-                Err(_) => break,
-            }
-
-            if high.map_or(false, |h| count >= h) {
-                event!(Level::TRACE, "maximum count satisfied");
-                break;
-            }
-        }
-
-        event!(Level::TRACE, "Ok with {} repetitions", count);
-        Ok(succ.map_value(|_| vals))
-    }
-}

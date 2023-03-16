@@ -8,8 +8,6 @@
 //! Parser control combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Internal library imports.
-use crate::maybe;
 
 // External library imports.
 use tephra::Lexer;
@@ -18,152 +16,34 @@ use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Spanned;
 use tephra::Success;
-use tephra::Failure;
-use tephra::ParseError;
-use tephra::SpanDisplay;
 use tephra_tracing::Level;
 use tephra_tracing::span;
 use tephra_tracing::event;
 
 
-////////////////////////////////////////////////////////////////////////////////
-// Context controls
-////////////////////////////////////////////////////////////////////////////////
 
-/// A combinator which identifies a new span context.
-pub fn context<'text, Sc, F, V>(
-    context: &'static str,
-    mut parser: F)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Lexer context combinators.
+////////////////////////////////////////////////////////////////////////////////
+/// A combinator which disables lexer contexts.
+pub fn raw<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
 {
     move |lexer| {
-        let _span = span!(Level::DEBUG, "context", context).entered();
+        let _span = span!(Level::DEBUG, "raw").entered();
 
-        let sublexer = lexer.sublexer();
-
-        match (parser)
-            (sublexer)
-            .trace_result(Level::TRACE, "subparse")
-        {
-            Ok(mut succ) => {
-                succ.lexer = lexer.join(succ.lexer);
-                Ok(succ)
-            },
-            Err(fail) => {
-                let section_error = ParseError::from("parse error")
-                    .with_span_display(SpanDisplay::new_error_highlight(
-                        lexer.source(),
-                        lexer.clone()
-                            .join(fail.lexer.clone())
-                            .parse_span(),
-                        format!("during this {}", context)));
-                Err(fail.with_context(section_error))
-            },
-        }
+        todo!()
     }
 }
 
-/// Returns a parser which converts a failure into an empty success if no
-/// non-filtered tokens are consumed.
-///
-/// This is equivalent to `context("label", maybe(..))` if the parser consumes 
-/// at most a single token.
-pub fn context_commit<'text, Sc, F, V>(
-    context: &'static str,
-    mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-{
-    move |lexer| {
-        let _span = span!(Level::DEBUG, "context_commit", context).entered();
-
-        let sublexer = lexer.sublexer();
-        let current_cursor = lexer.cursor_pos();
-
-        event!(Level::TRACE, "before parse:\n{}", lexer);
-
-        match parser
-            (sublexer)
-            .trace_result(Level::TRACE, "subparse")
-        {
-            Ok(succ) => Ok(succ.map_value(Some)),
-            
-            Err(fail) if fail.lexer.cursor_pos() > current_cursor => {
-                let section_error = ParseError::from("parse error")
-                    .with_span_display(SpanDisplay::new_error_highlight(
-                        lexer.source(),
-                        lexer.clone()
-                            .join(fail.lexer.clone())
-                            .parse_span(),
-                        format!("during this {}", context)));
-                Err(fail.with_context(section_error))
-            },
-
-            Err(_) => Ok(Success {
-                lexer,
-                value: None,
-            }),
-        }
-    }
-}
-
-
-
-// until
-// abort
-
-
-pub fn recover_at<'text, Sc, F, V>(
-    token: Sc::Token,
-    mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-{
-    move |lexer| {
-        match parser
-            (lexer)
-        {
-            Ok(succ) => Ok(succ.map_value(Some)),
-            Err(Failure { mut lexer, parse_error }) => {
-                lexer.send(parse_error).expect("Send error to sink");
-                lexer.advance_to(token.clone());
-                Ok(Success { lexer, value: None })
-            }
-        }
-    }
-}
-
-pub fn recover_after<'text, Sc, F, V>(
-    token: Sc::Token,
-    mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-{
-    move |lexer| {
-        match parser
-            (lexer)
-        {
-            Ok(succ) => Ok(succ.map_value(Some)),
-            Err(Failure { mut lexer, parse_error }) => {
-                lexer.send(parse_error).expect("Send error to sink");
-                lexer.advance_past(token.clone());
-                Ok(Success { lexer, value: None })
-            }
-        }
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
-// Control combinators.
+// Token filtering combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -209,14 +89,14 @@ pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
 ///
 /// ### Parameters
 /// + `parser`: The parser to run without a token filter.
-pub fn exact<'text, Sc, F, V>(mut parser: F)
+pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer| {
-        let _span = span!(Level::DEBUG, "exact").entered();
+        let _span = span!(Level::DEBUG, "unfiltered").entered();
 
         event!(Level::TRACE, "before removing filter:\n{}", lexer);
 
@@ -238,38 +118,10 @@ pub fn exact<'text, Sc, F, V>(mut parser: F)
 }
 
 
-/// Returns a parser which requires a parse to succeed if the given
-/// predicate is true.
-///
-/// This acts like a `maybe` combinator that can be zcpconditionally disabled:
-/// `require_if(|| false, p)` is identical to `maybe(p)` and 
-/// `require_if(|| true, p)` is identical to `p`.
-pub fn require_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
-    where
-        Sc: Scanner,
-        P: FnMut() -> bool,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-{
-    move |lexer| {
-        let _span = span!(Level::DEBUG, "require_if").entered();
-
-        if pred() {
-            parser(lexer)
-                .trace_result(Level::TRACE, "true branch")
-                .map_value(Some)
-        } else {
-            maybe(&mut parser)
-                (lexer)
-                .trace_result(Level::TRACE, "false branch")
-        }
-    }
-}
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Parse result substitution combinators.
+// Result transforming combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A combinator which discards a parsed value, replacing it with `()`.

@@ -14,7 +14,6 @@ use tephra::Scanner;
 use tephra::Failure;
 use tephra::ParseError;
 use tephra::ParseResult;
-use tephra::ParseResultExt as _;
 use tephra::Success;
 
 // External library imports.
@@ -48,91 +47,8 @@ pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>)
     })
 }
 
-/// Parses any token and fails. Useful for failing if a peeked token doesn't
-/// match any expected tokens.
-pub fn fail<'text, Sc>(mut lexer: Lexer<'text, Sc>)
-    -> ParseResult<'text, Sc, ()>
-    where Sc: Scanner,
-{
-    let _span = span!(Level::DEBUG, "fail").entered();
+// TODO: Make a version of this to consume filtered tokens? any_filtered
 
-    match lexer.next() {
-        Some(token) => {
-            event!(Level::TRACE, "success converted to failure");
-            Err(Failure::new(
-                ParseError::unexpected_token(
-                    lexer.source(),
-                    lexer.token_span(),
-                    &token),
-                lexer
-            ))
-        },
-        None => {
-            event!(Level::TRACE, "no tokens");
-            Err(Failure::new(
-                ParseError::unexpected_end_of_text(
-                    lexer.source(),
-                    lexer.end_span()),
-                lexer
-            ))
-        },
-    }
-}
-
-/// Returns a parser which converts any failure into an empty success.
-pub fn maybe<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-{
-    move |lexer| {
-        let _span = span!(Level::DEBUG, "maybe").entered();
-
-        let initial = lexer.clone();
-        
-        match parser
-            (lexer)
-            .trace_result(Level::TRACE, "subparse")
-        {
-            Ok(succ) => Ok(succ.map_value(Some)),
-
-            Err(_)   => Ok(Success {
-                lexer: initial,
-                value: None,
-            }),
-        }
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// end-of-text
-////////////////////////////////////////////////////////////////////////////////
-/// Parses the end of the text.
-pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
-    -> ParseResult<'text, Sc, ()>
-    where Sc: Scanner,
-{
-    let _span = span!(Level::DEBUG, "end_of_text").entered();
-
-    if lexer.is_empty() {
-        event!(Level::TRACE, "end of text found");
-        Ok(Success {
-            lexer,
-            value: (),
-        })
-    } else {
-        event!(Level::TRACE, "end of text not found");
-        Err(Failure::new(
-            ParseError::expected_end_of_text(
-                lexer.source(),
-                lexer.end_span()),
-            lexer
-        ))
-    }
-
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // one
@@ -200,8 +116,8 @@ pub fn one<'text, Sc>(token: Sc::Token)
 ////////////////////////////////////////////////////////////////////////////////
 // any
 ////////////////////////////////////////////////////////////////////////////////
-/// Returns a parser attempts each of the given tokens in sequence, returning
-/// the first which succeeds.
+/// Returns a parser which attempts to match each of the given tokens in
+/// sequence, returning the first which succeeds.
 pub fn any<'text, Sc>(tokens: &[Sc::Token])
     -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Sc::Token>
     where Sc: Scanner,
@@ -342,3 +258,66 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
         })
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// end-of-text
+////////////////////////////////////////////////////////////////////////////////
+/// Parses the end of the text.
+pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
+    -> ParseResult<'text, Sc, ()>
+    where Sc: Scanner,
+{
+    let _span = span!(Level::DEBUG, "end_of_text").entered();
+
+    if lexer.is_empty() {
+        event!(Level::TRACE, "end of text found");
+        Ok(Success {
+            lexer,
+            value: (),
+        })
+    } else {
+        event!(Level::TRACE, "end of text not found");
+        Err(Failure::new(
+            ParseError::expected_end_of_text(
+                lexer.source(),
+                lexer.end_span()),
+            lexer
+        ))
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// fail
+////////////////////////////////////////////////////////////////////////////////
+/// Parses any token and fails. Useful for failing if a peeked token doesn't
+/// match any expected tokens.
+pub fn fail<'text, Sc, V>(mut lexer: Lexer<'text, Sc>)
+    -> ParseResult<'text, Sc, V>
+    where Sc: Scanner,
+{
+    let _span = span!(Level::DEBUG, "fail").entered();
+
+    match lexer.next() {
+        Some(token) => {
+            event!(Level::TRACE, "success converted to failure");
+            Err(Failure::new(
+                ParseError::unexpected_token(
+                    lexer.source(),
+                    lexer.token_span(),
+                    &token),
+                lexer
+            ))
+        },
+        None => {
+            event!(Level::TRACE, "no tokens");
+            Err(Failure::new(
+                ParseError::unexpected_end_of_text(
+                    lexer.source(),
+                    lexer.end_span()),
+                lexer
+            ))
+        },
+    }
+}
+

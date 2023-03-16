@@ -170,10 +170,11 @@ impl Highlight {
                     write!(out, "\\")
                 }
 
-            } else if self.has_message_for_line(current_line) {
-                if is_active_riser { *riser_state = RiserState::Ended; }
+            } else if is_active_riser 
+                && self.has_message_for_line(current_line)
+            {
+                *riser_state = RiserState::Ended;
                 write!(out, "|")
-
             } else {
                 write!(out, "|")
             },
