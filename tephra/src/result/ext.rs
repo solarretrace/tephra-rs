@@ -10,11 +10,13 @@
 
 // Internal library imports.
 use crate::lexer::Scanner;
+use crate::lexer::Lexer;
 use crate::result::Success;
 use crate::result::Failure;
 
 // External library imports.
 use tephra_error::ParseErrorOwned;
+use tephra_error::Context;
 use tephra_tracing::Level;
 use tephra_tracing::event;
 
@@ -42,8 +44,12 @@ pub trait ParseResultExt<'text, Sc, V>
     fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, U> 
         where F: FnOnce(V) -> U;
 
+    fn with_context(self, context: Context<'text>) -> Self;
+    fn with_current_context(self) -> Self;
+
     /// Outputs a trace event displaying the parse result.
     fn trace_result(self, level: Level, label: &'static str) -> Self;
+
 }
 
 impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
@@ -63,6 +69,20 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
             Ok(succ)  => Ok(succ.map_value(f)),
             Err(fail) => Err(fail),
         }
+    }
+
+    fn with_context(self, context: Context<'text>) -> Self {
+        self.map_err(|Failure { lexer, parse_error }| Failure {
+            lexer,
+            parse_error: context.apply(parse_error),
+        })
+    }
+
+    fn with_current_context(self) -> Self {
+        self.map_err(|Failure { lexer, parse_error }| Failure {
+            lexer,
+            parse_error: parse_error,
+        })
     }
 
     #[cfg_attr(not(feature="tracing"),

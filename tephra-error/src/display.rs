@@ -39,7 +39,7 @@ use std::fmt::Display;
 // CodeDisplay
 ////////////////////////////////////////////////////////////////////////////////
 /// A structure for displaying source text with spans, notes, and highlights.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CodeDisplay {
     /// The top-level description for all of the spans.
     message: String,
@@ -198,7 +198,7 @@ impl CodeDisplay {
 // SpanDisplay
 ////////////////////////////////////////////////////////////////////////////////
 /// A single span of source text with notes and highlights.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SpanDisplay {
     /// The name of the file or data that is being displayed.
     source_name: Option<String>,
@@ -320,7 +320,7 @@ impl SpanDisplay {
 // Note
 ////////////////////////////////////////////////////////////////////////////////
 /// A note which can be attached to a `SpanDisplay` or `CodeDisplay`.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Note {
     /// The message type for the note.
     note_type: MessageType,
@@ -353,7 +353,7 @@ impl Display for Note {
 // MultiSplitLines
 ////////////////////////////////////////////////////////////////////////////////
 /// An iterator over the line-based data relevant to a particular SpanDisplay.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct MultiSplitLines<'text, 'hl> {
     /// The SplitLines iterator for the `SpanDisplay`.
     source_lines: SplitLines<'text>,

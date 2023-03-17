@@ -38,7 +38,7 @@ use std::fmt::Write;
 // Highlight
 ////////////////////////////////////////////////////////////////////////////////
 /// A highlighted subsection of a `SpanDisplay`.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Highlight {
     /// The span to highlight.
     span: Span,

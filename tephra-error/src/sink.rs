@@ -1,6 +1,7 @@
 
 
 use crate::ParseError;
+use crate::Context;
 
 use std::rc::Rc;
 use parking_lot::RwLock;
@@ -13,16 +14,16 @@ use parking_lot::RwLock;
 /// A target to send parse errors to be processed by the application.
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct ErrorSink(Rc<ErrorSinkInner>);
+pub struct ErrorSink<'text>(Rc<ErrorSinkInner<'text>>);
 
-impl ErrorSink {
+impl<'text> ErrorSink<'text> {
     /// Constructs a new `ErrorSink` that processes errors via the given
     /// function.
     ///
     /// The target function is called for every error sent using the
     /// `send` or `send_direct` methods.
     pub fn new<T>(target: T) -> Self
-        where T: for<'text> Fn(ParseError<'text>) + 'static
+        where T: Fn(ParseError<'text>) + 'static
     {
         ErrorSink(Rc::new(ErrorSinkInner {
             contexts: RwLock::new(Vec::new()),
@@ -31,12 +32,12 @@ impl ErrorSink {
     }
 
     /// Sends a `ParseError` to the sink target, wrapping it in any available
-    /// `ErrorContext`s.
+    /// `Context`s.
     ///
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn send<'a, 'text>(&'a self, parse_error: ParseError<'text>)
+    pub fn send<'a>(&'a self, parse_error: ParseError<'text>)
         -> Result<(), Box<dyn std::error::Error + 'a>>
     {
         let inner = self.0.as_ref();
@@ -52,41 +53,81 @@ impl ErrorSink {
     }
 
     /// Sends a `ParseError` to the sink target without wrapping it in any
-    /// `ErrorContext`s.
+    /// `Context`s.
     ///
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn send_direct<'a, 'text>(&'a self, parse_error: ParseError<'text>) {
+    pub fn send_direct<'a>(&'a self, parse_error: ParseError<'text>) {
         let inner = self.0.as_ref();
         let e = parse_error;
 
         (inner.target)(e);
     }
 
-    /// Pushes a new `ErrorContext` onto the context stack, allowing any further
+    /// Pushes a new `Context` onto the context stack, allowing any further
     /// `ParseError`s to be processed by them. 
     ///
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn push_context<'a>(&'a mut self, error_context: ErrorContext) {
+    pub fn push_context<'a>(&'a mut self, context: Context<'text>) {
         let mut contexts = self.0.as_ref().contexts.write();
-        contexts.push(error_context);
+        contexts.push(context);
     }
 
-    /// Pops the top `ErrorContext` from the context stack.
+    /// Pops the top `Context` from the context stack.
     ///
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn pop_context<'a>(&'a mut self) -> Option<ErrorContext> {
+    pub fn pop_context<'a>(&'a mut self) -> Option<Context<'text>> {
         let mut contexts = self.0.as_ref().contexts.write();
         contexts.pop()
     }
+
+
+    /// Replaces the top `Context` from the context stack and returns the old
+    /// value.
+    ///
+    /// Returns an error if the internal sink [RwLock] has been poisoned.
+    ///
+    /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
+    pub fn replace_context<'a>(&'a mut self, context: Context<'text>)
+        -> Option<Context<'text>>
+    {
+        let mut contexts = self.0.as_ref().contexts.write();
+        let old = contexts.pop();
+        contexts.push(context);
+        old
+    }
+
+    /// Replaces the the context stack and returns the old value.
+    ///
+    /// Returns an error if the internal sink [RwLock] has been poisoned.
+    ///
+    /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
+    pub fn replace_contexts<'a>(&'a mut self, new_contexts: Vec<Context<'text>>)
+        -> Vec<Context<'text>>
+    {
+        let mut contexts = self.0.as_ref().contexts.write();
+        std::mem::replace(&mut contexts, new_contexts)
+    }
+
+
+    pub fn apply_current_context<'a>(
+        &'a self,
+        parse_error: ParseError<'text>)
+        -> ParseError<'text>
+    {
+        match self.0.as_ref().contexts.read().last() {
+            Some(context) => context.apply(parse_error),
+            None          => parse_error,
+        }
+    }
 }
 
-impl Clone for ErrorSink {
+impl<'text> Clone for ErrorSink<'text> {
     fn clone(&self) -> Self {
         ErrorSink(Rc::clone(&self.0))
     }
@@ -96,13 +137,13 @@ impl Clone for ErrorSink {
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorSinkInner
 ////////////////////////////////////////////////////////////////////////////////
-struct ErrorSinkInner {
-    contexts: RwLock<Vec<ErrorContext>>,
-    target: Box<dyn for<'text> Fn(ParseError<'text>)>,
+struct ErrorSinkInner<'text> {
+    contexts: RwLock<Vec<Context<'text>>>,
+    target: Box<dyn Fn(ParseError<'text>)>,
 }
 
 
-impl std::fmt::Debug for ErrorSinkInner {
+impl<'text> std::fmt::Debug for ErrorSinkInner<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ErrorSinkInner")
             .field("contexts", &self.contexts)
@@ -113,45 +154,4 @@ impl std::fmt::Debug for ErrorSinkInner {
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// ErrorContext
-////////////////////////////////////////////////////////////////////////////////
-pub struct ErrorContext {
-    name: &'static str,
-    apply_fn: Rc<dyn for<'text> Fn(ParseError<'text>) -> ParseError<'text>>,
-}
 
-impl ErrorContext {
-    pub fn apply<'text>(&self, parse_error: ParseError<'text>)
-        -> ParseError<'text>
-    {
-        (self.apply_fn)(parse_error)
-    }
-}
-
-impl std::fmt::Debug for ErrorContext {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ErrorContext")
-            .field("name", &self.name)
-            .field("apply_fn", &"...")
-            .finish()
-    }
-}
-
-impl Clone for ErrorContext {
-    fn clone(&self) -> Self {
-        ErrorContext {
-            name: self.name,
-            apply_fn: Rc::clone(&self.apply_fn),
-        }
-    }
-}
-
-impl From<&'static str> for ErrorContext {
-    fn from(name: &'static str) -> Self {
-        ErrorContext {
-            name,
-            apply_fn: Rc::new(move |e| e),
-        }
-    }
-}

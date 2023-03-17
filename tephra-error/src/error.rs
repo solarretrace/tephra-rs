@@ -282,3 +282,41 @@ impl std::error::Error for ParseErrorOwned {
             .map(|e| e.as_ref() as &(dyn std::error::Error + 'static))
     }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Context
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug)]
+pub enum Context<'text> {
+    Initial(ParseError<'text>),
+    Wrap(ParseError<'text>),
+
+}
+
+impl<'text> Context<'text> {
+    pub fn apply(&self, parse_error: ParseError<'text>)
+        -> ParseError<'text>
+    {
+        use Context::*;
+        match self {
+            Initial(e) => ParseError {
+                source_text: e.source_text.clone(),
+                code_display: e.code_display.clone(),
+                source: None,
+            },
+            Wrap(e) => ParseError {
+                source_text: e.source_text.clone(),
+                code_display: e.code_display.clone(),
+                source: Some(Box::new(parse_error.into_owned())),
+            },
+        }
+    }
+}
+
+
+impl<'text> From<ParseError<'text>> for Context<'text> {
+    fn from(parse_error: ParseError<'text>) -> Self {
+        Context::Initial(parse_error)
+    }
+}

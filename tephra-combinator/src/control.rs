@@ -27,17 +27,57 @@ use tephra_tracing::event;
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer context combinators.
 ////////////////////////////////////////////////////////////////////////////////
-/// A combinator which disables lexer contexts.
+/// A combinator which disables error contexts.
 pub fn raw<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
         F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
 {
-    move |lexer| {
+    move |mut lexer| {
         let _span = span!(Level::DEBUG, "raw").entered();
 
-        todo!()
+        let contexts = lexer.replace_contexts(Vec::new());
+        match (parser)
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
+            Ok(mut succ)  => {
+                succ.lexer.replace_contexts(contexts);
+                Ok(succ)
+            },
+            Err(mut fail) => {
+                fail.lexer.replace_contexts(contexts);
+                Err(fail)
+            },
+        }
+    }
+}
+
+/// A combinator which disables error recovery.
+pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
+{
+    move |mut lexer| {
+        let _span = span!(Level::DEBUG, "raw").entered();
+
+        let sink = lexer.error_sink_mut().take();
+        match (parser)
+            (lexer)
+            .trace_result(Level::TRACE, "subparse")
+        {
+            Ok(mut succ)  => {
+                *succ.lexer.error_sink_mut() = sink;
+                Ok(succ)
+            },
+            Err(mut fail) => {
+                *fail.lexer.error_sink_mut() = sink;
+                Err(fail)
+            },
+        }
     }
 }
 

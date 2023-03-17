@@ -14,7 +14,7 @@ use tephra_error::CodeDisplay;
 use tephra_error::SpanDisplay;
 use tephra_error::ParseError;
 use tephra_error::ErrorSink;
-use tephra_error::ErrorContext;
+use tephra_error::Context;
 use tephra_span::ColumnMetrics;
 use tephra_span::LineEnding;
 use tephra_span::Pos;
@@ -60,8 +60,11 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
     /// The token inclusion filter. Any token for which this returns false will
     /// be skipped automatically.
     filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>,
+
     /// The error sink.
-    error_sink: Option<ErrorSink>,
+    error_sink: Option<ErrorSink<'text>>,
+    /// The error recovery token.
+    recovery: Option<Sc::Token>,
 
     /// The position of the start of the last lexed token.
     token_start: Pos,
@@ -88,6 +91,7 @@ impl<'text, Sc> Lexer<'text, Sc>
             source,
             filter: None,
             error_sink: None,
+            recovery: None,
             token_start: Pos::ZERO,
             parse_start: Pos::ZERO,
             end: Pos::ZERO,
@@ -147,12 +151,12 @@ impl<'text, Sc> Lexer<'text, Sc>
 
 
     /// Sends a `ParseError` to the sink target, wrapping it in any available
-    /// `ErrorContext`s.
+    /// `Context`s.
     ///
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn send<'a, 't>(&'a self, parse_error: ParseError<'t>)
+    pub fn send<'a>(&'a self, parse_error: ParseError<'text>)
         -> Result<(), Box<dyn std::error::Error + 'a>>
     {
         match self.error_sink.as_ref() {
@@ -166,12 +170,12 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Sends a `ParseError` to the sink target without wrapping it in any
-    /// `ErrorContext`s.
+    /// `Context`s.
     ///
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn send_direct<'a, 't>(&'a self, parse_error: ParseError<'t>) {
+    pub fn send_direct<'a>(&'a self, parse_error: ParseError<'text>) {
         match self.error_sink.as_ref() {
             None => {
                 event!(Level::WARN, "A parse error sent to the error sink, \
@@ -182,36 +186,65 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
 
-    /// Pushes a new `ErrorContext` onto the context stack, allowing any further
+    /// Pushes a new `Context` onto the context stack, allowing any further
     /// `ParseError`s to be processed by them. 
     ///
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn push_context<'a>(&'a mut self, error_context: ErrorContext) {
-        match self.error_sink.as_mut() {
-            None => {
-                event!(Level::WARN, "A context was pushed to the error sink, \
-                    but no error sink is configured: {:?}", error_context);
-            },
-            Some(sink) => sink.push_context(error_context),
+    pub fn push_context<'a>(&'a mut self, context: Context<'text>) {
+        if let Some(sink) = self.error_sink.as_mut() {
+            sink.push_context(context);
         }
     }
 
-    /// Pops the top `ErrorContext` from the context stack.
+    /// Pops the top `Context` from the context stack.
     ///
     /// Returns an error if the internal sink [RwLock] has been poisoned.
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn pop_context<'a>(&'a mut self) -> Option<ErrorContext> {
-        match self.error_sink.as_mut() {
-            None => {
-                event!(Level::WARN, "A context was popped from the error sink, \
-                    but no error sink is configured:");
-                None
-            },
-            Some(sink) => sink.pop_context(),
+    pub fn pop_context<'a>(&'a mut self) -> Option<Context<'text>> {
+        self.error_sink
+            .as_mut()
+            .and_then(|sink| sink.pop_context())
+    }
+
+    /// Pops the top `Context` from the context stack and pushes a new one onto
+    /// it.
+    ///
+    /// Returns an error if the internal sink [RwLock] has been poisoned.
+    ///
+    /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
+    pub fn replace_context<'a>(&'a mut self, context: Context<'text>)
+        -> Option<Context<'text>>
+    {
+        self.error_sink
+            .as_mut()
+            .and_then(|sink| sink.replace_context(context))
+    }
+
+    pub fn apply_current_context<'a>(
+        &'a self,
+        parse_error: ParseError<'text>)
+        -> ParseError<'text>
+    {
+        match self.error_sink.as_ref() {
+            Some(sink) => sink.apply_current_context(parse_error),
+            None       => parse_error,
         }
+    }
+
+    pub fn replace_contexts<'a>(&'a mut self, new_contexts: Vec<Context<'text>>)
+        -> Vec<Context<'text>>
+    {
+        match self.error_sink.as_mut() {
+            None       => Vec::new(),
+            Some(sink) => sink.replace_contexts(new_contexts),
+        }
+    }
+
+    pub fn error_sink_mut<'a>(&'a mut self) -> &mut Option<ErrorSink<'text>> {
+        &mut self.error_sink
     }
 
     /// Returns the end position for the lexer's current parse.
@@ -228,11 +261,12 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Consumes the text from the `parse_start` of the current parse up to the
     /// current position. This ends the 'current parse' and prevents further
     /// spans from including any previously lexed text.
-    fn consume_current(&mut self) {
+    fn end_current_span(&mut self) {
         self.token_start = self.cursor;
         self.parse_start = self.cursor;
         self.end = self.cursor;
     }
+
 
     /// Returns an iterator over the lexer tokens together with their spans.
     pub fn iter_with_spans<'l>(&'l mut self)
@@ -356,7 +390,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// lexer will begin a new parse and advance past any filtered tokens.
     pub fn sublexer(&self) -> Self {
         let mut sub = self.clone();
-        sub.consume_current();
+        sub.end_current_span();
         sub
     }
 
@@ -470,6 +504,7 @@ impl<'text, Sc> Debug for Lexer<'text, Sc>
         f.debug_struct("Lexer")
             .field("source", &self.source)
             .field("scanner", &self.scanner)
+            .field("recovery", &self.recovery)
             .field("filter_set", &self.filter.is_some())
             .field("token_start", &self.token_start)
             .field("parse_start", &self.parse_start)
@@ -480,12 +515,14 @@ impl<'text, Sc> Debug for Lexer<'text, Sc>
     }
 }
 
+
 impl<'text, Sc> PartialEq for Lexer<'text, Sc>
     where Sc: Scanner,
 {
     fn eq(&self, other: &Self) -> bool {
         self.source == other.source &&
         self.scanner == other.scanner &&
+        self.recovery == other.recovery &&
         self.filter.is_some() == other.filter.is_some() &&
         self.token_start == other.token_start &&
         self.parse_start == other.parse_start &&
