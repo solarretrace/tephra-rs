@@ -20,6 +20,9 @@ use crate::seq;
 use crate::spanned;
 use crate::atomic;
 use crate::text;
+use crate::maybe;
+use crate::left;
+use crate::right;
 
 // External library imports.
 use pretty_assertions::assert_eq;
@@ -29,14 +32,19 @@ use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
+use tephra::Failure;
 use tephra::Spanned;
+use tephra::Span;
 use tephra::Success;
+use tephra::Context;
+use tephra::ParseError;
+use tephra::CodeDisplay;
 use test_log::test;
 
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Token parser.
+// Abc scanner.
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -46,6 +54,9 @@ enum AbcToken {
     C,
     D,
     Ws,
+    Comma,
+    OpenBracket,
+    CloseBracket,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,11 +72,14 @@ impl std::fmt::Display for AbcToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use AbcToken::*;
         match self {
-            A   => write!(f, "'a'"),
-            B   => write!(f, "'b'"),
-            C   => write!(f, "'c'"),
-            D   => write!(f, "'d'"),
-            Ws  => write!(f, "whitespace"),
+            A            => write!(f, "'a'"),
+            B            => write!(f, "'b'"),
+            C            => write!(f, "'c'"),
+            D            => write!(f, "'d'"),
+            Ws           => write!(f, "whitespace"),
+            Comma        => write!(f, "','"),
+            OpenBracket  => write!(f, "'['"),
+            CloseBracket => write!(f, "']'"),
         }
     }
 }
@@ -79,7 +93,25 @@ impl Scanner for Abc {
         let text = &source.as_ref()[base.byte..];
         let metrics = source.column_metrics();
 
-        if text.starts_with('a') {
+        if text.starts_with(',') {
+            self.0 = Some(AbcToken::Comma);
+            Some((
+                AbcToken::Comma,
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+
+        } else if text.starts_with(']') {
+            self.0 = Some(AbcToken::CloseBracket);
+            Some((
+                AbcToken::CloseBracket,
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+
+        } else if text.starts_with('[') {
+            self.0 = Some(AbcToken::OpenBracket);
+            Some((
+                AbcToken::OpenBracket,
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+
+        } else if text.starts_with('a') {
             self.0 = Some(AbcToken::A);
             Some((
                 AbcToken::A,
@@ -121,7 +153,7 @@ impl Scanner for Abc {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Grammar
+// Abc grammar.
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Pattern<'text> {
@@ -131,33 +163,49 @@ enum Pattern<'text> {
 }
 
 
-fn pattern<'text>(lexer: Lexer<'text, Abc>)
+fn pattern<'text>(mut lexer: Lexer<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
-    match atomic(spanned(text(abc)))
+    lexer.push_context(Context::Wrap {
+        source_text: lexer.source(),
+        code_display: CodeDisplay::new("unrecognized pattern").with_error_type(),
+    });
+
+    match maybe(spanned(text(abc)))
         (lexer.clone())
     {
-        Ok(Success { value: Some(sp), lexer })
-            => return Ok(Success { value: Pattern::Abc(sp), lexer }),
+        Ok(Success { value: Some(sp), mut lexer }) => {
+            let _ = lexer.pop_context();
+            return Ok(Success { value: Pattern::Abc(sp), lexer });
+        },
 
         _ => (),
     }
 
-    match atomic(spanned(text(bxx)))
+    match maybe(spanned(text(bxx)))
         (lexer.clone())
     {
-        Ok(Success { value: Some(sp), lexer })
-            => return Ok(Success { value: Pattern::Bxx(sp), lexer }),
+        Ok(Success { value: Some(sp), mut lexer }) => {
+            let _ = lexer.pop_context();
+            return Ok(Success { value: Pattern::Bxx(sp), lexer });
+        },
         _ => (),
     }
 
     match spanned(text(xyc))
         (lexer)
+        .with_current_context()
     {
-        Ok(Success { value: sp, lexer })
-            => return Ok(Success { value: Pattern::Xyc(sp), lexer }),
-        Err(e) => Err(e),
+        Ok(Success { value: sp, mut lexer }) => {
+            let _ = lexer.pop_context();
+            Ok(Success { value: Pattern::Xyc(sp), lexer })
+        },
+        Err(Failure { parse_error, mut lexer }) => {
+            let _ = lexer.pop_context();
+            Err(Failure { parse_error, lexer })
+        },
     }
+
 }
 
 
@@ -340,10 +388,134 @@ fn initial_newline_ws_skip() {
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unrecognized token
+error: unrecognized pattern
+... caused by error: unrecognized token
  --> (1:0-1:7, bytes 1-8)
   | 
 1 |     zzz
   |     \\ symbol not recognized
+");
+}
+
+
+
+/// Test successful `both` combinator.
+#[test]
+#[tracing::instrument]
+fn pattern_both() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "abc dac";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = both(pattern, pattern)
+        (lexer.clone())
+        .expect("successful parse")
+        .take_value();
+
+
+    let actual = value;
+    let expected = (
+        Pattern::Abc(Spanned {
+            value: "abc",
+            span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
+        }),
+        Pattern::Xyc(Spanned {
+            value: "dac",
+            span: Span::new_enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
+        }),
+    );
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(7, 0, 7));
+}
+
+
+/// Test successful `left` combinator.
+#[test]
+#[tracing::instrument]
+fn pattern_left() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "abc dac";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = left(pattern, pattern)
+        (lexer.clone())
+        .expect("successful parse")
+        .take_value();
+
+
+    let actual = value;
+    let expected = Pattern::Abc(Spanned {
+        value: "abc",
+        span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
+    });
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(7, 0, 7));
+}
+
+
+
+/// Test successful `right` combinator.
+#[test]
+#[tracing::instrument]
+fn pattern_right() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "abc dac";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = right(pattern, pattern)
+        (lexer.clone())
+        .expect("successful parse")
+        .take_value();
+
+
+    let actual = value;
+    let expected = Pattern::Xyc(Spanned {
+        value: "dac",
+        span: Span::new_enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
+    });
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(7, 0, 7));
+}
+
+
+/// Test successful `right` combinator.
+#[test]
+#[tracing::instrument]
+fn pattern_right_failed() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "abc ddd";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+
+    let actual = right(pattern, pattern)
+        (lexer.clone())
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: unrecognized pattern
+... caused by error: unexpected token
+ --> (0:0-0:7, bytes 0-7)
+  | 
+0 | abc ddd
+  |       ^ expected 'c'
 ");
 }

@@ -79,9 +79,9 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
     }
 
     fn with_current_context(self) -> Self {
-        self.map_err(|Failure { lexer, parse_error }| Failure {
+        self.map_err(|Failure { mut lexer, parse_error }| Failure {
+            parse_error: lexer.apply_current_context(parse_error),
             lexer,
-            parse_error: parse_error,
         })
     }
 

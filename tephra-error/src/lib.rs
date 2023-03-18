@@ -111,13 +111,11 @@
 mod test;
 mod display;
 mod error;
-mod sink;
 mod highlight;
 mod message;
 
 // Exports.
 pub use error::*;
-pub use sink::*;
 pub use display::*;
 pub use message::*;
 pub use highlight::*;

@@ -24,6 +24,13 @@ use tephra_span::Span;
 use tephra_tracing::event;
 use tephra_tracing::Level;
 
+use std::rc::Rc;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// ErrorSink
+////////////////////////////////////////////////////////////////////////////////
+pub type ErrorSink<'text> = Rc<dyn Fn(ParseError<'text>)>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseError
@@ -203,7 +210,11 @@ impl<'text> Default for ParseError<'text> {
 impl<'text> std::fmt::Display for ParseError<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.code_display
-            .write_with_color_enablement(f, self.source_text, true)
+            .write_with_color_enablement(f, self.source_text, true)?;
+        if let Some(source) = &self.source {
+            write!(f, "... caused by {}", source)?;
+        }
+        Ok(())
     }
 }
 
@@ -267,7 +278,11 @@ impl std::fmt::Display for ParseErrorOwned {
             .write_with_color_enablement(
                 f,
                 self.source_text.as_borrowed(),
-                true)
+                true)?;
+        if let Some(source) = &self.source {
+            write!(f, "... caused by {}", source)?;
+        }
+        Ok(())
     }
 }
 
@@ -287,10 +302,20 @@ impl std::error::Error for ParseErrorOwned {
 ////////////////////////////////////////////////////////////////////////////////
 // Context
 ////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Context<'text> {
-    Initial(ParseError<'text>),
-    Wrap(ParseError<'text>),
+    Initial {
+        /// The source text from which the error is derived.
+        source_text: SourceText<'text>,
+        /// The `CodeDisplay` for the `ParseError`.
+        code_display: CodeDisplay,
+    },
+    Wrap {
+        /// The source text from which the error is derived.
+        source_text: SourceText<'text>,
+        /// The `CodeDisplay` for the `ParseError`.
+        code_display: CodeDisplay,
+    },
 
 }
 
@@ -300,14 +325,32 @@ impl<'text> Context<'text> {
     {
         use Context::*;
         match self {
-            Initial(e) => ParseError {
-                source_text: e.source_text.clone(),
-                code_display: e.code_display.clone(),
+            Initial { source_text, code_display } => ParseError {
+                source_text: source_text.clone(),
+                code_display: code_display.clone(),
                 source: None,
             },
-            Wrap(e) => ParseError {
-                source_text: e.source_text.clone(),
-                code_display: e.code_display.clone(),
+            Wrap { source_text, code_display } => ParseError {
+                source_text: source_text.clone(),
+                code_display: code_display.clone(),
+                source: Some(Box::new(parse_error.into_owned())),
+            },
+        }
+    }
+
+    pub fn apply_into(self, parse_error: ParseError<'text>)
+        -> ParseError<'text>
+    {
+        use Context::*;
+        match self {
+            Initial { source_text, code_display } => ParseError {
+                source_text,
+                code_display,
+                source: None,
+            },
+            Wrap { source_text, code_display } => ParseError {
+                source_text,
+                code_display,
                 source: Some(Box::new(parse_error.into_owned())),
             },
         }
@@ -317,6 +360,9 @@ impl<'text> Context<'text> {
 
 impl<'text> From<ParseError<'text>> for Context<'text> {
     fn from(parse_error: ParseError<'text>) -> Self {
-        Context::Initial(parse_error)
+        Context::Initial {
+                source_text: parse_error.source_text,
+                code_display: parse_error.code_display,
+        }
     }
 }

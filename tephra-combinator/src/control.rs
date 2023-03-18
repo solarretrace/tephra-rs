@@ -37,17 +37,17 @@ pub fn raw<'text, Sc, F, V>(mut parser: F)
     move |mut lexer| {
         let _span = span!(Level::DEBUG, "raw").entered();
 
-        let contexts = lexer.replace_contexts(Vec::new());
+        let context_stack = lexer.take_context_stack();
         match (parser)
             (lexer)
             .trace_result(Level::TRACE, "subparse")
         {
             Ok(mut succ)  => {
-                succ.lexer.replace_contexts(contexts);
+                succ.lexer.replace_context_stack(context_stack);
                 Ok(succ)
             },
             Err(mut fail) => {
-                fail.lexer.replace_contexts(contexts);
+                fail.lexer.replace_context_stack(context_stack);
                 Err(fail)
             },
         }
@@ -64,17 +64,17 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
     move |mut lexer| {
         let _span = span!(Level::DEBUG, "raw").entered();
 
-        let sink = lexer.error_sink_mut().take();
+        let sink = lexer.take_error_sink().take();
         match (parser)
             (lexer)
             .trace_result(Level::TRACE, "subparse")
         {
             Ok(mut succ)  => {
-                *succ.lexer.error_sink_mut() = sink;
+                let _ = succ.lexer.replace_error_sink(sink);
                 Ok(succ)
             },
             Err(mut fail) => {
-                *fail.lexer.error_sink_mut() = sink;
+                let _ = fail.lexer.replace_error_sink(sink);
                 Err(fail)
             },
         }

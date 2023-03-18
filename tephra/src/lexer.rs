@@ -13,8 +13,8 @@ use tephra_error::Highlight;
 use tephra_error::CodeDisplay;
 use tephra_error::SpanDisplay;
 use tephra_error::ParseError;
-use tephra_error::ErrorSink;
 use tephra_error::Context;
+use tephra_error::ErrorSink;
 use tephra_span::ColumnMetrics;
 use tephra_span::LineEnding;
 use tephra_span::Pos;
@@ -63,6 +63,8 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
 
     /// The error sink.
     error_sink: Option<ErrorSink<'text>>,
+    /// The error context stack.
+    context_stack: Vec<Context<'text>>,
     /// The error recovery token.
     recovery: Option<Sc::Token>,
 
@@ -91,6 +93,7 @@ impl<'text, Sc> Lexer<'text, Sc>
             source,
             filter: None,
             error_sink: None,
+            context_stack: Vec::new(),
             recovery: None,
             token_start: Pos::ZERO,
             parse_start: Pos::ZERO,
@@ -150,6 +153,18 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
 
+    pub fn take_error_sink<'a>(&'a mut self) -> Option<ErrorSink<'text>> {
+        self.error_sink.take()
+    }
+
+    pub fn replace_error_sink<'a>(
+        &'a mut self,
+        error_sink: Option<ErrorSink<'text>>)
+        -> Option<ErrorSink<'text>>
+    {
+        std::mem::replace(&mut self.error_sink, error_sink)
+    }
+
     /// Sends a `ParseError` to the sink target, wrapping it in any available
     /// `Context`s.
     ///
@@ -157,31 +172,21 @@ impl<'text, Sc> Lexer<'text, Sc>
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
     pub fn send<'a>(&'a self, parse_error: ParseError<'text>)
-        -> Result<(), Box<dyn std::error::Error + 'a>>
     {
-        match self.error_sink.as_ref() {
-            None => {
-                event!(Level::WARN, "A parse error sent to the error sink, \
-                    but no error sink is configured:\n{}", parse_error);
-                Ok(())
-            },
-            Some(sink) => sink.send(parse_error),
+        if let Some(sink) = self.error_sink.as_ref() {
+            let mut e = parse_error;
+            for context in self.context_stack.iter().rev() {
+                e = context.apply(e);
+            }
+            (sink)(e);
         }
     }
 
     /// Sends a `ParseError` to the sink target without wrapping it in any
     /// `Context`s.
-    ///
-    /// Returns an error if the internal sink [RwLock] has been poisoned.
-    ///
-    /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
-    pub fn send_direct<'a>(&'a self, parse_error: ParseError<'text>) {
-        match self.error_sink.as_ref() {
-            None => {
-                event!(Level::WARN, "A parse error sent to the error sink, \
-                    but no error sink is configured:\n{}", parse_error);
-            },
-            Some(sink) => sink.send_direct(parse_error),
+    pub fn send_raw<'a>(&'a self, parse_error: ParseError<'text>) {
+        if let Some(sink) = self.error_sink.as_ref() {
+            (sink)(parse_error)
         }
     }
 
@@ -193,9 +198,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
     pub fn push_context<'a>(&'a mut self, context: Context<'text>) {
-        if let Some(sink) = self.error_sink.as_mut() {
-            sink.push_context(context);
-        }
+        self.context_stack.push(context)
     }
 
     /// Pops the top `Context` from the context stack.
@@ -204,9 +207,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     ///
     /// [RwLock]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html
     pub fn pop_context<'a>(&'a mut self) -> Option<Context<'text>> {
-        self.error_sink
-            .as_mut()
-            .and_then(|sink| sink.pop_context())
+        self.context_stack.pop()
     }
 
     /// Pops the top `Context` from the context stack and pushes a new one onto
@@ -218,9 +219,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn replace_context<'a>(&'a mut self, context: Context<'text>)
         -> Option<Context<'text>>
     {
-        self.error_sink
-            .as_mut()
-            .and_then(|sink| sink.replace_context(context))
+        let c = self.context_stack.pop();
+        self.context_stack.push(context);
+        c
     }
 
     pub fn apply_current_context<'a>(
@@ -228,23 +229,22 @@ impl<'text, Sc> Lexer<'text, Sc>
         parse_error: ParseError<'text>)
         -> ParseError<'text>
     {
-        match self.error_sink.as_ref() {
-            Some(sink) => sink.apply_current_context(parse_error),
-            None       => parse_error,
+        match self.context_stack.last() {
+            Some(c) => c.apply(parse_error),
+            None    => parse_error,
         }
     }
 
-    pub fn replace_contexts<'a>(&'a mut self, new_contexts: Vec<Context<'text>>)
+    pub fn take_context_stack<'a>(&'a mut self) -> Vec<Context<'text>> {
+        std::mem::replace(&mut self.context_stack, Vec::new())
+    }
+
+    pub fn replace_context_stack<'a>(
+        &'a mut self,
+        context_stack: Vec<Context<'text>>)
         -> Vec<Context<'text>>
     {
-        match self.error_sink.as_mut() {
-            None       => Vec::new(),
-            Some(sink) => sink.replace_contexts(new_contexts),
-        }
-    }
-
-    pub fn error_sink_mut<'a>(&'a mut self) -> &mut Option<ErrorSink<'text>> {
-        &mut self.error_sink
+        std::mem::replace(&mut self.context_stack, context_stack)
     }
 
     /// Returns the end position for the lexer's current parse.
