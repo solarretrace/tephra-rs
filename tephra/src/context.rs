@@ -27,13 +27,13 @@ fn option_fmt<T>(opt: &Option<T>) -> &'static str {
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorSink
 ////////////////////////////////////////////////////////////////////////////////
-pub type ErrorSink<'text> = Box<dyn Fn(ParseError<'text>)>;
+pub type ErrorSink<'text> = Box<dyn Fn(ParseError<'text>) + 'text>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorTransform
 ////////////////////////////////////////////////////////////////////////////////
-pub type ErrorTransform<'text> = Rc<dyn Fn(ParseError<'text>)
-    -> ParseError<'text>>;
+pub type ErrorTransform<'text>
+    = Rc<dyn Fn(ParseError<'text>) -> ParseError<'text> + 'text>;
 
 
 
@@ -105,6 +105,7 @@ impl<'text> std::fmt::Debug for LocalContext<'text> {
 pub struct Context<'text> {
     shared: Rc<RwLock<SharedContext<'text>>>,
     local: Rc<RwLock<LocalContext<'text>>>,
+    locked: bool,
 }
 
 impl<'text> Context<'text> {
@@ -118,6 +119,7 @@ impl<'text> Context<'text> {
                 error_transform: None,
                 parent: None,
             })),
+            locked: false,
         }
     }
 
@@ -131,18 +133,30 @@ impl<'text> Context<'text> {
                 error_transform: None,
                 parent: None,
             })),
+            locked: false,
         }
     }
+
+    pub fn locked(mut self, locked: bool) -> Self {
+        self.locked = locked;
+        self
+    }
+
 
     /// Constructs a new `Context` by wrapping a new `ErrorTransform` around the
     /// given `Context`.
     pub fn push(self, error_transform: ErrorTransform<'text>) -> Self {
-        Context {
-            shared: self.shared.clone(),
-            local: Rc::new(RwLock::new(LocalContext {
-                parent: Some(self.local.clone()),
-                error_transform: Some(error_transform),
-            })),
+        if !self.locked {
+            Context {
+                shared: self.shared.clone(),
+                local: Rc::new(RwLock::new(LocalContext {
+                    parent: Some(self.local.clone()),
+                    error_transform: Some(error_transform),
+                })),
+                locked: false,
+            }
+        } else {
+            self
         }
     }
 
@@ -167,7 +181,9 @@ impl<'text> Context<'text> {
             .apply_error_transform(parse_error)
     }
 
-    fn apply_error_transform_recursive(&self, parse_error: ParseError<'text>)
+    pub fn apply_error_transform_recursive(
+        &self,
+        parse_error: ParseError<'text>)
         -> ParseError<'text>
     {
         self.local

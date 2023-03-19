@@ -35,17 +35,16 @@ pub fn raw<'text, Sc, F, V>(mut parser: F)
         Sc: Scanner,
         F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
 {
-    move |lexer, mut ctx| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "raw").entered();
 
-        let local_ctx = ctx.take_local_context();
+        let mut ctx = ctx.clone()
+            .locked(true);
+        let _ = ctx.take_local_context();
 
-        let res = (parser)
+        (parser)
             (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "subparse");
-
-        let _ = ctx.replace_local_context(local_ctx);
-        res
+            .trace_result(Level::TRACE, "subparse")
     }
 }
 
@@ -56,19 +55,15 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
         Sc: Scanner,
         F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
 {
-    move |lexer, mut ctx| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "raw").entered();
 
-        let sink = ctx.take_error_sink();
+        let mut ctx = ctx.clone();
+        let _ = ctx.take_error_sink();
         
-        let res = (parser)
+        (parser)
             (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "subparse");
-
-        if let Some(s) = sink {
-            let _ = ctx.replace_error_sink(s);
-        }
-        res
+            .trace_result(Level::TRACE, "subparse")
     }
 }
 

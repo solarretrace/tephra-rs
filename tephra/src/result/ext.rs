@@ -9,9 +9,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
+use crate::Context;
 use crate::lexer::Scanner;
-use crate::result::Success;
 use crate::result::Failure;
+use crate::result::Success;
 
 // External library imports.
 use tephra_error::ParseErrorOwned;
@@ -44,6 +45,9 @@ pub trait ParseResultExt<'text, Sc, V>
     fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, U> 
         where F: FnOnce(V) -> U;
 
+    /// Applies any `ErrorTransform`s in the given `Context`.
+    fn apply_context(self, ctx: Context<'text>) -> Self;
+
     /// Outputs a trace event displaying the parse result.
     fn trace_result(self, level: Level, label: &'static str) -> Self;
 
@@ -65,6 +69,16 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
         match self {
             Ok(succ)  => Ok(succ.map_value(f)),
             Err(fail) => Err(fail),
+        }
+    }
+
+    fn apply_context(self, ctx: Context<'text>) -> Self {
+        match self {
+            Ok(succ)  => Ok(succ),
+            Err(Failure { lexer, parse_error }) => Err(Failure {
+                lexer,
+                parse_error: ctx.apply_error_transform_recursive(parse_error),
+            }),
         }
     }
 

@@ -28,7 +28,6 @@ use crate::right;
 use pretty_assertions::assert_eq;
 use tephra::Context;
 use tephra::Lexer;
-use tephra::MessageType;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Pos;
@@ -37,6 +36,7 @@ use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
 use tephra::Success;
+use tephra::ParseError;
 use test_log::test;
 
 
@@ -172,13 +172,14 @@ enum Pattern<'text> {
 fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
-    // lexer.push_context(Context {
-    //     message: "unrecognized pattern".to_string(),
-    //     wrap: Some(MessageType::Error),
-    // });
+    let source = lexer.source();
+    let ctx = ctx.push(std::rc::Rc::new(move |e| {
+        e.with_error_context(ParseError::new(source, "unrecognized pattern"))
+    }));
 
     match maybe(spanned(text(abc)))
         (lexer.clone(), ctx.clone())
+        .apply_context(ctx.clone())
     {
         Ok(Success { value: Some(sp), lexer }) => {
             return Ok(Success { value: Pattern::Abc(sp), lexer });
@@ -188,6 +189,7 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
 
     match maybe(spanned(text(bxx)))
         (lexer.clone(), ctx.clone())
+        .apply_context(ctx.clone())
     {
         Ok(Success { value: Some(sp), lexer }) => {
             return Ok(Success { value: Pattern::Bxx(sp), lexer });
@@ -196,7 +198,8 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     }
 
     spanned(text(xyc))
-        (lexer, ctx)
+        (lexer, ctx.clone())
+        .apply_context(ctx)
         .map_value(Pattern::Xyc)
 }
 
@@ -260,7 +263,6 @@ fn abc_tokens() {
     const TEXT: &'static str = "a b\nc d";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = lexer
