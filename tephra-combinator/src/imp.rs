@@ -11,10 +11,11 @@
 
 // Internal library imports.
 use crate::fail;
+use tephra::Context;
 use tephra::Lexer;
-use tephra::Scanner;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
+use tephra::Scanner;
 use tephra::Success;
 
 // External library imports.
@@ -30,19 +31,20 @@ use tephra_tracing::span;
 /// 
 /// Note that filtered tokens are not counted as prefix tokens.
 pub fn atomic<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "atomic").entered();
 
         // TODO: Remove filtered prefix tokens.
         let start = lexer.cursor_pos();
 
         match (parser)
-            (lexer)
+            (lexer, ctx)
             .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => {
@@ -70,23 +72,24 @@ pub fn atomic<'text, Sc, F, V>(mut parser: F)
 /// Returns a parser which sequences two parsers which must both succeed if the
 /// first succeeds, returning their values in a tuple.
 pub fn implies<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<(X, Y)>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Option<(X, Y)>>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
-        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "implies").entered();
 
 
         let (l, succ) = (left)
-            (lexer)
+            (lexer, ctx.clone())
             .trace_result(Level::TRACE, "left capture")?
             .take_value();
 
         (right)
-            (succ.lexer)
+            (succ.lexer, ctx)
             .trace_result(Level::TRACE, "right capture")
             .map_value(|r| Some((l, r)))
     }
@@ -102,20 +105,20 @@ pub fn implies<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
 /// `cond(|| false, p)` is identical to `maybe(p)` and 
 /// `cond(|| true, p)` is identical to `p`.
 pub fn cond<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
         P: FnMut() -> bool,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "cond").entered();
 
         if pred() {
-            parser(lexer)
+            parser(lexer, ctx)
                 .trace_result(Level::TRACE, "true branch")
         } else {
-            fail(lexer)
+            fail(lexer, ctx)
         }
     }
 }

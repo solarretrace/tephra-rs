@@ -42,17 +42,17 @@ use std::fmt::Display;
 #[derive(Debug, Clone)]
 pub struct CodeDisplay {
     /// The top-level description for all of the spans.
-    message: String,
+    pub(in crate) message: String,
     /// The overall message type for all of the spans.
-    message_type: MessageType,
+    pub(in crate) message_type: MessageType,
     /// An error number or warning code to print.
-    code_id: Option<&'static str>,
+    pub(in crate) code_id: Option<&'static str>,
     /// The spans to display.
-    span_displays: Vec<SpanDisplay>,
+    pub(in crate) span_displays: Vec<SpanDisplay>,
     /// Notes to append after the displayed spans.
-    notes: Vec<Note>,
+    pub(in crate) notes: Vec<Note>,
     /// Whether colors are enabled during writing.
-    color_enabled: bool,
+    pub(in crate) color_enabled: bool,
 }
 
 impl CodeDisplay {
@@ -68,6 +68,12 @@ impl CodeDisplay {
             notes: Vec::new(),
             color_enabled: true,
         }
+    }
+
+    /// Returns the given CodeDisplay with the given message.
+    pub fn with_message(mut self, message: String) -> Self {
+        self.message = message;
+        self
     }
 
     /// Returns the given CodeDisplay with the given color enablement.
@@ -201,19 +207,19 @@ impl CodeDisplay {
 #[derive(Debug, Clone)]
 pub struct SpanDisplay {
     /// The name of the file or data that is being displayed.
-    source_name: Option<String>,
+    pub(in crate) source_name: Option<String>,
     /// The column metrics for the source,
-    metrics: ColumnMetrics,
+    pub(in crate) metrics: ColumnMetrics,
     /// The full text span of the displayed source.
-    span: Span,
+    pub(in crate) span: Span,
     /// The subsets of the displayed text to highlight.
-    highlights: Vec<Highlight>,
+    pub(in crate) highlights: Vec<Highlight>,
     /// Notes to append to the source display.
-    notes: Vec<Note>,
+    pub(in crate) notes: Vec<Note>,
     /// The width of the line number gutter.
-    gutter_width: u8,
+    pub(in crate) gutter_width: u8,
     /// Whether to allow line omissions within the source display.
-    allow_omissions: bool,
+    pub(in crate) allow_omissions: bool,
 }
 
 impl SpanDisplay {
@@ -323,9 +329,9 @@ impl SpanDisplay {
 #[derive(Debug, Clone)]
 pub struct Note {
     /// The message type for the note.
-    note_type: MessageType,
+    pub(in crate) note_type: MessageType,
     /// The note to display.
-    note: String,
+    pub(in crate) note: String,
 }
 
 impl Note {

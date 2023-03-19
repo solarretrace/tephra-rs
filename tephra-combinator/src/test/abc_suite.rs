@@ -18,7 +18,7 @@ use crate::both;
 use crate::one;
 use crate::seq;
 use crate::spanned;
-use crate::atomic;
+use crate::raw;
 use crate::text;
 use crate::maybe;
 use crate::left;
@@ -32,19 +32,17 @@ use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
-use tephra::Failure;
 use tephra::Spanned;
 use tephra::Span;
 use tephra::Success;
+use tephra::MessageType;
 use tephra::Context;
-use tephra::ParseError;
-use tephra::CodeDisplay;
 use test_log::test;
 
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Abc scanner.
+// Abc scanner
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -55,6 +53,7 @@ enum AbcToken {
     D,
     Ws,
     Comma,
+    Semicolon,
     OpenBracket,
     CloseBracket,
 }
@@ -78,6 +77,7 @@ impl std::fmt::Display for AbcToken {
             D            => write!(f, "'d'"),
             Ws           => write!(f, "whitespace"),
             Comma        => write!(f, "','"),
+            Semicolon    => write!(f, "','"),
             OpenBracket  => write!(f, "'['"),
             CloseBracket => write!(f, "']'"),
         }
@@ -97,6 +97,12 @@ impl Scanner for Abc {
             self.0 = Some(AbcToken::Comma);
             Some((
                 AbcToken::Comma,
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+
+        } else if text.starts_with(';') {
+            self.0 = Some(AbcToken::Semicolon);
+            Some((
+                AbcToken::Semicolon,
                 metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
 
         } else if text.starts_with(']') {
@@ -153,7 +159,7 @@ impl Scanner for Abc {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Abc grammar.
+// Abc grammar
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Pattern<'text> {
@@ -166,10 +172,10 @@ enum Pattern<'text> {
 fn pattern<'text>(mut lexer: Lexer<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
-    lexer.push_context(Context::Wrap {
-        source_text: lexer.source(),
-        code_display: CodeDisplay::new("unrecognized pattern").with_error_type(),
-    });
+    // lexer.push_context(Context {
+    //     message: "unrecognized pattern".to_string(),
+    //     wrap: Some(MessageType::Error),
+    // });
 
     match maybe(spanned(text(abc)))
         (lexer.clone())
@@ -178,8 +184,7 @@ fn pattern<'text>(mut lexer: Lexer<'text, Abc>)
             let _ = lexer.pop_context();
             return Ok(Success { value: Pattern::Abc(sp), lexer });
         },
-
-        _ => (),
+        _        => (),
     }
 
     match maybe(spanned(text(bxx)))
@@ -189,23 +194,13 @@ fn pattern<'text>(mut lexer: Lexer<'text, Abc>)
             let _ = lexer.pop_context();
             return Ok(Success { value: Pattern::Bxx(sp), lexer });
         },
-        _ => (),
+        _        => (),
     }
 
-    match spanned(text(xyc))
+    spanned(text(xyc))
         (lexer)
-        .with_current_context()
-    {
-        Ok(Success { value: sp, mut lexer }) => {
-            let _ = lexer.pop_context();
-            Ok(Success { value: Pattern::Xyc(sp), lexer })
-        },
-        Err(Failure { parse_error, mut lexer }) => {
-            let _ = lexer.pop_context();
-            Err(Failure { parse_error, lexer })
-        },
-    }
-
+        .map_value(Pattern::Xyc)
+        .with_current_context_into()
 }
 
 
@@ -213,10 +208,10 @@ fn abc<'text>(lexer: Lexer<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
-
     seq(&[A, B, C])
         (lexer)
         .map_value(|v| (v[0], v[1], v[2]))
+        .with_current_context_into()
 }
 
 fn bxx<'text>(lexer: Lexer<'text, Abc>)
@@ -242,7 +237,6 @@ fn xyc<'text>(lexer: Lexer<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
-
     let ((x, y), succ) = both(
         any(&[A, B, C, D]),
         any(&[A, B, C, D]))
@@ -257,7 +251,7 @@ fn xyc<'text>(lexer: Lexer<'text, Abc>)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Tests
+// Misc tests
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Tests Abc token lexing & filtering.
@@ -398,6 +392,9 @@ error: unrecognized pattern
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// Combinator tests
+////////////////////////////////////////////////////////////////////////////////
 
 /// Test successful `both` combinator.
 #[test]
@@ -493,7 +490,7 @@ fn pattern_right() {
 }
 
 
-/// Test successful `right` combinator.
+/// Test `right` combinator failure. Ensure error is properly wrapped.
 #[test]
 #[tracing::instrument]
 fn pattern_right_failed() {
@@ -519,3 +516,31 @@ error: unrecognized pattern
   |       ^ expected 'c'
 ");
 }
+
+/// Test failed `right` combinator with `raw` wrapper. Ensure error is not
+/// wrapped.
+#[test]
+#[tracing::instrument]
+fn pattern_right_failed_raw() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "abc ddd";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+
+    let actual = raw(right(pattern, pattern))
+        (lexer.clone())
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: unexpected token
+ --> (0:0-0:7, bytes 0-7)
+  | 
+0 | abc ddd
+  |       ^ expected 'c'
+");
+}
+

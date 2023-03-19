@@ -8,14 +8,13 @@
 //! Alternative combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Internal library imports.
+// External library imports.
+use tephra::Context;
 use tephra::Lexer;
-use tephra::Scanner;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
+use tephra::Scanner;
 use tephra::Success;
-
-// External library imports.
 use tephra_tracing::Level;
 use tephra_tracing::span;
 
@@ -28,20 +27,20 @@ use tephra_tracing::span;
 /// Returns a parser which attempts each of the given parsers in
 /// sequence, returning the first which succeeds.
 pub fn either<'text, Sc, L, R, X>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
-        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "either").entered();
 
         let lexer_start = lexer.clone();
         
-        (left)(lexer)
+        (left)(lexer, ctx.clone())
             .trace_result(Level::TRACE, "left branch")
-            .or_else(|_| (right)(lexer_start)
+            .or_else(|_| (right)(lexer_start, ctx)
                 .trace_result(Level::TRACE, "right branch"))
 
         // TODO: Better error handling?
@@ -55,15 +54,16 @@ pub fn either<'text, Sc, L, R, X>(mut left: L, mut right: R)
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser which converts any failure into an empty success.
 pub fn maybe<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "maybe").entered();
 
-        match (parser)(lexer)
+        match (parser)(lexer, ctx)
             .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => {
@@ -90,22 +90,23 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
 /// `maybe_if(|| false, p)` is identical to `maybe(p)` and 
 /// `maybe_if(|| true, p)` is identical to `p`.
 pub fn maybe_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Option<V>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
         P: FnMut() -> bool,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "maybe_if").entered();
 
         if pred() {
-            parser(lexer)
+            parser(lexer, ctx)
                 .trace_result(Level::TRACE, "true branch")
                 .map_value(Some)
         } else {
             maybe(&mut parser)
-                (lexer)
+                (lexer, ctx)
                 .trace_result(Level::TRACE, "false branch")
         }
     }

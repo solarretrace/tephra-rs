@@ -105,8 +105,10 @@
 // Public modules.
 mod lexer;
 mod result;
+mod context;
 
 pub use tephra_span::*;
 pub use tephra_error::*;
 pub use lexer::*;
 pub use result::*;
+pub use context::*;

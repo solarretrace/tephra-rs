@@ -10,10 +10,11 @@
 
 
 // External library imports.
+use tephra::Context;
 use tephra::Lexer;
-use tephra::Scanner;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
+use tephra::Scanner;
 use tephra_tracing::Level;
 use tephra_tracing::span;
 
@@ -25,22 +26,22 @@ use tephra_tracing::span;
 /// Returns a parser which sequences two parsers which must both succeed,
 /// returning the value of the first one.
 pub fn left<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
-        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "left").entered();
 
         let (l, succ) = (left)
-            (lexer)
+            (lexer, ctx.clone())
             .trace_result(Level::TRACE, "left capture")?
             .take_value();
 
         (right)
-            (succ.lexer)
+            (succ.lexer, ctx)
             .trace_result(Level::TRACE, "right discard")
             .map_value(|_| l)
     }
@@ -49,21 +50,21 @@ pub fn left<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
 /// Returns a parser which sequences two parsers which must both succeed,
 /// returning the value of the second one.
 pub fn right<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
-        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "right").entered();
 
         let succ = (left)
-            (lexer)
+            (lexer, ctx.clone())
             .trace_result(Level::TRACE, "left discard")?;
 
         (right)
-            (succ.lexer)
+            (succ.lexer, ctx)
             .trace_result(Level::TRACE, "right capture")
     }
 }
@@ -71,22 +72,23 @@ pub fn right<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
 /// Returns a parser which sequences two parsers which must both succeed,
 /// returning their values in a tuple.
 pub fn both<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, (X, Y)>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, (X, Y)>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
-        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "both").entered();
 
         let (l, succ) = (left)
-            (lexer)
+            (lexer, ctx.clone())
             .trace_result(Level::TRACE, "left capture")?
             .take_value();
 
         (right)
-            (succ.lexer)
+            (succ.lexer, ctx)
             .trace_result(Level::TRACE, "right capture")
             .map_value(|r| (l, r))
     }
@@ -98,18 +100,18 @@ pub fn bracket<'text, Sc, L, C, R, X, Y, Z>(
     mut left: L,
     mut center: C,
     mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
-        C: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
-        R: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Z>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+        C: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Z>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "bracket").entered();
 
         let succ = match (left)
-            (lexer)
+            (lexer, ctx.clone())
             .trace_result(Level::TRACE, "left discard")
         {
             Ok(succ) => succ,
@@ -117,7 +119,7 @@ pub fn bracket<'text, Sc, L, C, R, X, Y, Z>(
         };
 
         let (c, succ) = match (center)
-            (succ.lexer)
+            (succ.lexer, ctx.clone())
             .trace_result(Level::TRACE, "center capture")
         {
             Ok(succ) => succ.take_value(),
@@ -125,7 +127,7 @@ pub fn bracket<'text, Sc, L, C, R, X, Y, Z>(
         };
 
         (right)
-            (succ.lexer)
+            (succ.lexer, ctx)
             .trace_result(Level::TRACE, "right discard")
             .map_value(|_| c)
     }
@@ -139,28 +141,29 @@ pub fn bracket_dynamic<'text, Sc, L, C, R, X, Y, Z>(
     mut left: L,
     mut center: C,
     mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, X>,
-        C: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Y>,
-        R: FnMut(Lexer<'text, Sc>, X) -> ParseResult<'text, Sc, Z>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+        C: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text>, X)
+            -> ParseResult<'text, Sc, Z>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "bracket_dynamic").entered();
 
         let (l, succ) = (left)
-            (lexer)
+            (lexer, ctx.clone())
             .trace_result(Level::TRACE, "left discard")?
             .take_value();
 
         let (c, succ) = (center)
-            (succ.lexer)
+            (succ.lexer, ctx.clone())
             .trace_result(Level::TRACE, "center capture")?
             .take_value();
 
         (right)
-            (succ.lexer, l)
+            (succ.lexer, ctx, l)
             .trace_result(Level::TRACE, "right discard")
             .map_value(|_| c)
     }

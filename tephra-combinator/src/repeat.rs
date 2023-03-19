@@ -14,10 +14,11 @@ use crate::empty;
 use crate::right;
 
 // External library imports.
+use tephra::Context;
 use tephra::Lexer;
-use tephra::Scanner;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
+use tephra::Scanner;
 use tephra::Success;
 use tephra_tracing::event;
 use tephra_tracing::Level;
@@ -38,16 +39,17 @@ pub fn repeat_count<'text, Sc, F, V>(
     low: usize,
     high: Option<usize>,
     mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, usize>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         intersperse_count(low, high, 
                 discard(&mut parser),
                 empty)
-            (lexer)
+            (lexer, ctx)
     }
 }
 
@@ -62,18 +64,19 @@ pub fn repeat_count_until<'text, Sc, F, G, V, U>(
     high: Option<usize>,
     mut stop_parser: F,
     mut parser: G)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, usize>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         intersperse_count_until(low, high, 
                 &mut stop_parser,
                 discard(&mut parser),
                 empty)
-            (lexer)
+            (lexer, ctx)
     }
 }
 
@@ -87,16 +90,17 @@ pub fn repeat<'text, Sc, F, V>(
     low: usize,
     high: Option<usize>,
     mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<V>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Vec<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         intersperse(low, high,
             &mut parser,
             empty)
-            (lexer)
+            (lexer, ctx)
     }
 }
 
@@ -113,17 +117,18 @@ pub fn repeat_until<'text, Sc, F, G, V, U>(
     high: Option<usize>,
     mut stop_parser: F,
     mut parser: G)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<U>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Vec<U>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         intersperse_until(low, high, &mut stop_parser,
             &mut parser,
             empty)
-            (lexer)
+            (lexer, ctx)
     }
 }
 
@@ -139,17 +144,18 @@ pub fn intersperse_count<'text, Sc, F, G, V, U>(
     high: Option<usize>,
     mut parser: F,
     mut inter_parser: G)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, usize>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         intersperse(low, high, 
                 discard(&mut parser),
                 &mut inter_parser)
-            (lexer)
+            (lexer, ctx)
             .map_value(|vals| vals.len())
     }
 }
@@ -167,19 +173,20 @@ pub fn intersperse_count_until<'text, Sc, F, G, H, V, U, T>(
     mut stop_parser: F,
     mut parser: G,
     mut inter_parser: H)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, usize>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
-        H: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, T>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
+        H: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, T>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         intersperse_until(low, high, 
                 &mut stop_parser,
                 discard(&mut parser),
                 &mut inter_parser)
-            (lexer)
+            (lexer, ctx)
             .map_value(|vals| vals.len())
     }
 }
@@ -196,13 +203,14 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
     high: Option<usize>,
     mut parser: F,
     mut inter_parser: G)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<V>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Vec<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "intersperse").entered();
 
         event!(Level::DEBUG, "low = {:?}, high = {:?}", low, high);
@@ -221,7 +229,7 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
         let mut vals = Vec::with_capacity(4);
 
         let (val, mut succ) = match (&mut parser)
-            (lexer.clone())
+            (lexer.clone(), ctx.clone())
             .trace_result(Level::TRACE, "first subparse")
         {
             Ok(Success { value, lexer: succ_lexer }) => {
@@ -241,7 +249,7 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
 
         while vals.len() < low {
             let (val, next) = right(&mut inter_parser, &mut parser)
-                (succ.lexer)
+                (succ.lexer, ctx.clone())
                 .trace_result(Level::TRACE, "continuing subparse")?
                 .take_value();
             vals.push(val);
@@ -253,7 +261,7 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
 
         while high.map_or(true, |h| vals.len() < h) {
             match right(&mut inter_parser, &mut parser)
-                (succ.lexer.clone())
+                (succ.lexer.clone(), ctx.clone())
                 .trace_result(Level::TRACE, "continuing subparse")
             {
                 Ok(next) => {
@@ -290,14 +298,15 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
     mut stop_parser: F,
     mut parser: G,
     mut inter_parser: H)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<U>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Vec<U>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, U>,
-        H: FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, T>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
+        H: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, T>,
 {
-    move |lexer| {
+    move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "intersperse_until").entered();
 
         event!(Level::DEBUG, "low = {:?}, high = {:?}", low, high);
@@ -316,7 +325,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
         let mut vals = Vec::with_capacity(4);
 
         if (&mut stop_parser)
-            (lexer.clone())
+            (lexer.clone(), ctx.clone())
             .trace_result(Level::TRACE, "stop subparse")
             .is_ok()
         {
@@ -324,7 +333,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
         }
 
         let (val, mut succ) = (&mut parser)
-            (lexer)
+            (lexer, ctx.clone())
             .trace_result(Level::TRACE, "first subparse")?
             .take_value();
         vals.push(val);
@@ -332,14 +341,14 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
 
         while vals.len() < low {
             if (&mut stop_parser)
-                (succ.lexer.clone())
+                (succ.lexer.clone(), ctx.clone())
                 .trace_result(Level::TRACE, "stop subparse")
                 .is_ok()
             {
                 return Ok(succ.map_value(|_| vals));
             }
             let (val, next) = right(&mut inter_parser, &mut parser)
-                (succ.lexer)
+                (succ.lexer, ctx.clone())
                 .trace_result(Level::TRACE, "continuing subparse")?
                 .take_value();
             vals.push(val);
@@ -351,7 +360,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
 
         while high.map_or(true, |h| vals.len() < h) {
             if (&mut stop_parser)
-                (succ.lexer.clone())
+                (succ.lexer.clone(), ctx.clone())
                 .trace_result(Level::TRACE, "stop subparse")
                 .is_ok()
             {
@@ -359,7 +368,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
             }
 
             match right(&mut inter_parser, &mut parser)
-                (succ.lexer.clone())
+                (succ.lexer.clone(), ctx.clone())
                 .trace_result(Level::TRACE, "continuing subparse")
             {
                 Ok(next) => {

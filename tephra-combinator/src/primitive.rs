@@ -9,11 +9,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
-use tephra::Lexer;
-use tephra::Scanner;
+use tephra::Context;
 use tephra::Failure;
+use tephra::Lexer;
 use tephra::ParseError;
 use tephra::ParseResult;
+use tephra::Scanner;
 use tephra::Success;
 
 // External library imports.
@@ -37,7 +38,7 @@ use tephra_tracing::span;
 /// ## Failure
 ///
 /// This parser cannot fail.
-pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>)
+pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>, _ctx: Context<'text>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
@@ -56,11 +57,12 @@ pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>)
 /// Returns a parser which consumes a single token if it matches the given
 /// token.
 pub fn one<'text, Sc>(token: Sc::Token)
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Sc::Token>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Sc::Token>
     where Sc: Scanner,
 {
 
-    move |mut lexer| {
+    move |mut lexer, _ctx| {
         let _span = span!(Level::DEBUG, "one", expected = ?token).entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
@@ -119,11 +121,12 @@ pub fn one<'text, Sc>(token: Sc::Token)
 /// Returns a parser which attempts to match each of the given tokens in
 /// sequence, returning the first which succeeds.
 pub fn any<'text, Sc>(tokens: &[Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Sc::Token>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Sc::Token>
     where Sc: Scanner,
 {
     let tokens = tokens.to_vec();
-    move |lexer| {
+    move |lexer, _ctx| {
         let _span = span!(Level::DEBUG, "any",
             expected = ?DisplayList(&tokens[..])).entered();
 
@@ -203,12 +206,13 @@ impl<'a, T> std::fmt::Debug for DisplayList<'a, T>
 /// Returns a parser attempts each of the given tokens in sequence, returning
 /// the success only if each succeeds.
 pub fn seq<'text, Sc>(tokens: &[Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc>) -> ParseResult<'text, Sc, Vec<Sc::Token>>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Vec<Sc::Token>>
     where Sc: Scanner,
 {
     let tokens = tokens.to_vec();
     let cap = tokens.len();
-    move |mut lexer| {
+    move |mut lexer, _ctx| {
         let _span = span!(Level::DEBUG, "seq",
             expected = ?DisplayList(&tokens[..])).entered();
 
@@ -263,7 +267,9 @@ pub fn seq<'text, Sc>(tokens: &[Sc::Token])
 // end-of-text
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses the end of the text.
-pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
+pub fn end_of_text<'text, Sc>(
+    lexer: Lexer<'text, Sc>,
+    _ctx: Context<'text>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
@@ -292,7 +298,9 @@ pub fn end_of_text<'text, Sc>(lexer: Lexer<'text, Sc>)
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses any token and fails. Useful for failing if a peeked token doesn't
 /// match any expected tokens.
-pub fn fail<'text, Sc, V>(mut lexer: Lexer<'text, Sc>)
+pub fn fail<'text, Sc, V>(
+    mut lexer: Lexer<'text, Sc>,
+    _ctx: Context<'text>)
     -> ParseResult<'text, Sc, V>
     where Sc: Scanner,
 {

@@ -15,6 +15,7 @@
 use crate::CodeDisplay;
 use crate::Note;
 use crate::SpanDisplay;
+use crate::MessageType;
 
 // External libary imports.
 use tephra_span::ColumnMetrics;
@@ -27,10 +28,6 @@ use tephra_tracing::Level;
 use std::rc::Rc;
 
 
-////////////////////////////////////////////////////////////////////////////////
-// ErrorSink
-////////////////////////////////////////////////////////////////////////////////
-pub type ErrorSink<'text> = Rc<dyn Fn(ParseError<'text>)>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseError
@@ -298,71 +295,3 @@ impl std::error::Error for ParseErrorOwned {
     }
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-// Context
-////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug, Clone)]
-pub enum Context<'text> {
-    Initial {
-        /// The source text from which the error is derived.
-        source_text: SourceText<'text>,
-        /// The `CodeDisplay` for the `ParseError`.
-        code_display: CodeDisplay,
-    },
-    Wrap {
-        /// The source text from which the error is derived.
-        source_text: SourceText<'text>,
-        /// The `CodeDisplay` for the `ParseError`.
-        code_display: CodeDisplay,
-    },
-
-}
-
-impl<'text> Context<'text> {
-    pub fn apply(&self, parse_error: ParseError<'text>)
-        -> ParseError<'text>
-    {
-        use Context::*;
-        match self {
-            Initial { source_text, code_display } => ParseError {
-                source_text: source_text.clone(),
-                code_display: code_display.clone(),
-                source: None,
-            },
-            Wrap { source_text, code_display } => ParseError {
-                source_text: source_text.clone(),
-                code_display: code_display.clone(),
-                source: Some(Box::new(parse_error.into_owned())),
-            },
-        }
-    }
-
-    pub fn apply_into(self, parse_error: ParseError<'text>)
-        -> ParseError<'text>
-    {
-        use Context::*;
-        match self {
-            Initial { source_text, code_display } => ParseError {
-                source_text,
-                code_display,
-                source: None,
-            },
-            Wrap { source_text, code_display } => ParseError {
-                source_text,
-                code_display,
-                source: Some(Box::new(parse_error.into_owned())),
-            },
-        }
-    }
-}
-
-
-impl<'text> From<ParseError<'text>> for Context<'text> {
-    fn from(parse_error: ParseError<'text>) -> Self {
-        Context::Initial {
-                source_text: parse_error.source_text,
-                code_display: parse_error.code_display,
-        }
-    }
-}
