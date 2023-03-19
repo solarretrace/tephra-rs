@@ -17,6 +17,12 @@ use tephra_error::ParseError;
 
 // Standard library imports.
 use std::rc::Rc;
+use std::sync::RwLock;
+
+
+fn option_fmt<T>(opt: &Option<T>) -> &'static str {
+    if opt.is_some() {"Some(...)"} else {"None"}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorSink
@@ -29,126 +35,6 @@ pub type ErrorSink<'text> = Box<dyn Fn(ParseError<'text>)>;
 pub type ErrorTransform<'text> = Rc<dyn Fn(ParseError<'text>)
     -> ParseError<'text>>;
 
-
-////////////////////////////////////////////////////////////////////////////////
-// Context
-////////////////////////////////////////////////////////////////////////////////
-#[derive(Clone)]
-pub struct Context<'text> {
-    shared: Rc<SharedContext<'text>>,
-    error_transform: Option<ErrorTransform<'text>>,
-    parent: Option<Rc<Context<'text>>>,
-}
-
-
-impl<'text> Context<'text> {
-    pub fn empty() -> Self {
-        Context {
-            shared: Rc::new(SharedContext {
-                error_sink: None,
-            }),
-            error_transform: None,
-            parent: None,
-        }
-    }
-
-    pub fn with_error_sink(mut self, error_sink: ErrorSink<'text>)
-        -> Self
-    {
-        if let Some(shared) = Rc::get_mut(&mut self.shared) {
-            shared.error_sink  = Some(error_sink);
-        }
-        self
-    }
-
-    pub fn error_sink(&self) -> &Option<ErrorSink<'text>> {
-        &self.shared.error_sink
-    }
-
-    pub fn take_error_sink(&mut self) -> Option<ErrorSink<'text>> {
-        Rc::get_mut(&mut self.shared)
-            .and_then(|shared| shared.error_sink.take())
-    }
-
-    pub fn replace_error_sink(&mut self, error_sink: ErrorSink<'text>)
-        -> Option<ErrorSink<'text>>
-    {
-        Rc::get_mut(&mut self.shared)
-            .and_then(|shared| shared.error_sink.replace(error_sink))
-    }
-
-    pub fn error_transform(&self) -> &Option<ErrorTransform<'text>> {
-        &self.error_transform
-    }
-
-    pub fn error_transform_mut(&mut self)
-        -> &mut Option<ErrorTransform<'text>>
-    {
-        &mut self.error_transform
-    }
-
-    pub fn parent(&self) -> &Option<Rc<Context<'text>>> {
-        &self.parent
-    }
-
-    pub fn parent_mut(&mut self)
-        -> &mut Option<Rc<Context<'text>>>
-    {
-        &mut self.parent
-    }
-
-    pub fn push_context(self, error_transform: ErrorTransform<'text>) -> Self {
-        Context {
-            shared: self.shared.clone(),
-            error_transform: Some(error_transform),
-            parent: Some(Rc::new(self)),
-        }
-    }
-
-    fn apply_error_transform(&self, parse_error: ParseError<'text>)
-        -> ParseError<'text>
-    {
-        match self.error_transform.as_ref() {
-            Some(transform) => (transform)(parse_error),
-            None            => parse_error,
-        }
-    }
-
-    fn apply_error_transform_recursive(&self, parse_error: ParseError<'text>)
-        -> ParseError<'text>
-    {
-        let e = self.apply_error_transform(parse_error);
-
-        match self.parent.as_ref() {
-            Some(parent) => parent.apply_error_transform_recursive(e),
-            None         => e,
-
-        }
-    }
-
-    /// Sends a `ParseError` to the `ErrorSink`, applying `ErrorTransform`s.
-    pub fn send_error<'a>(&'a self, parse_error: ParseError<'text>)
-    {
-        if let Some(sink) = self.error_sink().as_ref() {
-            (sink)(self.apply_error_transform_recursive(parse_error));
-        }
-    }
-}
-
-
-fn option_fmt<T>(opt: &Option<T>) -> &'static str {
-    if opt.is_some() {"Some(...)"} else {"None"}
-}
-
-impl<'text> std::fmt::Debug for Context<'text> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Context")
-            .field("shared", &self.shared)
-            .field("error_transform", &option_fmt(&self.error_transform))
-            .field("parent", &self.parent)
-            .finish()
-    }
-}
 
 
 
@@ -166,3 +52,160 @@ impl<'text> std::fmt::Debug for SharedContext<'text> {
             .finish()
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// LocalContext
+////////////////////////////////////////////////////////////////////////////////
+pub struct LocalContext<'text> {
+    error_transform: Option<ErrorTransform<'text>>,
+    parent: Option<Rc<RwLock<LocalContext<'text>>>>,
+}
+
+impl<'text> LocalContext<'text> {
+    fn apply_error_transform(&self, parse_error: ParseError<'text>)
+        -> ParseError<'text>
+    {
+        match self.error_transform.as_ref() {
+            Some(transform) => (transform)(parse_error),
+            None            => parse_error,
+        }
+    }
+
+    fn apply_error_transform_recursive(&self, parse_error: ParseError<'text>)
+        -> ParseError<'text>
+    {
+        let e = self.apply_error_transform(parse_error);
+
+        match self.parent.as_ref() {
+            Some(parent) => parent
+                .read()
+                .expect("read parent")
+                .apply_error_transform_recursive(e),
+            None         => e,
+
+        }
+    }
+}
+
+
+impl<'text> std::fmt::Debug for LocalContext<'text> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SharedContext")
+            .field("error_transform", &option_fmt(&self.error_transform))
+            .field("parent", &self.parent)
+            .finish()
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Context
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug, Clone)]
+pub struct Context<'text> {
+    shared: Rc<RwLock<SharedContext<'text>>>,
+    local: Rc<RwLock<LocalContext<'text>>>,
+}
+
+impl<'text> Context<'text> {
+    /// Constructs a new `Context`.
+    pub fn empty() -> Self {
+        Context {
+            shared: Rc::new(RwLock::new(SharedContext {
+                error_sink: None,
+            })),
+            local: Rc::new(RwLock::new(LocalContext {
+                error_transform: None,
+                parent: None,
+            })),
+        }
+    }
+
+    /// Constructs a new `Context` with the given `ErrorSink`.
+    pub fn new(error_sink: Option<ErrorSink<'text>>) -> Self {
+        Context {
+            shared: Rc::new(RwLock::new(SharedContext {
+                error_sink,
+            })),
+            local: Rc::new(RwLock::new(LocalContext {
+                error_transform: None,
+                parent: None,
+            })),
+        }
+    }
+
+    /// Constructs a new `Context` by wrapping a new `ErrorTransform` around the
+    /// given `Context`.
+    pub fn push(self, error_transform: ErrorTransform<'text>) -> Self {
+        Context {
+            shared: self.shared.clone(),
+            local: Rc::new(RwLock::new(LocalContext {
+                parent: Some(self.local.clone()),
+                error_transform: Some(error_transform),
+            })),
+        }
+    }
+
+    pub fn take_error_sink(&mut self) -> Option<ErrorSink<'text>> {
+        let mut shared = self.shared.write().expect("lock shared context");
+        shared.error_sink.take()
+    }
+
+    pub fn replace_error_sink(&mut self, error_sink: ErrorSink<'text>)
+        -> Option<ErrorSink<'text>>
+    {
+        let mut shared = self.shared.write().expect("lock shared context");
+        shared.error_sink.replace(error_sink)
+    }
+
+    fn apply_error_transform(&self, parse_error: ParseError<'text>)
+        -> ParseError<'text>
+    {
+        self.local
+            .read()
+            .expect("read local context")
+            .apply_error_transform(parse_error)
+    }
+
+    fn apply_error_transform_recursive(&self, parse_error: ParseError<'text>)
+        -> ParseError<'text>
+    {
+        self.local
+            .read()
+            .expect("read local context")
+            .apply_error_transform_recursive(parse_error)
+    }
+
+    /// Sends a `ParseError` to the `ErrorSink`, applying `ErrorTransform`s.
+    pub fn send_error<'a>(&'a self, parse_error: ParseError<'text>)
+    {
+        if let Some(sink) =  self.shared
+            .read()
+            .expect("lock shared context")
+            .error_sink
+            .as_ref()
+        {
+            (sink)(self.apply_error_transform_recursive(parse_error));
+        }
+    }
+
+    pub fn take_local_context(&mut self) -> LocalContext<'text> {
+        std::mem::replace(&mut *self.local
+                .write()
+                .expect("write local context"),
+            LocalContext {
+                error_transform: None,
+                parent: None,
+            })
+    }
+
+    pub fn replace_local_context(&mut self, local: LocalContext<'text>)
+        -> LocalContext<'text>
+    {
+        std::mem::replace(&mut *self.local
+                .write()
+                .expect("write local context"),
+            local)
+    }
+}
+

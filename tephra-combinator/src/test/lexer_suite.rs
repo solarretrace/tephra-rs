@@ -18,6 +18,7 @@ use crate::text;
 
 // External library imports.
 use pretty_assertions::assert_eq;
+use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResultExt as _;
 use tephra::Pos;
@@ -320,12 +321,13 @@ fn both_whitespace_filter() {
     const TEXT: &'static str = "aa b \nbdef\n aaa";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = both(
             text(one(Aa)),
             text(one(B)))
-        (lexer)
+        (lexer, ctx)
         .finish()
         .unwrap();
 

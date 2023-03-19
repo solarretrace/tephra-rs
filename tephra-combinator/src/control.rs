@@ -38,15 +38,13 @@ pub fn raw<'text, Sc, F, V>(mut parser: F)
     move |lexer, mut ctx| {
         let _span = span!(Level::DEBUG, "raw").entered();
 
-        let transform = ctx.error_transform_mut().take();
-        let parent = ctx.parent_mut().take();
+        let local_ctx = ctx.take_local_context();
 
         let res = (parser)
             (lexer, ctx.clone())
             .trace_result(Level::TRACE, "subparse");
 
-        *ctx.error_transform_mut() = transform;
-        *ctx.parent_mut() = parent;
+        let _ = ctx.replace_local_context(local_ctx);
         res
     }
 }

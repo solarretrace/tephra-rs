@@ -26,17 +26,17 @@ use crate::right;
 
 // External library imports.
 use pretty_assertions::assert_eq;
+use tephra::Context;
 use tephra::Lexer;
+use tephra::MessageType;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
-use tephra::Spanned;
 use tephra::Span;
+use tephra::Spanned;
 use tephra::Success;
-use tephra::MessageType;
-use tephra::Context;
 use test_log::test;
 
 
@@ -169,7 +169,7 @@ enum Pattern<'text> {
 }
 
 
-fn pattern<'text>(mut lexer: Lexer<'text, Abc>)
+fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
     // lexer.push_context(Context {
@@ -178,73 +178,69 @@ fn pattern<'text>(mut lexer: Lexer<'text, Abc>)
     // });
 
     match maybe(spanned(text(abc)))
-        (lexer.clone())
+        (lexer.clone(), ctx.clone())
     {
-        Ok(Success { value: Some(sp), mut lexer }) => {
-            let _ = lexer.pop_context();
+        Ok(Success { value: Some(sp), lexer }) => {
             return Ok(Success { value: Pattern::Abc(sp), lexer });
         },
         _        => (),
     }
 
     match maybe(spanned(text(bxx)))
-        (lexer.clone())
+        (lexer.clone(), ctx.clone())
     {
-        Ok(Success { value: Some(sp), mut lexer }) => {
-            let _ = lexer.pop_context();
+        Ok(Success { value: Some(sp), lexer }) => {
             return Ok(Success { value: Pattern::Bxx(sp), lexer });
         },
         _        => (),
     }
 
     spanned(text(xyc))
-        (lexer)
+        (lexer, ctx)
         .map_value(Pattern::Xyc)
-        .with_current_context_into()
 }
 
 
-fn abc<'text>(lexer: Lexer<'text, Abc>)
+fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
     seq(&[A, B, C])
-        (lexer)
+        (lexer, ctx)
         .map_value(|v| (v[0], v[1], v[2]))
-        .with_current_context_into()
 }
 
-fn bxx<'text>(lexer: Lexer<'text, Abc>)
+fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
 
     let (c, succ) = one(B)
-        (lexer)?
+        (lexer, ctx.clone())?
         .take_value();
 
     let (x1, succ) = any(&[A, B, C, D])
-        (succ.lexer)?
+        (succ.lexer, ctx.clone())?
         .take_value();
 
     one(x1)
-        (succ.lexer)
+        (succ.lexer, ctx)
         .map_value(|x2| (c, x1, x2))
 }
 
 
-fn xyc<'text>(lexer: Lexer<'text, Abc>)
+fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
     let ((x, y), succ) = both(
         any(&[A, B, C, D]),
         any(&[A, B, C, D]))
-        (lexer)?
+        (lexer, ctx.clone())?
         .take_value();
 
     one(C)
-        (succ.lexer)
+        (succ.lexer, ctx)
         .map_value(|b| (x, y, b))
 }
 
@@ -264,6 +260,7 @@ fn abc_tokens() {
     const TEXT: &'static str = "a b\nc d";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = lexer
@@ -293,10 +290,11 @@ fn abc_pattern() {
     const TEXT: &'static str = "abc";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = pattern
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
@@ -320,10 +318,11 @@ fn bxx_pattern() {
     const TEXT: &'static str = "baa";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = pattern
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
@@ -347,10 +346,11 @@ fn xyc_pattern() {
     const TEXT: &'static str = "bac";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = pattern
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
@@ -375,10 +375,11 @@ fn initial_newline_ws_skip() {
     const TEXT: &'static str = "\n    zzz";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = pattern
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -406,10 +407,11 @@ fn pattern_both() {
     const TEXT: &'static str = "abc dac";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(pattern, pattern)
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
@@ -441,10 +443,11 @@ fn pattern_left() {
     const TEXT: &'static str = "abc dac";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = left(pattern, pattern)
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
@@ -471,10 +474,11 @@ fn pattern_right() {
     const TEXT: &'static str = "abc dac";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = right(pattern, pattern)
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
@@ -500,11 +504,12 @@ fn pattern_right_failed() {
     const TEXT: &'static str = "abc ddd";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
 
     let actual = right(pattern, pattern)
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -528,11 +533,12 @@ fn pattern_right_failed_raw() {
     const TEXT: &'static str = "abc ddd";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
 
     let actual = raw(right(pattern, pattern))
-        (lexer.clone())
+        (lexer.clone(), ctx)
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
