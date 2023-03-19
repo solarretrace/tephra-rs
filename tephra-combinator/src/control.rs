@@ -43,7 +43,7 @@ pub fn raw<'text, Sc, F, V>(mut parser: F)
         let _ = ctx.take_local_context();
 
         (parser)
-            (lexer, ctx.clone())
+            (lexer, ctx)
             .trace_result(Level::TRACE, "subparse")
     }
 }
@@ -62,7 +62,7 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
         let _ = ctx.take_error_sink();
         
         (parser)
-            (lexer, ctx.clone())
+            (lexer, ctx)
             .trace_result(Level::TRACE, "subparse")
     }
 }
