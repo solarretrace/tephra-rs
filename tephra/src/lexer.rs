@@ -46,6 +46,50 @@ pub trait Scanner: Debug + Clone + PartialEq {
 }
 
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Recover<T>
+    where T: Display + Debug + Clone + PartialEq + Send + Sync + 'static
+{
+    Wait,
+    Before {
+        token: T,
+    },
+    After {
+        token: T,
+    },
+    BeforeLimit {
+        token: T,
+        limit: u32,
+    },
+    AfterLimit {
+        token: T,
+        limit: u32,
+    },
+}
+
+impl<T> Recover<T>
+    where T: Display + Debug + Clone + PartialEq + Send + Sync + 'static
+{
+    pub fn before(token: T) -> Self {
+        Recover::Before { token }
+    }
+
+    pub fn after(token: T) -> Self {
+        Recover::After { token }
+    }
+
+    pub fn is_recovering(&self) -> bool {
+        *self == Recover::Wait
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RecoverError {
+    LimitExceeded,
+    EndOfText,
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,9 +102,6 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
     /// be skipped automatically.
     filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>,
 
-    /// The error recovery token.
-    recovery: Option<Sc::Token>,
-
     /// The position of the start of the last lexed token.
     token_start: Pos,
     /// The position of the start of the current parse sequence.
@@ -70,9 +111,11 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
     /// The current position of the lexer cursor.
     cursor: Pos,
 
+    /// The error recovery type.
+    recover: Recover<Sc::Token>,
+
     /// The next token to emit, its position, and the resulting scanner state.
     buffer: Option<(Sc::Token, Pos, Sc)>,
-
     /// The internal user-defined Scanner.
     scanner: Sc,
 }
@@ -85,12 +128,12 @@ impl<'text, Sc> Lexer<'text, Sc>
         Lexer {
             source,
             filter: None,
-            recovery: None,
             token_start: Pos::ZERO,
             parse_start: Pos::ZERO,
             end: Pos::ZERO,
             cursor: Pos::ZERO,
             buffer: None,
+            recover: Recover::Wait,
             scanner,
         }
     }
@@ -258,30 +301,6 @@ impl<'text, Sc> Lexer<'text, Sc>
         Some(token)
     }
 
-    /// Advances the lexer state up to the next instance of the given token.
-    pub fn advance_to(&mut self, token: Sc::Token) {
-        let _span = span!(Level::TRACE, "advance_to").entered();
-        event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
-        while let Some(tok) = self.peek() {
-            event!(Level::TRACE, "found {:?}", token);
-            if tok == token { break; }
-            let _ = self.next();
-        }
-        event!(Level::TRACE, "after: \n{}", self);
-    }
-
-    /// Advances the lexer state past the next instance of the given token.
-    pub fn advance_past(&mut self, token: Sc::Token) {
-        let _span = span!(Level::TRACE, "advance_past").entered();
-        event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
-        while let Some(tok) = self.next() {
-            event!(Level::TRACE, "found {:?}", token);
-            if tok == token { break; }
-        }
-        event!(Level::TRACE, "after: \n{}", self);
-    }
-
-
     /// Creates a sublexer starting at the current lex position. The returned
     /// lexer will begin a new parse and advance past any filtered tokens.
     pub fn sublexer(&self) -> Self {
@@ -340,6 +359,73 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn cursor_span(&self) -> Span {
         Span::new_at(self.cursor)
     }
+
+
+    pub fn recover_state(&self) -> &Recover<Sc::Token> {
+        &self.recover
+    }
+
+    pub fn clear_recover_state(&mut self) {
+        self.recover = Recover::Wait;
+    }
+
+    pub fn set_recover_state(&mut self, recover: Recover<Sc::Token>) {
+        self.recover = recover;
+    }
+
+    pub fn advance_to_recover(&mut self) -> Result<(), RecoverError> {
+        match &mut self.recover {
+            Recover::BeforeLimit { limit, .. } | 
+            Recover::AfterLimit { limit, .. }  => if *limit == 0 {
+                return Err(RecoverError::LimitExceeded);
+            } else {
+                *limit -= 1;
+            },
+
+            _ => (),
+        }
+
+        match &self.recover {
+            Recover::Wait => Ok(()),
+
+            Recover::Before { token }          |
+            Recover::BeforeLimit { token, .. } => {
+                self.advance_to(token.clone());
+                Ok(())
+            },
+
+            Recover::After { token }          |
+            Recover::AfterLimit { token, .. } => {
+                self.advance_past(token.clone());
+                Ok(())
+            },
+        }
+    }
+
+    /// Advances the lexer state up to the next instance of the given token.
+    pub fn advance_to(&mut self, token: Sc::Token) {
+        let _span = span!(Level::TRACE, "advance_to").entered();
+        event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
+        while let Some(tok) = self.peek() {
+            event!(Level::TRACE, "found {:?}", token);
+            if tok == token { break; }
+            let _ = self.next();
+        }
+        event!(Level::TRACE, "after: \n{}", self);
+    }
+
+    /// Advances the lexer state past the next instance of the given token.
+    pub fn advance_past(&mut self, token: Sc::Token) {
+        let _span = span!(Level::TRACE, "advance_past").entered();
+        event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
+        while let Some(tok) = self.next() {
+            event!(Level::TRACE, "found {:?}", token);
+            if tok == token { break; }
+        }
+        event!(Level::TRACE, "after: \n{}", self);
+    }
+
+
 }
 
 impl<'text, Sc> Iterator for Lexer<'text, Sc>
@@ -400,12 +486,12 @@ impl<'text, Sc> Debug for Lexer<'text, Sc>
         f.debug_struct("Lexer")
             .field("source", &self.source)
             .field("scanner", &self.scanner)
-            .field("recovery", &self.recovery)
             .field("filter_set", &self.filter.is_some())
             .field("token_start", &self.token_start)
             .field("parse_start", &self.parse_start)
             .field("end", &self.end)
             .field("cursor", &self.cursor)
+            .field("recover", &self.recover)
             .field("buffer", &self.buffer)
             .finish()
     }
@@ -418,13 +504,13 @@ impl<'text, Sc> PartialEq for Lexer<'text, Sc>
     fn eq(&self, other: &Self) -> bool {
         self.source == other.source &&
         self.scanner == other.scanner &&
-        self.recovery == other.recovery &&
         self.filter.is_some() == other.filter.is_some() &&
         self.token_start == other.token_start &&
         self.parse_start == other.parse_start &&
         self.end == other.end && 
         self.cursor == other.cursor &&
-        self.buffer == other.buffer
+        self.buffer == other.buffer &&
+        self.recover == other.recover
     }
 }
 

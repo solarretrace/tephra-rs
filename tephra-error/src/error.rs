@@ -132,6 +132,25 @@ impl<'text> ParseError<'text> {
         e
     }
 
+    /// Constructs an `unpaired_delimitter` lexer error.
+    pub fn unpaired_delimitter(source_text: SourceText<'text>)
+        -> Self
+    {
+        let e = ParseError {
+            source_text,
+            code_display: CodeDisplay::new("unpaired delimitter?")
+                .with_error_type(),
+                // TODO: Specify which delimiter.
+                // .with_span_display(SpanDisplay::new_error_highlight(
+                //     source_text,
+                //     span,
+                //     "delimitter here is unclosed")),
+            source: None,
+        };
+        event!(Level::TRACE, "{e:?}");
+        e
+    }
+
     /// Adds the given span to the `ParseError` and returns it.
     pub fn with_code_display<S>(mut self, code_display: CodeDisplay)
         -> Self 

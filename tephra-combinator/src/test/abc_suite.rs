@@ -17,6 +17,7 @@ use crate::any;
 use crate::both;
 use crate::one;
 use crate::recover_option;
+use crate::recover_until;
 use crate::seq;
 use crate::spanned;
 use crate::raw;
@@ -37,6 +38,7 @@ use tephra::Scanner;
 use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
+use tephra::Recover;
 use tephra::Success;
 use tephra::ParseError;
 use test_log::test;
@@ -569,9 +571,9 @@ fn pattern_bracket() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket(
-            one(AbcToken::OpenBracket),
+            one(OpenBracket),
             pattern,
-            one(AbcToken::CloseBracket))
+            one(CloseBracket))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -602,9 +604,9 @@ fn pattern_bracket_recover() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket(
-            one(AbcToken::OpenBracket),
-            recover_option(pattern, AbcToken::CloseBracket),
-            one(AbcToken::CloseBracket))
+            one(OpenBracket),
+            recover_option(pattern, Recover::before(CloseBracket)),
+            recover_until(one(CloseBracket)))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -626,3 +628,42 @@ error: unrecognized pattern
 ");
 }
 
+
+/// Test failed `bracket` combinator with error recovery, with a delayed close bracket.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_recover_delayed() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[ab   bbb] ";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = bracket(
+            one(OpenBracket),
+            recover_option(pattern, Recover::before(CloseBracket)),
+            recover_until(one(CloseBracket)))
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = None;
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(11, 0, 11));
+
+    assert_eq!(errors.read().unwrap().len(), 1);
+    assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
+error: unrecognized pattern
+... caused by error: unexpected token
+ --> (0:0-0:11, bytes 0-11)
+  | 
+0 | [ab   bbb] 
+  |       ^ expected 'c'
+");
+}

@@ -13,11 +13,14 @@
 use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResult;
+use tephra::ParseError;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Spanned;
 use tephra::Success;
 use tephra::Failure;
+use tephra::RecoverError;
+use tephra::Recover;
 use tephra_tracing::event;
 use tephra_tracing::Level;
 use tephra_tracing::span;
@@ -69,17 +72,26 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
 
 /// A combinator which performs error recovery, returning a default value when
 /// an error occurs.
-pub fn recover_default<'text, Sc, F, V>(mut parser: F, recover_token: Sc::Token)
+pub fn recover_default<'text, Sc, F, V>(
+    mut parser: F,
+    recover: Recover<Sc::Token>)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
         F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
         V: Default
 {
+    if recover == Recover::Wait {
+        // TODO: Maybe Wait is a useful state to prevent advancing here?
+        panic!("invalid recover state");
+    }
+
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "recover_default").entered();
         
         let mut base_lexer = lexer.clone();
+        base_lexer.set_recover_state(recover.clone());
+
         match (parser)
             (lexer, ctx.clone())
             .trace_result(Level::TRACE, "subparse")
@@ -92,7 +104,7 @@ pub fn recover_default<'text, Sc, F, V>(mut parser: F, recover_token: Sc::Token)
                 Err(parse_error) => Err(Failure { lexer, parse_error }),
 
                 Ok(()) => {
-                    base_lexer.advance_to(recover_token.clone());
+                    base_lexer.advance_to_recover();
                     Ok(Success {
                         lexer: base_lexer,
                         value: V::default(),
@@ -105,7 +117,9 @@ pub fn recover_default<'text, Sc, F, V>(mut parser: F, recover_token: Sc::Token)
 
 /// A combinator which performs error recovery, returning a `None` value when
 /// an error occurs.
-pub fn recover_option<'text, Sc, F, V>(mut parser: F, recover_token: Sc::Token)
+pub fn recover_option<'text, Sc, F, V>(
+    mut parser: F,
+    recover: Recover<Sc::Token>)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
         -> ParseResult<'text, Sc, Option<V>>
     where
@@ -118,7 +132,48 @@ pub fn recover_option<'text, Sc, F, V>(mut parser: F, recover_token: Sc::Token)
             .map_value(Some)
     };
 
-    recover_default(option_parser, recover_token)
+    recover_default(option_parser, recover)
+}
+
+pub fn recover_until<'text, Sc, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, V>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+{
+    move |lexer, ctx| {
+        let mut res = (parser)
+            (lexer.clone(), ctx.clone());
+
+        while lexer.recover_state().is_recovering() {
+            match res {
+                Ok(mut succ) => {
+                    succ.lexer.clear_recover_state();
+                    res = Ok(succ);
+                },
+                Err(mut fail) => match fail.lexer.advance_to_recover() {
+                    Ok(()) => {
+                        res = (parser)
+                            (fail.lexer.clone(), ctx.clone());
+                    },
+                    Err(RecoverError::LimitExceeded) => {
+                        fail.lexer.clear_recover_state();
+                        res = Err(fail)
+                    },
+                    Err(RecoverError::EndOfText) => {
+                        fail.lexer.clear_recover_state();
+                        res = Err(Failure {
+                            parse_error: ParseError::unpaired_delimitter(
+                                fail.lexer.source()),
+                            lexer: fail.lexer,
+                        })
+                    },
+                }
+            }
+        }
+        res
+    }
 }
 
 

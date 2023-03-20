@@ -18,6 +18,9 @@ use tephra_tracing::span;
 use tephra_tracing::Level;
 
 
+pub const SOURCE_TEXT_DISPLAY_LEN: usize = 12;
+pub const SOURCE_TEXT_DEBUG_LEN: usize = 12;
+
 ////////////////////////////////////////////////////////////////////////////////
 // SourceText
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,10 +234,10 @@ impl<'text> AsRef<str> for SourceText<'text> {
 
 impl<'text> std::fmt::Display for SourceText<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.source.len() > 7 {
-            write!(f, "{}...", &self.source[0..7])?;
+        if self.source.len() > SOURCE_TEXT_DISPLAY_LEN {
+            write!(f, "{}...", &self.source[0..SOURCE_TEXT_DISPLAY_LEN])?;
         } else {
-            write!(f, "{}...", &self.source[..])?;
+            write!(f, "{}", &self.source[..])?;
         };
 
         write!(f, " ({}, {:?})", self.offset, self.metrics)
@@ -243,10 +246,10 @@ impl<'text> std::fmt::Display for SourceText<'text> {
 
 impl<'text> std::fmt::Debug for SourceText<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let src = if self.source.len() > 7 {
-            format!("{}...", &self.source[0..7])
+        let src = if self.source.len() > SOURCE_TEXT_DEBUG_LEN {
+            format!("{}...", &self.source[0..SOURCE_TEXT_DEBUG_LEN])
         } else {
-            format!("{}...", &self.source[..])
+            format!("{}", &self.source[..])
         };
         f.debug_struct("SourceText")
             .field("source", &src)
