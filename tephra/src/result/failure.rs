@@ -14,9 +14,9 @@ use crate::lexer::Scanner;
 use tephra_error::ParseError;
 
 // Standard library imports.
+use std::error::Error;
 use std::fmt::Debug;
 use std::fmt::Display;
-use std::error::Error;
 
 
 ////////////////////////////////////////////////////////////////////////////////

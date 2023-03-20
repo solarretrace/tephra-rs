@@ -81,8 +81,8 @@ pub fn recover_default<'text, Sc, F, V>(
         F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
         V: Default
 {
-    if recover == Recover::Wait {
-        // TODO: Maybe Wait is a useful state to prevent advancing here?
+    if recover == Recover::Wait || recover.limit() == Some(&0) {
+        // TODO: Maybe Wait is a useful state to prevent advancing?
         panic!("invalid recover state");
     }
 
@@ -103,12 +103,24 @@ pub fn recover_default<'text, Sc, F, V>(
             {
                 Err(parse_error) => Err(Failure { lexer, parse_error }),
 
-                Ok(()) => {
-                    base_lexer.advance_to_recover();
-                    Ok(Success {
-                        lexer: base_lexer,
-                        value: V::default(),
-                    })
+                Ok(()) => match base_lexer.advance_to_recover() {
+                    Ok(_) => {
+                        Ok(Success {
+                            lexer: base_lexer,
+                            value: V::default(),
+                        })
+                    },
+                    Err(RecoverError::EndOfText) => {
+                        Err(Failure {
+                            parse_error: ParseError::unpaired_delimitter(
+                                base_lexer.source()),
+                            lexer: base_lexer,
+                        })
+                    },
+                    Err(RecoverError::LimitExceeded) => {
+                        // Recover limit should be non-zero.
+                        unreachable!()
+                    },
                 },
             },
         }
@@ -153,7 +165,7 @@ pub fn recover_until<'text, Sc, F, V>(mut parser: F)
                     res = Ok(succ);
                 },
                 Err(mut fail) => match fail.lexer.advance_to_recover() {
-                    Ok(()) => {
+                    Ok(_) => {
                         res = (parser)
                             (fail.lexer.clone(), ctx.clone());
                     },

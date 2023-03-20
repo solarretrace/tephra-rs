@@ -9,8 +9,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
-use crate::lexer::Lexer;
-use crate::lexer::Scanner;
+use crate::Lexer;
+use crate::Scanner;
 use tephra_span::Span;
 
 // Standard library imports.

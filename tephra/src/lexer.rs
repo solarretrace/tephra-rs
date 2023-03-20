@@ -81,6 +81,14 @@ impl<T> Recover<T>
     pub fn is_recovering(&self) -> bool {
         *self == Recover::Wait
     }
+
+    pub fn limit(&self) -> Option<&u32> {
+        match self {
+            Recover::BeforeLimit { limit, .. } |
+            Recover::AfterLimit { limit, .. }  => Some(limit),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -373,7 +381,12 @@ impl<'text, Sc> Lexer<'text, Sc>
         self.recover = recover;
     }
 
-    pub fn advance_to_recover(&mut self) -> Result<(), RecoverError> {
+    pub fn advance_to_recover(&mut self) -> Result<Span, RecoverError> {
+        if self.recover == Recover::Wait {
+            return Ok(self.cursor_span());
+        }
+
+        let start_pos = self.cursor_pos();
         match &mut self.recover {
             Recover::BeforeLimit { limit, .. } | 
             Recover::AfterLimit { limit, .. }  => if *limit == 0 {
@@ -385,44 +398,58 @@ impl<'text, Sc> Lexer<'text, Sc>
             _ => (),
         }
 
-        match &self.recover {
-            Recover::Wait => Ok(()),
-
+        let token_found = match &self.recover {
             Recover::Before { token }          |
-            Recover::BeforeLimit { token, .. } => {
-                self.advance_to(token.clone());
-                Ok(())
-            },
+            Recover::BeforeLimit { token, .. } => self
+                .advance_to(token.clone()),
 
             Recover::After { token }          |
-            Recover::AfterLimit { token, .. } => {
-                self.advance_past(token.clone());
-                Ok(())
-            },
+            Recover::AfterLimit { token, .. } => self
+                .advance_past(token.clone()),
+
+            _ => unreachable!(),
+        };
+
+        if token_found {
+            Ok(Span::new_enclosing(start_pos, self.cursor_pos()))
+        } else {
+            Err(RecoverError::EndOfText)
         }
     }
 
     /// Advances the lexer state up to the next instance of the given token.
-    pub fn advance_to(&mut self, token: Sc::Token) {
+    ///
+    /// Returns `true` if the given token was found, and `false` if the end of
+    /// text was reached.
+    pub fn advance_to(&mut self, token: Sc::Token) -> bool {
         let _span = span!(Level::TRACE, "advance_to").entered();
         event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
         while let Some(tok) = self.peek() {
             event!(Level::TRACE, "found {:?}", token);
-            if tok == token { break; }
+            if tok == token {
+                event!(Level::TRACE, "after: \n{}", self);
+                return true;
+            }
             let _ = self.next();
         }
-        event!(Level::TRACE, "after: \n{}", self);
+        false
     }
 
     /// Advances the lexer state past the next instance of the given token.
-    pub fn advance_past(&mut self, token: Sc::Token) {
+    ///
+    /// Returns `true` if the given token was found, and `false` if the end of
+    /// text was reached.
+    pub fn advance_past(&mut self, token: Sc::Token) -> bool {
         let _span = span!(Level::TRACE, "advance_past").entered();
         event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
         while let Some(tok) = self.next() {
             event!(Level::TRACE, "found {:?}", token);
-            if tok == token { break; }
+            if tok == token {
+                event!(Level::TRACE, "after: \n{}", self);
+                return true;
+            }
         }
-        event!(Level::TRACE, "after: \n{}", self);
+        false
     }
 
 

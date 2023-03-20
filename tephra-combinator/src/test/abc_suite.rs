@@ -682,27 +682,18 @@ fn pattern_bracket_recover_unpaired() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket(
+    let actual = bracket(
             one(OpenBracket),
             recover_option(pattern, Recover::before(CloseBracket)),
             recover_until(one(CloseBracket)))
         (lexer.clone(), ctx)
-        .expect("successful parse")
-        .take_value();
+        .unwrap_err();
 
-    let actual = value;
-    let expected = None;
-
-    assert_eq!(actual, expected);
-    assert_eq!(succ.lexer.cursor_pos(), Pos::new(11, 0, 11));
-
-    assert_eq!(errors.read().unwrap().len(), 1);
-    assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
-error: unrecognized pattern
-... caused by error: unexpected token
- --> (0:0-0:11, bytes 0-11)
+    assert_eq!(format!("{actual}"), "\
+error: unpaired delimitter?
+ --> (0:1, bytes 1)
   | 
 0 | [ab   bbb  
-  |       ^ expected 'c'
+  | ^ matching delimitter not found
 ");
 }
