@@ -16,11 +16,13 @@
 use crate::any;
 use crate::both;
 use crate::one;
+use crate::recover_option;
 use crate::seq;
 use crate::spanned;
 use crate::raw;
 use crate::text;
 use crate::maybe;
+use crate::bracket;
 use crate::left;
 use crate::right;
 
@@ -39,6 +41,8 @@ use tephra::Success;
 use tephra::ParseError;
 use test_log::test;
 
+use std::rc::Rc;
+use std::sync::RwLock;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,14 +176,8 @@ enum Pattern<'text> {
 fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
-    let source = lexer.source();
-    let ctx = ctx.push(std::rc::Rc::new(move |e| {
-        e.with_error_context(ParseError::new(source, "unrecognized pattern"))
-    }));
-
     match maybe(spanned(text(abc)))
         (lexer.clone(), ctx.clone())
-        .apply_context(ctx.clone())
     {
         Ok(Success { value: Some(sp), lexer }) => {
             return Ok(Success { value: Pattern::Abc(sp), lexer });
@@ -189,13 +187,17 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
 
     match maybe(spanned(text(bxx)))
         (lexer.clone(), ctx.clone())
-        .apply_context(ctx.clone())
     {
         Ok(Success { value: Some(sp), lexer }) => {
             return Ok(Success { value: Pattern::Bxx(sp), lexer });
         },
         _        => (),
     }
+
+    // Setup error context.
+    let source = lexer.source();
+    let ctx = ctx.push(std::rc::Rc::new(move |e| e
+        .with_error_context(ParseError::new(source, "unrecognized pattern"))));
 
     spanned(text(xyc))
         (lexer, ctx.clone())
@@ -549,6 +551,78 @@ error: unexpected token
   | 
 0 | abc ddd
   |       ^ expected 'c'
+");
+}
+
+
+/// Test successful `bracket` combinator.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[abc]";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = bracket(
+            one(AbcToken::OpenBracket),
+            pattern,
+            one(AbcToken::CloseBracket))
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = Pattern::Abc(Spanned {
+        value: "abc",
+        span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+    });
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
+}
+
+
+/// Test failed `bracket` combinator with error recovery.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_recover() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[ab]";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = bracket(
+            one(AbcToken::OpenBracket),
+            recover_option(pattern, AbcToken::CloseBracket),
+            one(AbcToken::CloseBracket))
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = None;
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(4, 0, 4));
+
+    assert_eq!(errors.read().unwrap().len(), 1);
+    assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
+error: unrecognized pattern
+... caused by error: unexpected token
+ --> (0:0-0:4, bytes 0-4)
+  | 
+0 | [ab]
+  |    ^ expected 'c'
 ");
 }
 

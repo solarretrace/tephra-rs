@@ -17,10 +17,10 @@ use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Spanned;
 use tephra::Success;
+use tephra::Failure;
 use tephra_tracing::event;
 use tephra_tracing::Level;
 use tephra_tracing::span;
-
 
 
 
@@ -56,7 +56,7 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "raw").entered();
+        let _span = span!(Level::DEBUG, "unrecoverable").entered();
 
         let mut ctx = ctx.clone();
         let _ = ctx.take_error_sink();
@@ -65,6 +65,60 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
             (lexer, ctx)
             .trace_result(Level::TRACE, "subparse")
     }
+}
+
+/// A combinator which performs error recovery, returning a default value when
+/// an error occurs.
+pub fn recover_default<'text, Sc, F, V>(mut parser: F, recover_token: Sc::Token)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        V: Default
+{
+    move |lexer, ctx| {
+        let _span = span!(Level::DEBUG, "recover_default").entered();
+        
+        let mut base_lexer = lexer.clone();
+        match (parser)
+            (lexer, ctx.clone())
+            .trace_result(Level::TRACE, "subparse")
+        {
+            Ok(succ) => Ok(succ),
+
+            Err(Failure { lexer, parse_error, .. }) => match ctx
+                .send_error(parse_error)
+            {
+                Err(parse_error) => Err(Failure { lexer, parse_error }),
+
+                Ok(()) => {
+                    base_lexer.advance_to(recover_token.clone());
+                    Ok(Success {
+                        lexer: base_lexer,
+                        value: V::default(),
+                    })
+                },
+            },
+        }
+    }
+}
+
+/// A combinator which performs error recovery, returning a `None` value when
+/// an error occurs.
+pub fn recover_option<'text, Sc, F, V>(mut parser: F, recover_token: Sc::Token)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Option<V>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+{
+    let option_parser = move |lexer, ctx| {
+        (parser)
+            (lexer, ctx)
+            .map_value(Some)
+    };
+
+    recover_default(option_parser, recover_token)
 }
 
 

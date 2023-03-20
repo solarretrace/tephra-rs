@@ -27,21 +27,24 @@ fn option_fmt<T>(opt: &Option<T>) -> &'static str {
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorSink
 ////////////////////////////////////////////////////////////////////////////////
+/// A function which can receive recoverable `ParseError`s.
 pub type ErrorSink<'text> = Box<dyn Fn(ParseError<'text>) + 'text>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorTransform
 ////////////////////////////////////////////////////////////////////////////////
+/// A function to construct or modify `ParseError`s in a given `Context`.
 pub type ErrorTransform<'text>
     = Rc<dyn Fn(ParseError<'text>) -> ParseError<'text> + 'text>;
-
 
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // SharedContext
 ////////////////////////////////////////////////////////////////////////////////
+/// Shared parse context.
 struct SharedContext<'text> {
+    /// The `ErrorSink` function.
     error_sink: Option<ErrorSink<'text>>,
 }
 
@@ -56,12 +59,17 @@ impl<'text> std::fmt::Debug for SharedContext<'text> {
 ////////////////////////////////////////////////////////////////////////////////
 // LocalContext
 ////////////////////////////////////////////////////////////////////////////////
+/// Local parse context. Forms a linked list of parse contexts back to the start
+/// of the parse.
 pub struct LocalContext<'text> {
+    /// The lowest `ErrorTransform` function in this context.
     error_transform: Option<ErrorTransform<'text>>,
+    /// The `LocalContext` of the next highest parse.
     parent: Option<Rc<RwLock<LocalContext<'text>>>>,
 }
 
 impl<'text> LocalContext<'text> {
+    /// Applies the lowest `ErrorTransform` function to the given `ParseError`.
     fn apply_error_transform(&self, parse_error: ParseError<'text>)
         -> ParseError<'text>
     {
@@ -71,6 +79,9 @@ impl<'text> LocalContext<'text> {
         }
     }
 
+    /// Applies the lowest `ErrorTransform` function to the given `ParseError`,
+    /// then visits each parent context and applies each transfom function in
+    /// sequence.
     fn apply_error_transform_recursive(&self, parse_error: ParseError<'text>)
         -> ParseError<'text>
     {
@@ -101,10 +112,14 @@ impl<'text> std::fmt::Debug for LocalContext<'text> {
 ////////////////////////////////////////////////////////////////////////////////
 // Context
 ////////////////////////////////////////////////////////////////////////////////
+/// A parse context.
 #[derive(Debug, Clone)]
 pub struct Context<'text> {
+    /// The `SharedContext`.
     shared: Rc<RwLock<SharedContext<'text>>>,
+    /// The `LocalContext`.
     local: Rc<RwLock<LocalContext<'text>>>,
+    /// Indicates that the context is locked and no new contexts may be added.
     locked: bool,
 }
 
@@ -137,6 +152,8 @@ impl<'text> Context<'text> {
         }
     }
 
+    /// Sets the lock value of the `Context`. The value indicates that the
+    /// whether new contexts may be pushed.
     pub fn locked(mut self, locked: bool) -> Self {
         self.locked = locked;
         self
@@ -160,6 +177,7 @@ impl<'text> Context<'text> {
         }
     }
 
+    /// Removes the `ErrorSink` from the `Context` if present.
     pub fn take_error_sink(&mut self) -> Option<ErrorSink<'text>> {
         let mut shared = self.shared.write().expect("lock shared context");
         shared.error_sink.take()
@@ -193,18 +211,26 @@ impl<'text> Context<'text> {
     }
 
     /// Sends a `ParseError` to the `ErrorSink`, applying `ErrorTransform`s.
+    ///
+    /// Returns the given error if no `ErrorSink` is configured.
     pub fn send_error<'a>(&'a self, parse_error: ParseError<'text>)
+        -> Result<(), ParseError<'text>>
     {
-        if let Some(sink) =  self.shared
+        match self.shared
             .read()
             .expect("lock shared context")
             .error_sink
             .as_ref()
         {
-            (sink)(self.apply_error_transform_recursive(parse_error));
+            Some(sink) => {
+                (sink)(self.apply_error_transform_recursive(parse_error));
+                Ok(())
+            },
+            None => Err(parse_error),
         }
     }
 
+    /// Removes the `LocalContext` from the `Context` if present.
     pub fn take_local_context(&mut self) -> LocalContext<'text> {
         std::mem::replace(&mut *self.local
                 .write()

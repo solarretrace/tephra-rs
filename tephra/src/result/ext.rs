@@ -50,8 +50,8 @@ pub trait ParseResultExt<'text, Sc, V>
 
     /// Outputs a trace event displaying the parse result.
     fn trace_result(self, level: Level, label: &'static str) -> Self;
-
 }
+
 
 impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
         for ParseResult<'text, Sc, V>
