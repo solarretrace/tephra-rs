@@ -13,13 +13,16 @@ use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use tephra_error::ParseError;
 
+// Standard library imports.
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::error::Error;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Failure
 ////////////////////////////////////////////////////////////////////////////////
 /// A struct representing a failed parse with borrowed data.
-#[derive(Debug)]
 pub struct Failure<'text, Sc> where Sc: Scanner {
     // TODO: Decide what lexer state to store on parse errors.
     /// The lexer state for continuing after the parse.
@@ -29,7 +32,7 @@ pub struct Failure<'text, Sc> where Sc: Scanner {
 }
 
 impl<'text, Sc> Failure<'text, Sc> 
-    where Sc: Scanner,
+    where Sc: Scanner
 {
     /// Constructs a new Failure containing the given parse error and lexer
     /// state.
@@ -60,16 +63,16 @@ impl<'text, Sc> Failure<'text, Sc>
     }
 }
 
-impl<'text, Sc> std::fmt::Display for Failure<'text, Sc>
-    where Sc: Scanner,
+impl<'text, Sc> Display for Failure<'text, Sc>
+    where Sc: Scanner
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.parse_error)
     }
 }
 
-impl<'text, Sc> std::error::Error for Failure<'text, Sc>
-    where Sc: Scanner,
+impl<'text, Sc> Error for Failure<'text, Sc>
+    where Sc: Scanner
 {
     fn description(&self) -> &str {
         &self.parse_error.description()
@@ -82,10 +85,21 @@ impl<'text, Sc> std::error::Error for Failure<'text, Sc>
 
 #[cfg(test)]
 impl<'text, Sc> PartialEq for Failure<'text, Sc>
-    where Sc: Scanner,
+    where Sc: Scanner
 {
     fn eq(&self, other: &Self) -> bool {
         format!("{:?}", self) == format!("{:?}", other)
     }
 }
 
+
+impl<'text, Sc> Debug for Failure<'text, Sc>
+    where Sc: Scanner
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Failure")
+            .field("parse_error", &self.parse_error)
+            .field("lexer", &self.lexer)
+            .finish()
+    }
+}

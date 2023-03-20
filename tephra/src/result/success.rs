@@ -13,15 +13,17 @@ use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use tephra_span::Span;
 
+// Standard library imports.
+use std::fmt::Debug;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Success
 ////////////////////////////////////////////////////////////////////////////////
 /// The result of a successful parse.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Success<'text, Sc, V>
-    where Sc: Scanner,
+    where Sc: Scanner
 {
     /// The lexer state for continuing after the parse.
     pub lexer: Lexer<'text, Sc>,
@@ -30,7 +32,7 @@ pub struct Success<'text, Sc, V>
 }
 
 impl<'text, Sc, V> Success<'text, Sc, V>
-    where Sc: Scanner,
+    where Sc: Scanner
 {
     /// Constructs a new `Success` containing the given value and lexer state.
     pub fn new(value: V, lexer: Lexer<'text, Sc>) -> Self {
@@ -71,6 +73,18 @@ impl<'text, Sc, V> Success<'text, Sc, V>
     }
 }
 
+impl<'text, Sc, V> Debug for Success<'text, Sc, V>
+    where
+        Sc: Scanner,
+        V: Debug
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Success")
+            .field("value", &self.value)
+            .field("lexer", &self.lexer)
+            .finish()
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Spanned
