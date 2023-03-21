@@ -29,6 +29,8 @@ pub const SOURCE_TEXT_DEBUG_LEN: usize = 12;
 pub struct SourceText<'text> {
     /// The source text.
     source: &'text str,
+    /// The source text name.
+    name: Option<&'text str>,
     /// The column metrics of the source text.
     metrics: ColumnMetrics,
     /// The position of the start of the source text.
@@ -45,9 +47,15 @@ impl<'text> SourceText<'text> {
     pub fn new(source: &'text str) -> Self {
         SourceText {
             source,
+            name: None,
             offset: Pos::ZERO,
             metrics: ColumnMetrics::default(),
         }
+    }
+
+    pub fn with_name(mut self, name: &'text str) -> Self {
+        self.name = Some(name);
+        self
     }
 
     pub fn with_column_metrics(mut self, metrics: ColumnMetrics) -> Self {
@@ -91,6 +99,7 @@ impl<'text> SourceText<'text> {
         let e = span.end().byte - self.offset.byte;
         SourceText {
             source: &self.source[s..e],
+            name: self.name,
             metrics: self.metrics,
             offset: span.start(),
         }
@@ -220,6 +229,7 @@ impl<'text> SourceText<'text> {
     pub fn to_owned(&self) -> SourceTextOwned {
         SourceTextOwned {
             source: self.source.into(),
+            name: self.name.map(|s| s.into()),
             offset: self.offset,
             metrics: self.metrics,
         }
@@ -253,6 +263,7 @@ impl<'text> std::fmt::Debug for SourceText<'text> {
         };
         f.debug_struct("SourceText")
             .field("source", &src)
+            .field("name", &self.name)
             .field("offset", &self.offset)
             .field("metrics", &self.metrics)
             .finish()
@@ -267,6 +278,8 @@ impl<'text> std::fmt::Debug for SourceText<'text> {
 pub struct SourceTextOwned {
     /// The source text.
     source: Box<str>,
+    /// Then source text name.
+    name: Option<Box<str>>,
     /// The column metrics of the source text.
     metrics: ColumnMetrics,
     /// The position of the start of the source text.
@@ -283,9 +296,17 @@ impl SourceTextOwned {
     pub fn new(source: &str) -> Self {
         SourceTextOwned {
             source: source.into(),
+            name: None,
             offset: Pos::ZERO,
             metrics: ColumnMetrics::default(),
         }
+    }
+
+    pub fn with_name<S>(mut self, name: S) -> Self 
+        where S: Into<Box<str>>
+    {
+        self.name = Some(name.into());
+        self
     }
 
     pub fn with_column_metrics(mut self, metrics: ColumnMetrics) -> Self {
@@ -437,6 +458,7 @@ impl SourceTextOwned {
     pub fn as_borrowed<'text>(&'text self) -> SourceText<'text> {
         SourceText {
             source: &self.source,
+            name: self.name.as_deref(),
             offset: self.offset,
             metrics: self.metrics,
         }

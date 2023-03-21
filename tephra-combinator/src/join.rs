@@ -202,6 +202,7 @@ pub fn token_bracket<'text, Sc, F, X>(
 
         let ctx = ctx
             .push(std::rc::Rc::new(move |e| if e.is_recover_error() {
+                println!("{l:?}");
                 ParseError::unmatched_delimiter(
                     *e.source_text(),
                     "unmatched delimiter",
@@ -219,10 +220,9 @@ pub fn token_bracket<'text, Sc, F, X>(
             Err(fail) => return Err(fail),
         };
 
-        recover_until(one(right_token.clone()))
+        one(right_token.clone())
             (succ.lexer, ctx.clone())
             .trace_result(Level::TRACE, "right discard")
-            .apply_context(ctx)
             .map_value(|_| c)
     }
 }

@@ -678,7 +678,8 @@ fn pattern_bracket_recover_unmatched() {
 
     use AbcToken::*;
     const TEXT: &'static str = "[ab   bbb  ";
-    let source = SourceText::new(TEXT);
+    let source = SourceText::new(TEXT)
+        .with_name("pattern_bracket_recover_unmatched");
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
