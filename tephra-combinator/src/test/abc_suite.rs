@@ -694,7 +694,7 @@ fn pattern_bracket_recover_unmatched() {
 
     assert_eq!(format!("{actual}"), "\
 error: unmatched delimiter
- --> (0:0-0:11, bytes 0-11)
+ --> pattern_bracket_recover_unmatched:(0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb  
   | ^ matching delimiter not found

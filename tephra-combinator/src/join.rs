@@ -13,7 +13,6 @@
 use crate::one;
 use crate::spanned;
 use crate::recover_option;
-use crate::recover_until;
 use tephra::Context;
 use tephra::Lexer;
 use tephra::Recover;

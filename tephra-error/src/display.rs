@@ -229,7 +229,7 @@ impl SpanDisplay {
             (span.end().page.line as f32).log10().ceil() as u8, 1);
 
         SpanDisplay {
-            source_name: None,
+            source_name: source.name().map(String::from),
             metrics: source.column_metrics(),
             span: span.widen_to_line(source),
             highlights: Vec::with_capacity(2),

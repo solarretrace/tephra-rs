@@ -76,6 +76,10 @@ impl<'text> SourceText<'text> {
         self.source.is_empty()
     }
 
+    pub fn name(&self) -> Option<&'text str> {
+        self.name
+    }
+
     pub fn as_str(&self) -> &'text str {
         &self.source
     }
@@ -333,6 +337,10 @@ impl SourceTextOwned {
 
     pub fn is_empty(&self) -> bool {
         self.source.is_empty()
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
     }
 
     pub fn as_str(&self) -> &str {
