@@ -125,7 +125,7 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         -> ParseResult<'text, Sc, Sc::Token> + 'a
     where Sc: Scanner,
 {
-    move |lexer, _ctx| {
+    move |mut lexer, _ctx| {
         let _span = span!(Level::DEBUG, "any",
             expected = ?DisplayList(tokens)).entered();
 
@@ -134,8 +134,7 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         for token in tokens {
             let _span = span!(Level::TRACE, "any", expect = ?token).entered();
 
-            let mut lexer = lexer.clone();
-            match lexer.next() {
+            match lexer.peek() {
                 // Lexer error.
                 None => return Err(Failure::new(
                     ParseError::unrecognized_token(
@@ -145,10 +144,13 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 )),
 
                 // Matching token.
-                Some(lex) if lex == *token => return Ok(Success {
-                    value: token.clone(),
-                    lexer,
-                }),
+                Some(lex) if lex == *token => {
+                    lexer.next();
+                    return Ok(Success {
+                        value: token.clone(),
+                        lexer,
+                    })
+                },
 
                 // Incorrect token.
                 // Unexpected End-of-text.
@@ -173,7 +175,7 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         -> ParseResult<'text, Sc, usize> + 'a
     where Sc: Scanner,
 {
-    move |lexer, _ctx| {
+    move |mut lexer, _ctx| {
         let _span = span!(Level::DEBUG, "any",
             expected = ?DisplayList(&tokens[..])).entered();
 
@@ -182,8 +184,7 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         for (idx, token) in tokens.iter().enumerate() {
             let _span = span!(Level::TRACE, "any", expect = ?token).entered();
 
-            let mut lexer = lexer.clone();
-            match lexer.next() {
+            match lexer.peek() {
                 // Lexer error.
                 None => return Err(Failure::new(
                     ParseError::unrecognized_token(
@@ -193,10 +194,13 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 )),
 
                 // Matching token.
-                Some(lex) if lex == *token => return Ok(Success {
-                    value: idx,
-                    lexer,
-                }),
+                Some(lex) if lex == *token => {
+                    lexer.next();
+                    return Ok(Success {
+                        value: idx,
+                        lexer,
+                    })
+                },
 
                 // Incorrect token.
                 // Unexpected End-of-text.
@@ -257,6 +261,11 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         -> ParseResult<'text, Sc, Vec<Sc::Token>> + 'a
     where Sc: Scanner,
 {
+    // NOTE: We could just preconstruct the result here, since if `seq` succeeds
+    // then the result is the input. However, it is possible that `PartialEq` on
+    // the tokens allows two tokens to match when they are different, so there
+    // is potential value in constructing the result incrementally like this.
+
     let cap = tokens.len();
     move |mut lexer, _ctx| {
         let _span = span!(Level::DEBUG, "seq",
@@ -305,6 +314,55 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         Ok(Success {
             lexer,
             value: found,
+        })
+    }
+}
+
+/// Returns a parser attempts each of the given tokens in sequence, returning
+/// the number of tokens successfully parsed.
+/// 
+/// This combinator will only fail on an unrecognized token.
+pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, usize> + 'a
+    where Sc: Scanner,
+{
+    move |mut lexer, _ctx| {
+        let _span = span!(Level::DEBUG, "seq_count",
+            expected = ?DisplayList(tokens)).entered();
+
+        event!(Level::TRACE, "before parse:\n{}", lexer);
+        
+        let mut count = 0;
+        for token in tokens {
+            let _span = span!(Level::TRACE, "seq_count", expect = ?token)
+                .entered();
+
+            if lexer.is_empty() { break }
+
+            match lexer.peek() {
+                // Lexer error.
+                None => return Err(Failure::new(
+                    ParseError::unrecognized_token(
+                        lexer.source(),
+                        lexer.end_span()),
+                    lexer
+                )),
+
+                // Matching token.
+                Some(lex) if lex == *token => {
+                    count += 1;
+                    lexer.next();
+                }
+
+                // Incorrect token.
+                Some(_) => break,
+            }
+        }
+
+        Ok(Success {
+            lexer,
+            value: count,
         })
     }
 }
