@@ -116,8 +116,8 @@ mod message;
 mod recover;
 
 // Exports.
-pub use error::*;
 pub use display::*;
-pub use message::*;
+pub use error::*;
 pub use highlight::*;
+pub use message::*;
 pub use recover::*;

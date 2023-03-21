@@ -16,6 +16,7 @@ use crate::CodeDisplay;
 use crate::Note;
 use crate::SpanDisplay;
 use crate::MessageType;
+use crate::RecoverError;
 
 // External libary imports.
 use tephra_span::ColumnMetrics;
@@ -132,8 +133,8 @@ impl<'text> ParseError<'text> {
         e
     }
 
-    /// Constructs an `unmatched_delimitter` lexer error.
-    pub fn unmatched_delimitter<S>(
+    /// Constructs an `unmatched_delimiter` lexer error.
+    pub fn unmatched_delimiter<S>(
         source_text: SourceText<'text>,
         message: S,
         span: Span)
@@ -147,11 +148,18 @@ impl<'text> ParseError<'text> {
                 .with_span_display(SpanDisplay::new_error_highlight(
                     source_text,
                     span,
-                    "delimitter here is unmatched")),
+                    "matching delimiter not found")),
             source: None,
         };
         event!(Level::TRACE, "{e:?}");
         e
+    }
+
+    pub fn is_recover_error(&self) -> bool {
+        self.source
+            .as_ref()
+            .filter(|s| s.is::<RecoverError>())
+            .is_some()
     }
 
     /// Adds the given span to the `ParseError` and returns it.
@@ -206,6 +214,10 @@ impl<'text> ParseError<'text> {
 
     pub fn description(&self) -> &str {
         self.code_display.message()
+    }
+
+    pub fn source_text(&self) -> &SourceText<'text> {
+        &self.source_text
     }
 }
 

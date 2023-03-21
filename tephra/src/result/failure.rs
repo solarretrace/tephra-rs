@@ -14,9 +14,7 @@ use crate::lexer::Scanner;
 use tephra_error::ParseError;
 
 // Standard library imports.
-use std::error::Error;
 use std::fmt::Debug;
-use std::fmt::Display;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +61,7 @@ impl<'text, Sc> Failure<'text, Sc>
     }
 }
 
-impl<'text, Sc> Display for Failure<'text, Sc>
+impl<'text, Sc> std::fmt::Display for Failure<'text, Sc>
     where Sc: Scanner
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -71,7 +69,7 @@ impl<'text, Sc> Display for Failure<'text, Sc>
     }
 }
 
-impl<'text, Sc> Error for Failure<'text, Sc>
+impl<'text, Sc> std::error::Error for Failure<'text, Sc>
     where Sc: Scanner
 {
     fn description(&self) -> &str {

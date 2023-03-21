@@ -11,11 +11,16 @@
 
 // External library imports.
 use crate::one;
+use crate::spanned;
+use crate::recover_option;
+use crate::recover_until;
 use tephra::Context;
 use tephra::Lexer;
+use tephra::Recover;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
+use tephra::ParseError;
 use tephra_tracing::Level;
 use tephra_tracing::span;
 
@@ -175,37 +180,49 @@ pub fn bracket_dynamic<'text, Sc, L, C, R, X, Y, Z>(
 /// returning the value of the center parser.
 pub fn token_bracket<'text, Sc, F, X>(
     left_token: Sc::Token,
-    mut center: F,
+    center: F,
     right_token: Sc::Token)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Option<X>>
     where
         Sc: Scanner,
         F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
 {
+    let mut recover_center = recover_option(
+        center,
+        Recover::before(right_token.clone()));
+
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "bracket").entered();
 
-        let succ = match one(left_token.clone())
+        let (l, succ) = spanned(one(left_token.clone()))
             (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left discard")
-        {
-            Ok(succ) => succ,
-            Err(fail) => return Err(fail),
-        };
+            .trace_result(Level::TRACE, "left discard")?
+            .take_value();
 
-        let ctx = ctx.push(std::rc::Rc::new(|e| e));
+        let ctx = ctx
+            .push(std::rc::Rc::new(move |e| if e.is_recover_error() {
+                ParseError::unmatched_delimiter(
+                    *e.source_text(),
+                    "unmatched delimiter",
+                    l.span.clone())
+            } else {
+                e
+            }));
 
-        let (c, succ) = match (center)
+        let (c, succ) = match (recover_center)
             (succ.lexer, ctx.clone())
             .trace_result(Level::TRACE, "center capture")
+            .apply_context(ctx.clone())
         {
             Ok(succ) => succ.take_value(),
             Err(fail) => return Err(fail),
         };
 
-        one(right_token.clone())
-            (succ.lexer, ctx)
+        recover_until(one(right_token.clone()))
+            (succ.lexer, ctx.clone())
             .trace_result(Level::TRACE, "right discard")
+            .apply_context(ctx)
             .map_value(|_| c)
     }
 }

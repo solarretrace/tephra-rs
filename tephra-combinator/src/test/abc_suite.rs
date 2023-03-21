@@ -16,6 +16,7 @@
 use crate::any;
 use crate::both;
 use crate::one;
+use crate::token_bracket;
 use crate::recover_option;
 use crate::recover_until;
 use crate::seq;
@@ -683,18 +684,18 @@ fn pattern_bracket_recover_unmatched() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket(
-            one(OpenBracket),
-            recover_option(pattern, Recover::before(CloseBracket)),
-            recover_until(one(CloseBracket)))
+    let actual = token_bracket(
+            OpenBracket,
+            pattern,
+            CloseBracket)
         (lexer.clone(), ctx)
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unpaired delimitter?
- --> (0:1, bytes 1)
+error: unmatched delimiter
+ --> (0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb  
-  | ^ matching delimitter not found
+  | ^ matching delimiter not found
 ");
 }

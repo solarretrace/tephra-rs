@@ -113,8 +113,9 @@ pub fn recover_default<'text, Sc, F, V>(
                     Err(RecoverError::EndOfText) => {
                         Err(Failure {
                             parse_error: ParseError::unexpected_end_of_text(
-                                base_lexer.source(),
-                                base_lexer.cursor_span()),
+                                    base_lexer.source(),
+                                    base_lexer.cursor_span())
+                                .with_source(Box::new(RecoverError::EndOfText)),
                             lexer: base_lexer,
                         })
                     },
@@ -178,8 +179,9 @@ pub fn recover_until<'text, Sc, F, V>(mut parser: F)
                         fail.lexer.clear_recover_state();
                         res = Err(Failure {
                             parse_error: ParseError::unexpected_end_of_text(
-                                fail.lexer.source(),
-                                fail.lexer.cursor_span()),
+                                    fail.lexer.source(),
+                                    fail.lexer.cursor_span())
+                                .with_source(Box::new(RecoverError::EndOfText)),
                             lexer: fail.lexer,
                         })
                     },
