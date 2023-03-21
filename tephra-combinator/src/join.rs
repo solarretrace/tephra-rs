@@ -10,6 +10,7 @@
 
 
 // External library imports.
+use crate::one;
 use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResult;
@@ -164,6 +165,46 @@ pub fn bracket_dynamic<'text, Sc, L, C, R, X, Y, Z>(
 
         (right)
             (succ.lexer, ctx, l)
+            .trace_result(Level::TRACE, "right discard")
+            .map_value(|_| c)
+    }
+}
+
+
+/// Returns a parser which sequences three parsers which must all succeed,
+/// returning the value of the center parser.
+pub fn token_bracket<'text, Sc, F, X>(
+    left_token: Sc::Token,
+    mut center: F,
+    right_token: Sc::Token)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+{
+    move |lexer, ctx| {
+        let _span = span!(Level::DEBUG, "bracket").entered();
+
+        let succ = match one(left_token.clone())
+            (lexer, ctx.clone())
+            .trace_result(Level::TRACE, "left discard")
+        {
+            Ok(succ) => succ,
+            Err(fail) => return Err(fail),
+        };
+
+        let ctx = ctx.push(std::rc::Rc::new(|e| e));
+
+        let (c, succ) = match (center)
+            (succ.lexer, ctx.clone())
+            .trace_result(Level::TRACE, "center capture")
+        {
+            Ok(succ) => succ.take_value(),
+            Err(fail) => return Err(fail),
+        };
+
+        one(right_token.clone())
+            (succ.lexer, ctx)
             .trace_result(Level::TRACE, "right discard")
             .map_value(|_| c)
     }

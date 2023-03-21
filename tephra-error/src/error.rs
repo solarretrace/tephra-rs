@@ -132,19 +132,22 @@ impl<'text> ParseError<'text> {
         e
     }
 
-    /// Constructs an `unpaired_delimitter` lexer error.
-    pub fn unpaired_delimitter(source_text: SourceText<'text>)
+    /// Constructs an `unmatched_delimitter` lexer error.
+    pub fn unmatched_delimitter<S>(
+        source_text: SourceText<'text>,
+        message: S,
+        span: Span)
         -> Self
+        where S: Into<String>
     {
         let e = ParseError {
             source_text,
-            code_display: CodeDisplay::new("unpaired delimitter?")
-                .with_error_type(),
-                // TODO: Specify which delimiter.
-                // .with_span_display(SpanDisplay::new_error_highlight(
-                //     source_text,
-                //     span,
-                //     "delimitter here is unclosed")),
+            code_display: CodeDisplay::new(message)
+                .with_error_type()
+                .with_span_display(SpanDisplay::new_error_highlight(
+                    source_text,
+                    span,
+                    "delimitter here is unmatched")),
             source: None,
         };
         event!(Level::TRACE, "{e:?}");
@@ -152,9 +155,8 @@ impl<'text> ParseError<'text> {
     }
 
     /// Adds the given span to the `ParseError` and returns it.
-    pub fn with_code_display<S>(mut self, code_display: CodeDisplay)
-        -> Self 
-        where S: Into<String>,
+    pub fn with_code_display(mut self, code_display: CodeDisplay)
+        -> Self
     {
         self.code_display = code_display;
         self

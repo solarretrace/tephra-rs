@@ -17,6 +17,8 @@ use tephra_span::LineEnding;
 use tephra_span::Pos;
 use tephra_span::Span;
 use tephra_span::SourceText;
+use tephra_error::Recover;
+use tephra_error::RecoverError;
 
 // External library imports.
 use tephra_tracing::Level;
@@ -43,58 +45,6 @@ pub trait Scanner: Debug + Clone + PartialEq {
     /// Parses a token from the given source text.
     fn scan<'text>(&mut self, source: SourceText<'text>, base: Pos)
         -> Option<(Self::Token, Pos)>;
-}
-
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Recover<T>
-    where T: Display + Debug + Clone + PartialEq + Send + Sync + 'static
-{
-    Wait,
-    Before {
-        token: T,
-    },
-    After {
-        token: T,
-    },
-    BeforeLimit {
-        token: T,
-        limit: u32,
-    },
-    AfterLimit {
-        token: T,
-        limit: u32,
-    },
-}
-
-impl<T> Recover<T>
-    where T: Display + Debug + Clone + PartialEq + Send + Sync + 'static
-{
-    pub fn before(token: T) -> Self {
-        Recover::Before { token }
-    }
-
-    pub fn after(token: T) -> Self {
-        Recover::After { token }
-    }
-
-    pub fn is_recovering(&self) -> bool {
-        *self == Recover::Wait
-    }
-
-    pub fn limit(&self) -> Option<&u32> {
-        match self {
-            Recover::BeforeLimit { limit, .. } |
-            Recover::AfterLimit { limit, .. }  => Some(limit),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum RecoverError {
-    LimitExceeded,
-    EndOfText,
 }
 
 

@@ -668,10 +668,11 @@ error: unrecognized pattern
 ");
 }
 
-/// Test failed `bracket` combinator with error recovery, with a delayed close bracket.
+/// Test failed `bracket` combinator with error recovery, with an unmatched
+/// bracket.
 #[test]
 #[tracing::instrument]
-fn pattern_bracket_recover_unpaired() {
+fn pattern_bracket_recover_unmatched() {
     colored::control::set_override(false);
 
     use AbcToken::*;

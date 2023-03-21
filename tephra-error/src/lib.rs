@@ -113,9 +113,11 @@ mod display;
 mod error;
 mod highlight;
 mod message;
+mod recover;
 
 // Exports.
 pub use error::*;
 pub use display::*;
 pub use message::*;
 pub use highlight::*;
+pub use recover::*;
