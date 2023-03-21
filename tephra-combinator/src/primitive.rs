@@ -120,19 +120,18 @@ pub fn one<'text, Sc>(token: Sc::Token)
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser which attempts to match each of the given tokens in
 /// sequence, returning the first which succeeds.
-pub fn any<'text, Sc>(tokens: &[Sc::Token])
+pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
-        -> ParseResult<'text, Sc, Sc::Token>
+        -> ParseResult<'text, Sc, Sc::Token> + 'a
     where Sc: Scanner,
 {
-    let tokens = tokens.to_vec();
     move |lexer, _ctx| {
         let _span = span!(Level::DEBUG, "any",
-            expected = ?DisplayList(&tokens[..])).entered();
+            expected = ?DisplayList(tokens)).entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
 
-        for token in &tokens {
+        for token in tokens {
             let _span = span!(Level::TRACE, "any", expect = ?token).entered();
 
             let mut lexer = lexer.clone();
@@ -148,6 +147,54 @@ pub fn any<'text, Sc>(tokens: &[Sc::Token])
                 // Matching token.
                 Some(lex) if lex == *token => return Ok(Success {
                     value: token.clone(),
+                    lexer,
+                }),
+
+                // Incorrect token.
+                // Unexpected End-of-text.
+                _ => (),
+            }
+        }
+
+        Err(Failure::new(
+            ParseError::unexpected_token(
+                lexer.source(),
+                lexer.token_span(),
+                format!("one of {}", DisplayList(&tokens[..]))),
+            lexer
+        ))
+    }
+}
+
+/// Returns a parser which attempts to match each of the given tokens in
+/// sequence, returning the index of the first which succeeds.
+pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, usize> + 'a
+    where Sc: Scanner,
+{
+    move |lexer, _ctx| {
+        let _span = span!(Level::DEBUG, "any",
+            expected = ?DisplayList(&tokens[..])).entered();
+
+        event!(Level::TRACE, "before parse:\n{}", lexer);
+
+        for (idx, token) in tokens.iter().enumerate() {
+            let _span = span!(Level::TRACE, "any", expect = ?token).entered();
+
+            let mut lexer = lexer.clone();
+            match lexer.next() {
+                // Lexer error.
+                None => return Err(Failure::new(
+                    ParseError::unrecognized_token(
+                        lexer.source(),
+                        lexer.end_span()),
+                    lexer
+                )),
+
+                // Matching token.
+                Some(lex) if lex == *token => return Ok(Success {
+                    value: idx,
                     lexer,
                 }),
 
@@ -205,22 +252,21 @@ impl<'a, T> std::fmt::Debug for DisplayList<'a, T>
 ////////////////////////////////////////////////////////////////////////////////
 /// Returns a parser attempts each of the given tokens in sequence, returning
 /// the success only if each succeeds.
-pub fn seq<'text, Sc>(tokens: &[Sc::Token])
+pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
-        -> ParseResult<'text, Sc, Vec<Sc::Token>>
+        -> ParseResult<'text, Sc, Vec<Sc::Token>> + 'a
     where Sc: Scanner,
 {
-    let tokens = tokens.to_vec();
     let cap = tokens.len();
     move |mut lexer, _ctx| {
         let _span = span!(Level::DEBUG, "seq",
-            expected = ?DisplayList(&tokens[..])).entered();
+            expected = ?DisplayList(tokens)).entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
 
         let mut found = Vec::with_capacity(cap);
         
-        for token in &tokens {
+        for token in tokens {
             let _span = span!(Level::TRACE, "seq", expect = ?token).entered();
 
             if lexer.is_empty() {

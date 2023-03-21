@@ -101,7 +101,7 @@ pub fn both<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
 
 /// Returns a parser which sequences three parsers which must all succeed,
 /// returning the value of the center parser.
-pub fn bracket<'text, Sc, L, C, R, X, Y, Z>(
+pub fn center<'text, Sc, L, C, R, X, Y, Z>(
     mut left: L,
     mut center: C,
     mut right: R)
@@ -113,7 +113,7 @@ pub fn bracket<'text, Sc, L, C, R, X, Y, Z>(
         R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Z>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "bracket").entered();
+        let _span = span!(Level::DEBUG, "center").entered();
 
         let succ = match (left)
             (lexer, ctx.clone())
@@ -175,9 +175,12 @@ pub fn bracket_dynamic<'text, Sc, L, C, R, X, Y, Z>(
 }
 
 
-/// Returns a parser which sequences three parsers which must all succeed,
-/// returning the value of the center parser.
-pub fn token_bracket<'text, Sc, F, X>(
+/// Returns a parser which brackets the given parser in a pair of tokens.
+///
+/// Attempts error recovery if the given parser fails by scanning for the right
+/// token. If the right token is not found, an unmatched delimiter error will
+/// be emitted.
+pub fn bracket<'text, Sc, F, X>(
     left_token: Sc::Token,
     center: F,
     right_token: Sc::Token)
@@ -192,11 +195,11 @@ pub fn token_bracket<'text, Sc, F, X>(
         Recover::before(right_token.clone()));
 
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "bracket").entered();
+        let _span = span!(Level::DEBUG, "token_bracket").entered();
 
         let (l, succ) = spanned(one(left_token.clone()))
             (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left discard")?
+            .trace_result(Level::TRACE, "left_token discard")?
             .take_value();
 
         let ctx = ctx
@@ -221,7 +224,44 @@ pub fn token_bracket<'text, Sc, F, X>(
 
         one(right_token.clone())
             (succ.lexer, ctx.clone())
-            .trace_result(Level::TRACE, "right discard")
+            .trace_result(Level::TRACE, "right_token discard")
+            .map_value(|_| c)
+    }
+}
+
+
+/// Returns a parser which follows the given parser by a token.
+///
+/// Attempts error recovery if the given parser fails by scanning for the follow
+/// token.
+pub fn token_follow<'text, Sc, F, X>(
+    parser: F,
+    follow_token: Sc::Token)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Option<X>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+{
+    let mut recover_parser = recover_option(
+        parser,
+        Recover::before(follow_token.clone()));
+
+    move |lexer, ctx| {
+        let _span = span!(Level::DEBUG, "token_follow").entered();
+
+        let (c, succ) = match (recover_parser)
+            (lexer, ctx.clone())
+            .trace_result(Level::TRACE, "parser capture")
+            .apply_context(ctx.clone())
+        {
+            Ok(succ) => succ.take_value(),
+            Err(fail) => return Err(fail),
+        };
+
+        one(follow_token.clone())
+            (succ.lexer, ctx)
+            .trace_result(Level::TRACE, "follow_token discard")
             .map_value(|_| c)
     }
 }

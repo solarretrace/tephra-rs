@@ -79,9 +79,9 @@ impl RecoverError {
     pub fn description(&self) -> &str {
         match self {
             RecoverError::LimitExceeded
-                => "unable to recover: too many failed attempts",
+                => "recover failure: too many failed attempts",
             RecoverError::EndOfText
-                => "unable to recover: end of text reached",
+                => "recover failure: end of text reached",
         }
     }
 }
@@ -93,10 +93,6 @@ impl<'text> std::fmt::Display for RecoverError {
 }
 
 impl<'text> std::error::Error for RecoverError {
-    fn description(&self) -> &str {
-        self.description()
-    }
-
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
     }

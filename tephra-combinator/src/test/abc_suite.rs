@@ -16,7 +16,8 @@
 use crate::any;
 use crate::both;
 use crate::one;
-use crate::token_bracket;
+use crate::unrecoverable;
+use crate::bracket;
 use crate::recover_option;
 use crate::recover_until;
 use crate::seq;
@@ -24,7 +25,7 @@ use crate::spanned;
 use crate::raw;
 use crate::text;
 use crate::maybe;
-use crate::bracket;
+use crate::center;
 use crate::left;
 use crate::right;
 
@@ -558,7 +559,7 @@ error: unexpected token
 }
 
 
-/// Test successful `bracket` combinator.
+/// Test successful `center` combinator.
 #[test]
 #[tracing::instrument]
 fn pattern_bracket() {
@@ -571,7 +572,7 @@ fn pattern_bracket() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket(
+    let (value, succ) = center(
             one(OpenBracket),
             pattern,
             one(CloseBracket))
@@ -590,7 +591,7 @@ fn pattern_bracket() {
 }
 
 
-/// Test failed `bracket` combinator with error recovery.
+/// Test failed `center` combinator with error recovery.
 #[test]
 #[tracing::instrument]
 fn pattern_bracket_recover() {
@@ -604,7 +605,7 @@ fn pattern_bracket_recover() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket(
+    let (value, succ) = center(
             one(OpenBracket),
             recover_option(pattern, Recover::before(CloseBracket)),
             recover_until(one(CloseBracket)))
@@ -630,7 +631,7 @@ error: unrecognized pattern
 }
 
 
-/// Test failed `bracket` combinator with error recovery, with a delayed close bracket.
+/// Test failed `center` combinator with error recovery, with a delayed close center.
 #[test]
 #[tracing::instrument]
 fn pattern_bracket_recover_delayed() {
@@ -644,7 +645,7 @@ fn pattern_bracket_recover_delayed() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket(
+    let (value, succ) = center(
             one(OpenBracket),
             recover_option(pattern, Recover::before(CloseBracket)),
             recover_until(one(CloseBracket)))
@@ -669,8 +670,8 @@ error: unrecognized pattern
 ");
 }
 
-/// Test failed `bracket` combinator with error recovery, with an unmatched
-/// bracket.
+/// Test failed `bracket` combinator with error recovery, with an
+/// unmatched bracket.
 #[test]
 #[tracing::instrument]
 fn pattern_bracket_recover_unmatched() {
@@ -685,7 +686,7 @@ fn pattern_bracket_recover_unmatched() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = token_bracket(
+    let actual = bracket(
             OpenBracket,
             pattern,
             CloseBracket)
@@ -698,5 +699,70 @@ error: unmatched delimiter
   | 
 0 | [ab   bbb  
   | ^ matching delimiter not found
+");
+}
+
+/// Test failed `bracket` combinator with error recovery, with an
+/// unmatched bracket and raw error.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_recover_unmatched_raw() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[ab   bbb  ";
+    let source = SourceText::new(TEXT)
+        .with_name("pattern_bracket_recover_unmatched_raw");
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = raw(bracket(
+            OpenBracket,
+            pattern,
+            CloseBracket))
+        (lexer.clone(), ctx)
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: unexpected end of text
+ --> pattern_bracket_recover_unmatched_raw:(0:0-0:11, bytes 0-11)
+  | 
+0 | [ab   bbb  
+  |            \\ text ends here
+... caused by recover failure: end of text reached");
+}
+
+/// Test failed `bracket` combinator without error recovery, with an
+/// unmatched bracket.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_recover_unmatched_unrecoverable() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[ab   bbb  ";
+    let source = SourceText::new(TEXT)
+        .with_name("pattern_bracket_recover_unmatched_unrecoverable");
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = unrecoverable(bracket(
+            OpenBracket,
+            pattern,
+            CloseBracket))
+        (lexer.clone(), ctx)
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: unrecognized pattern
+... caused by error: unexpected token
+ --> pattern_bracket_recover_unmatched_unrecoverable:(0:0-0:11, bytes 0-11)
+  | 
+0 | [ab   bbb  
+  |       ^ expected 'c'
 ");
 }

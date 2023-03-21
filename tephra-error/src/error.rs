@@ -260,10 +260,6 @@ impl<'text> From<&'static str> for ParseError<'text> {
 }
 
 impl<'text> std::error::Error for ParseError<'text> {
-    fn description(&self) -> &str {
-        self.description()
-    }
-
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source
             .as_ref()
@@ -317,10 +313,6 @@ impl std::fmt::Display for ParseErrorOwned {
 }
 
 impl std::error::Error for ParseErrorOwned {
-    fn description(&self) -> &str {
-        &self.description
-    }
-
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source
             .as_ref()
