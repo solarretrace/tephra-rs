@@ -149,6 +149,28 @@ pub fn recover_option<'text, Sc, F, V>(
     recover_default(option_parser, recover)
 }
 
+/// A combinator which performs error recovery, returning a `None` value when
+/// an error occurs.
+pub fn recover_option_delayed<'text, Sc, F, V>(
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>, Recover<Sc::Token>)
+        -> ParseResult<'text, Sc, Option<V>>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+{
+    
+    move |lexer, ctx, recover| {
+        let option_parser = |lexer, ctx| {
+            (parser)
+                (lexer, ctx)
+                .map_value(Some)
+        };
+
+        recover_default(option_parser, recover)(lexer, ctx)
+    }
+}
+
 pub fn recover_until<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
         -> ParseResult<'text, Sc, V>

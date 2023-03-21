@@ -11,8 +11,10 @@
 
 // External library imports.
 use crate::one;
+use crate::any_index;
 use crate::spanned;
 use crate::recover_option;
+use crate::recover_option_delayed;
 use tephra::Context;
 use tephra::Lexer;
 use tephra::Recover;
@@ -139,41 +141,9 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
 }
 
 
-/// Returns a parser which sequences three parsers which must all succeed,
-/// returning the value of the center parser. The right parser will receive the
-/// output of the left parser as an argument.
-pub fn bracket_dynamic<'text, Sc, L, C, R, X, Y, Z>(
-    mut left: L,
-    mut center: C,
-    mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>
-    where
-        Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
-        C: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
-        R: FnMut(Lexer<'text, Sc>, Context<'text>, X)
-            -> ParseResult<'text, Sc, Z>,
-{
-    move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "bracket_dynamic").entered();
-
-        let (l, succ) = (left)
-            (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left discard")?
-            .take_value();
-
-        let (c, succ) = (center)
-            (succ.lexer, ctx.clone())
-            .trace_result(Level::TRACE, "center capture")?
-            .take_value();
-
-        (right)
-            (succ.lexer, ctx, l)
-            .trace_result(Level::TRACE, "right discard")
-            .map_value(|_| c)
-    }
-}
-
+////////////////////////////////////////////////////////////////////////////////
+// Bracket combinators.
+////////////////////////////////////////////////////////////////////////////////
 
 /// Returns a parser which brackets the given parser in a pair of tokens.
 ///
@@ -195,7 +165,7 @@ pub fn bracket<'text, Sc, F, X>(
         Recover::before(right_token.clone()));
 
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "token_bracket").entered();
+        let _span = span!(Level::DEBUG, "bracket").entered();
 
         let (l, succ) = spanned(one(left_token.clone()))
             (lexer, ctx.clone())
@@ -204,7 +174,6 @@ pub fn bracket<'text, Sc, F, X>(
 
         let ctx = ctx
             .push(std::rc::Rc::new(move |e| if e.is_recover_error() {
-                println!("{l:?}");
                 ParseError::unmatched_delimiter(
                     *e.source_text(),
                     "unmatched delimiter",
@@ -229,39 +198,67 @@ pub fn bracket<'text, Sc, F, X>(
     }
 }
 
-
-/// Returns a parser which follows the given parser by a token.
+/// Returns a parser which brackets the given parser in a any of a given pair of
+/// matching tokens.
+/// 
+/// Each token in the `left_tokens` slice is paired with the token of the same
+/// index in the `right_tokens` slice. Each slice must be the same length.
 ///
-/// Attempts error recovery if the given parser fails by scanning for the follow
-/// token.
-pub fn token_follow<'text, Sc, F, X>(
-    parser: F,
-    follow_token: Sc::Token)
+/// Attempts error recovery if the given parser fails by scanning for the right
+/// token. If the right token is not found, an unmatched delimiter error will
+/// be emitted.
+pub fn bracket_matching<'text: 'a, 'a, Sc, F, X: 'a>(
+    left_tokens: &'a [Sc::Token],
+    center: F,
+    right_tokens: &'a [Sc::Token])
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
-        -> ParseResult<'text, Sc, Option<X>>
+        -> ParseResult<'text, Sc, Option<X>> + 'a
     where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
+        Sc: Scanner + 'a,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>)
+            -> ParseResult<'text, Sc, X> + 'a,
 {
-    let mut recover_parser = recover_option(
-        parser,
-        Recover::before(follow_token.clone()));
+    if left_tokens.len() != right_tokens.len() || left_tokens.is_empty() {
+        panic!("invalid argument to bracket_matching");
+    }
+
+    let mut recover_center =  recover_option_delayed(center);
 
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "token_follow").entered();
+        let _span = span!(Level::DEBUG, "bracket_matching").entered();
 
-        let (c, succ) = match (recover_parser)
+        let (l, succ) = spanned(any_index(left_tokens))
             (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "parser capture")
+            .trace_result(Level::TRACE, "left_token discard")?
+            .take_value();
+        let idx = l.value;
+        let span = l.span;
+        let recover = Recover::before(right_tokens[idx].clone());
+
+        let ctx = ctx
+            .push(std::rc::Rc::new(move |e| if e.is_recover_error() {
+                ParseError::unmatched_delimiter(
+                    *e.source_text(),
+                    "unmatched delimiter",
+                    span.clone())
+            } else {
+                e
+            }));
+
+        let (c, succ) = match (recover_center)
+            (succ.lexer, ctx.clone(), recover)
+            .trace_result(Level::TRACE, "center capture")
             .apply_context(ctx.clone())
         {
             Ok(succ) => succ.take_value(),
             Err(fail) => return Err(fail),
         };
 
-        one(follow_token.clone())
-            (succ.lexer, ctx)
-            .trace_result(Level::TRACE, "follow_token discard")
+        one(right_tokens[idx].clone())
+            (succ.lexer, ctx.clone())
+            .trace_result(Level::TRACE, "right_token discard")
             .map_value(|_| c)
     }
 }
+
+

@@ -18,6 +18,7 @@ use crate::both;
 use crate::one;
 use crate::unrecoverable;
 use crate::bracket;
+use crate::bracket_matching;
 use crate::recover_option;
 use crate::recover_until;
 use crate::seq;
@@ -562,7 +563,7 @@ error: unexpected token
 /// Test successful `center` combinator.
 #[test]
 #[tracing::instrument]
-fn pattern_bracket() {
+fn pattern_center() {
     colored::control::set_override(false);
 
     use AbcToken::*;
@@ -594,7 +595,7 @@ fn pattern_bracket() {
 /// Test failed `center` combinator with error recovery.
 #[test]
 #[tracing::instrument]
-fn pattern_bracket_recover() {
+fn pattern_center_recover() {
     colored::control::set_override(false);
 
     use AbcToken::*;
@@ -634,7 +635,7 @@ error: unrecognized pattern
 /// Test failed `center` combinator with error recovery, with a delayed close center.
 #[test]
 #[tracing::instrument]
-fn pattern_bracket_recover_delayed() {
+fn pattern_center_recover_delayed() {
     colored::control::set_override(false);
 
     use AbcToken::*;
@@ -765,4 +766,36 @@ error: unrecognized pattern
 0 | [ab   bbb  
   |       ^ expected 'c'
 ");
+}
+
+
+/// Test successful `bracket_matching` combinator.
+#[test]
+#[tracing::instrument]
+fn comma_bracket_matching() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "b,b";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = spanned(bracket_matching(
+            &[A, B, C],
+            one(Comma),
+            &[A, B, C]))
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = Spanned {
+        value: Some(Comma),
+        span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
+    };
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
 }

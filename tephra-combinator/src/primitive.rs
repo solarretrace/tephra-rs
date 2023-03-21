@@ -400,6 +400,7 @@ pub fn end_of_text<'text, Sc>(
 ////////////////////////////////////////////////////////////////////////////////
 // fail
 ////////////////////////////////////////////////////////////////////////////////
+// TODO: Make this more general by taking a ParseError instead?
 /// Parses any token and fails. Useful for failing if a peeked token doesn't
 /// match any expected tokens.
 pub fn fail<'text, Sc, V>(
