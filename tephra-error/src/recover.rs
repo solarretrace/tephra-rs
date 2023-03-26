@@ -8,61 +8,96 @@
 //! Error recovery.
 ////////////////////////////////////////////////////////////////////////////////
 
-
+// External library imports.
+use simple_predicates::Eval;
+use simple_predicates::Expr;
 // Standard library imports.
 use std::fmt::Debug;
 use std::fmt::Display;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PositionType {
+    Before,
+    After,
+}
 
 
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Recover
-////////////////////////////////////////////////////////////////////////////////
+#[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Recover<T>
-    where T: Display + Debug + Clone + PartialEq + Send + Sync + 'static
-{
-    Wait,
-    Before {
-        token: T,
-    },
-    After {
-        token: T,
-    },
-    BeforeLimit {
-        token: T,
-        limit: u32,
-    },
-    AfterLimit {
-        token: T,
-        limit: u32,
-    },
+struct Token<T>(T);
+
+impl<T> Eval for Token<T> where T: Clone + PartialEq {
+    type Context = T;
+
+    fn eval(&self, data: &Self::Context) -> bool {
+        &self.0 == data
+    }
+}
+
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Recover<T> {
+    before: Option<Expr<Token<T>>>,
+    after: Option<Expr<Token<T>>>,
+    limit: Option<u32>,
 }
 
 impl<T> Recover<T>
     where T: Display + Debug + Clone + PartialEq + Send + Sync + 'static
 {
+    pub fn empty() -> Self {
+        Recover {
+            before: None,
+            after: None,
+            limit: None,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.before.is_none() && self.after.is_none()
+    }
+
+    pub fn check(&self, token: &T) -> Option<PositionType> {
+        if self.is_empty() { return None; }
+
+        if self.before.as_ref()
+            .map_or(false, |expr| expr.eval(token))
+        {
+            Some(PositionType::Before)
+
+        } else if self.after.as_ref()
+            .map_or(false, |expr| expr.eval(token))
+        {
+            Some(PositionType::After)
+
+        } else {
+            None
+        }
+    }
+
     pub fn before(token: T) -> Self {
-        Recover::Before { token }
+        Recover {
+            before: Some(Expr::Var(Token(token))),
+            after: None,
+            limit: None,
+        }
     }
 
     pub fn after(token: T) -> Self {
-        Recover::After { token }
-    }
-
-    pub fn is_recovering(&self) -> bool {
-        *self == Recover::Wait
-    }
-
-    pub fn limit(&self) -> Option<&u32> {
-        match self {
-            Recover::BeforeLimit { limit, .. } |
-            Recover::AfterLimit { limit, .. }  => Some(limit),
-            _ => None,
+        Recover {
+            before: None,
+            after: Some(Expr::Var(Token(token))),
+            limit: None,
         }
+    }
+
+    pub fn limit(&self) -> Option<u32> {
+        self.limit
+    }
+
+    pub fn limit_mut(&mut self) -> &mut Option<u32> {
+        &mut self.limit
     }
 }
 

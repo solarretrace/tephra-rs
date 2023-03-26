@@ -11,7 +11,6 @@
 // RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
 #![allow(dead_code)]
 
-
 // Internal library imports.
 use crate::any;
 use crate::both;
@@ -46,6 +45,7 @@ use tephra::Success;
 use tephra::ParseError;
 use test_log::test;
 
+// Standard library imports.
 use std::rc::Rc;
 use std::sync::RwLock;
 
@@ -165,8 +165,6 @@ impl Scanner for Abc {
     }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Abc grammar
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,7 +174,6 @@ enum Pattern<'text> {
     Bxx(Spanned<&'text str>),
     Xyc(Spanned<&'text str>),
 }
-
 
 fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, Pattern<'text>>
@@ -210,7 +207,6 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         .map_value(Pattern::Xyc)
 }
 
-
 fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
@@ -238,7 +234,6 @@ fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         .map_value(|x2| (c, x1, x2))
 }
 
-
 fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
@@ -253,8 +248,6 @@ fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         (succ.lexer, ctx)
         .map_value(|b| (x, y, b))
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Misc tests
@@ -401,7 +394,6 @@ error: unrecognized pattern
 ");
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -441,7 +433,6 @@ fn pattern_both() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(7, 0, 7));
 }
 
-
 /// Test successful `left` combinator.
 #[test]
 #[tracing::instrument]
@@ -471,8 +462,6 @@ fn pattern_left() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(7, 0, 7));
 }
 
-
-
 /// Test successful `right` combinator.
 #[test]
 #[tracing::instrument]
@@ -501,7 +490,6 @@ fn pattern_right() {
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(7, 0, 7));
 }
-
 
 /// Test `right` combinator failure. Ensure error is properly wrapped.
 #[test]
@@ -559,7 +547,6 @@ error: unexpected token
 ");
 }
 
-
 /// Test successful `center` combinator.
 #[test]
 #[tracing::instrument]
@@ -590,7 +577,6 @@ fn pattern_center() {
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
 }
-
 
 /// Test failed `center` combinator with error recovery.
 #[test]
@@ -630,7 +616,6 @@ error: unrecognized pattern
   |    ^ expected 'c'
 ");
 }
-
 
 /// Test failed `center` combinator with error recovery, with a delayed close center.
 #[test]
@@ -768,7 +753,6 @@ error: unrecognized pattern
 ");
 }
 
-
 /// Test successful `bracket_matching` combinator.
 #[test]
 #[tracing::instrument]
@@ -798,4 +782,93 @@ fn comma_bracket_matching() {
 
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
+}
+
+/// Test successful `bracket_matching` combinator.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_matching_both() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[abc][aac]";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = both(
+            bracket_matching(
+                &[OpenBracket],
+                pattern,
+                &[CloseBracket]),
+            bracket_matching(
+                &[OpenBracket],
+                pattern,
+                &[CloseBracket]))
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = (Some(Pattern::Abc(Spanned {
+            value: "abc",
+            span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+        })), 
+        Some(Pattern::Xyc(Spanned {
+            value: "aac",
+            span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
+        })));
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
+}
+
+/// Test successful `bracket_matching` combinator.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_matching_both_first_fail() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[ab ][aac]";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = both(
+            bracket_matching(
+                &[OpenBracket],
+                pattern,
+                &[CloseBracket]),
+            bracket_matching(
+                &[OpenBracket],
+                pattern,
+                &[CloseBracket]))
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = (
+        None, 
+        Some(Pattern::Xyc(Spanned {
+            value: "aac",
+            span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
+        })));
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
+
+    assert_eq!(errors.read().unwrap().len(), 1);
+    assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
+error: unrecognized pattern
+... caused by error: unexpected token
+ --> (0:0-0:10, bytes 0-10)
+  | 
+0 | [ab ][aac]
+  |     ^ expected 'c'
+");
 }

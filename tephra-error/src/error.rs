@@ -211,7 +211,6 @@ impl<'text> ParseError<'text> {
         self.source = Some(Box::new(source.into_owned()));
     }
 
-
     pub fn description(&self) -> &str {
         self.code_display.message()
     }

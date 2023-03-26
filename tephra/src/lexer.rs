@@ -18,6 +18,7 @@ use tephra_span::Pos;
 use tephra_span::Span;
 use tephra_span::SourceText;
 use tephra_error::Recover;
+use tephra_error::PositionType;
 use tephra_error::RecoverError;
 
 // External library imports.
@@ -91,7 +92,7 @@ impl<'text, Sc> Lexer<'text, Sc>
             end: Pos::ZERO,
             cursor: Pos::ZERO,
             buffer: None,
-            recover: Recover::Wait,
+            recover: Recover::empty(),
             scanner,
         }
     }
@@ -324,7 +325,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     pub fn clear_recover_state(&mut self) {
-        self.recover = Recover::Wait;
+        self.recover = Recover::empty();
     }
 
     pub fn set_recover_state(&mut self, recover: Recover<Sc::Token>) {
@@ -332,33 +333,38 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     pub fn advance_to_recover(&mut self) -> Result<Span, RecoverError> {
-        if self.recover == Recover::Wait {
+        if self.recover.is_empty() {
             return Ok(self.cursor_span());
         }
 
         let start_pos = self.cursor_pos();
-        match &mut self.recover {
-            Recover::BeforeLimit { limit, .. } | 
-            Recover::AfterLimit { limit, .. }  => if *limit == 0 {
+
+        match self.recover.limit_mut().as_mut() {
+            Some(limit) => if *limit == 0 {
                 return Err(RecoverError::LimitExceeded);
             } else {
                 *limit -= 1;
             },
-
             _ => (),
         }
 
-        let token_found = match &self.recover {
-            Recover::Before { token }          |
-            Recover::BeforeLimit { token, .. } => self
-                .advance_to(token.clone()),
-
-            Recover::After { token }          |
-            Recover::AfterLimit { token, .. } => self
-                .advance_past(token.clone()),
-
-            _ => unreachable!(),
-        };
+        let mut token_found = false;
+        while let Some(token) = self.peek() {
+            match self.recover.check(&token) {
+                None => { 
+                    let _ = self.next();
+                },
+                Some(PositionType::Before) => {
+                    token_found = true;
+                    break;
+                },
+                Some(PositionType::After) => {
+                    token_found = true;
+                    let _ = self.next();
+                    break;
+                },
+            }
+        }
 
         if token_found {
             Ok(Span::new_enclosing(start_pos, self.cursor_pos()))
@@ -401,8 +407,6 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
         false
     }
-
-
 }
 
 impl<'text, Sc> Iterator for Lexer<'text, Sc>

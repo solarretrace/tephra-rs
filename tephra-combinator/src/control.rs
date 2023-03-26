@@ -81,7 +81,7 @@ pub fn recover_default<'text, Sc, F, V>(
         F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
         V: Default
 {
-    if recover == Recover::Wait || recover.limit() == Some(&0) {
+    if recover.is_empty() || recover.limit() == Some(0) {
         // TODO: Maybe Wait is a useful state to prevent advancing?
         panic!("invalid recover state");
     }
@@ -180,37 +180,36 @@ pub fn recover_until<'text, Sc, F, V>(mut parser: F)
 {
     move |lexer, ctx| {
         let mut res = (parser)
-            (lexer.clone(), ctx.clone());
+            (lexer, ctx.clone());
 
-        while lexer.recover_state().is_recovering() {
+        loop {
             match res {
                 Ok(mut succ) => {
                     succ.lexer.clear_recover_state();
-                    res = Ok(succ);
+                    return Ok(succ);
                 },
                 Err(mut fail) => match fail.lexer.advance_to_recover() {
-                    Ok(_) => {
-                        res = (parser)
-                            (fail.lexer.clone(), ctx.clone());
-                    },
                     Err(RecoverError::LimitExceeded) => {
                         fail.lexer.clear_recover_state();
-                        res = Err(fail)
+                        return Err(fail);
                     },
                     Err(RecoverError::EndOfText) => {
                         fail.lexer.clear_recover_state();
-                        res = Err(Failure {
+                        return Err(Failure {
                             parse_error: ParseError::unexpected_end_of_text(
                                     fail.lexer.source(),
                                     fail.lexer.cursor_span())
                                 .with_source(Box::new(RecoverError::EndOfText)),
                             lexer: fail.lexer,
-                        })
+                        });
                     },
-                }
+                    Ok(_) => {
+                        res = (parser)
+                            (fail.lexer, ctx.clone());
+                    },
+                },
             }
         }
-        res
     }
 }
 
