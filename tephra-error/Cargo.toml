@@ -1,6 +1,6 @@
 [package]
 name = "tephra-error"
-version = "0.0.6"
+version = "0.0.7"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -30,7 +30,7 @@ no-color = [
 # Required dependencies
 [dependencies]
 colored = { version = "2.0.0" }
-simple_predicates = { version = "0.3.1" }
+simple_predicates = { version = "0.4.0" }
 tephra-span = { version = "*",  path = "../tephra-span" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
 # Optional dependencies.

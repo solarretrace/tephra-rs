@@ -87,6 +87,44 @@ impl<T> Recover<T>
         }
     }
 
+    pub fn before_any<I>(tokens: I) -> Self
+        where I: IntoIterator<Item=T>
+    {
+        let tokens = tokens.into_iter().map(Token).map(Expr::Var);
+        Recover {
+            before: DnfVec::from(tokens),
+            after: DnfVec::from(None),
+            limit: None,
+        }
+    }
+
+    pub fn after_any<I>(tokens: I) -> Self
+        where I: IntoIterator<Item=T>
+    {
+        let tokens = tokens.into_iter().map(Token).map(Expr::Var);
+        Recover {
+            before: DnfVec::from(None),
+            after: DnfVec::from(tokens),
+            limit: None,
+        }
+    }
+
+    pub fn before_expr(expr: Expr<T>) -> Self {
+        Recover {
+            before: DnfVec::from(expr.map(Token)),
+            after: DnfVec::from(None),
+            limit: None,
+        }
+    }
+
+    pub fn after_expr(expr: Expr<T>) -> Self {
+        Recover {
+            before: DnfVec::from(None),
+            after: DnfVec::from(expr.map(Token)),
+            limit: None,
+        }
+    }
+
     pub fn limit(&self) -> Option<u32> {
         self.limit
     }
