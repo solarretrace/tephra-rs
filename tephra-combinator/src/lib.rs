@@ -120,3 +120,4 @@ pub use primitive::*;
 pub use repeat::*;
 pub use alt::*;
 pub use imp::*;
+pub use simple_predicates::Expr;

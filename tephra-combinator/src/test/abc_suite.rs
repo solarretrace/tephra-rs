@@ -249,6 +249,7 @@ fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         .map_value(|b| (x, y, b))
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Misc tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,6 +398,34 @@ error: unrecognized pattern
 ////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
+
+/// Test successful `pred` combinator.
+#[test]
+#[tracing::instrument]
+fn simple_not() {
+    colored::control::set_override(false);
+
+    use crate::pred;
+    use crate::Expr;
+    use AbcToken::*;
+    const TEXT: &'static str = "abc dac";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = pred(Expr::Not(Box::new(Expr::Var(D))))
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+
+    let actual = value;
+    let expected = A;
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(1, 0, 1));
+}
 
 /// Test successful `both` combinator.
 #[test]
@@ -872,3 +901,5 @@ error: unrecognized pattern
   |     ^ expected 'c'
 ");
 }
+
+

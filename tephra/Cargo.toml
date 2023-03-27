@@ -28,6 +28,7 @@ trace = [
 
 # Required dependencies
 [dependencies]
+simple_predicates = { version = "0.4.1" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
 tephra-span = { version = "*", path = "../tephra-span" }
 tephra-error = { version = "*", path = "../tephra-error" }

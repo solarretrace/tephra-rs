@@ -18,6 +18,9 @@ use tephra::Scanner;
 use tephra::Success;
 
 // External library imports.
+use simple_predicates::DnfVec;
+use simple_predicates::Eval;
+use simple_predicates::Expr;
 use tephra_tracing::event;
 use tephra_tracing::Level;
 use tephra_tracing::span;
@@ -95,7 +98,7 @@ pub fn one<'text, Sc>(token: Sc::Token)
                 event!(Level::TRACE, "correct token {{found={:?}}}", lex);
                 Ok(Success {
                     lexer,
-                    value: token.clone(),
+                    value: lex,
                 })
             },
 
@@ -366,6 +369,85 @@ pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         })
     }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// pred
+////////////////////////////////////////////////////////////////////////////////
+/// Returns a parser which consumes a single token if it satisfies the given
+/// token predicate.
+pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+        -> ParseResult<'text, Sc, Sc::Token>
+    where Sc: Scanner,
+{
+    let pred = DnfVec::from(expr.map(Token));
+    move |mut lexer, _ctx| {
+        let _span = span!(Level::DEBUG, "one", expected = ?token).entered();
+
+        event!(Level::TRACE, "before parse:\n{}", lexer);
+
+        if lexer.is_empty() {
+            event!(Level::TRACE, "lexer is empty");
+            // Unexpected End-of-text.
+            return Err(Failure::new(
+                ParseError::unexpected_end_of_text(
+                    lexer.source(),
+                    lexer.end_span()),
+                lexer
+            ));
+        }
+
+        match lexer.next() {
+            // Lexer error.
+            None => {
+                event!(Level::TRACE, "lexer error");
+                Err(Failure::new(
+                    ParseError::unrecognized_token(
+                        lexer.source(),
+                        lexer.end_span()),
+                    lexer,
+                ))
+            },
+
+            // Matching token.
+            Some(lex) if pred.eval(&lex) => {
+                event!(Level::TRACE, "correct token {{found={:?}}}", lex);
+                Ok(Success {
+                    lexer,
+                    value: lex,
+                })
+            },
+
+            // Incorrect token.
+            // TODO: Better predicate formatting.
+            #[cfg_attr(not(feature="tracing"), allow(unused_variables))]
+            Some(lex) => {
+                event!(Level::TRACE, "incorrect token {{found={:?}}}", lex);
+                Err(Failure::new(
+                    ParseError::unexpected_token(
+                        lexer.source(),
+                        lexer.token_span(),
+                        format!("{:?}", pred)),
+                    lexer,
+                ))
+            },
+        }
+    }
+}
+
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Token<T>(T);
+
+impl<T> Eval for Token<T> where T: Clone + PartialEq {
+    type Context = T;
+
+    fn eval(&self, data: &Self::Context) -> bool {
+        &self.0 == data
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // end-of-text

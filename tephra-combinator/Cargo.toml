@@ -1,6 +1,6 @@
 [package]
 name = "tephra-combinator"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -31,6 +31,7 @@ tephra = { version = "*", path = "../tephra" }
 colored = { version = "2.0" }
 few = { version = "0.1.4" }
 unicode-width = { version = "0.1" }
+simple_predicates = { version = "0.4" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
 # Optional dependencies.
 tracing = { version = "0.1", optional = true }
