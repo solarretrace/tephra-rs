@@ -90,7 +90,7 @@ pub fn recover_default<'text, Sc, F, V>(
         let _span = span!(Level::DEBUG, "recover_default").entered();
         
         let mut base_lexer = lexer.clone();
-        base_lexer.set_recover_state(recover.clone());
+        *base_lexer.recover_state_mut() = recover.clone();
 
         match (parser)
             (lexer, ctx.clone())

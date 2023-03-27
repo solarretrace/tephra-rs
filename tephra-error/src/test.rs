@@ -13,11 +13,9 @@
 
 // Internal library imports.
 use crate::ParseError;
-use crate::ParseErrorOwned;
 
 // External library imports.
 use pretty_assertions::assert_eq;
-use tephra_span::ColumnMetrics;
 use tephra_span::Pos;
 use tephra_span::SourceText;
 use tephra_span::Span;

@@ -319,19 +319,23 @@ impl<'text, Sc> Lexer<'text, Sc>
         Span::new_at(self.cursor)
     }
 
-
+    /// Returns the recover state used to indicate a token to advance to when a
+    /// recoverable parse error occurs.
     pub fn recover_state(&self) -> &Recover<Sc::Token> {
         &self.recover
     }
 
+    /// Returns a mutable reference to the recover state of the lexer.
+    pub fn recover_state_mut(&mut self) -> &mut Recover<Sc::Token> {
+        &mut self.recover
+    }
+
+    /// Clears the recover state of the lexer.
     pub fn clear_recover_state(&mut self) {
         self.recover = Recover::empty();
     }
 
-    pub fn set_recover_state(&mut self, recover: Recover<Sc::Token>) {
-        self.recover = recover;
-    }
-
+    /// Advances to the next token indicated by the current recover state.
     pub fn advance_to_recover(&mut self) -> Result<Span, RecoverError> {
         if self.recover.is_empty() {
             return Ok(self.cursor_span());

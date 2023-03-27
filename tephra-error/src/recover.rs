@@ -9,8 +9,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // External library imports.
-use simple_predicates::Eval;
 use simple_predicates::Expr;
+use simple_predicates::Eval;
+use simple_predicates::DnfVec;
 // Standard library imports.
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -37,9 +38,9 @@ impl<T> Eval for Token<T> where T: Clone + PartialEq {
 
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Recover<T> {
-    before: Option<Expr<Token<T>>>,
-    after: Option<Expr<Token<T>>>,
+pub struct Recover<T> where T: Clone + PartialEq {
+    before: DnfVec<Token<T>>,
+    after: DnfVec<Token<T>>,
     limit: Option<u32>,
 }
 
@@ -48,29 +49,23 @@ impl<T> Recover<T>
 {
     pub fn empty() -> Self {
         Recover {
-            before: None,
-            after: None,
+            before: DnfVec::from(None),
+            after: DnfVec::from(None),
             limit: None,
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.before.is_none() && self.after.is_none()
+        self.before.is_empty() && self.after.is_empty()
     }
 
     pub fn check(&self, token: &T) -> Option<PositionType> {
         if self.is_empty() { return None; }
 
-        if self.before.as_ref()
-            .map_or(false, |expr| expr.eval(token))
-        {
+        if self.before.eval(token) {
             Some(PositionType::Before)
-
-        } else if self.after.as_ref()
-            .map_or(false, |expr| expr.eval(token))
-        {
+        } else if self.after.eval(token) {
             Some(PositionType::After)
-
         } else {
             None
         }
@@ -78,16 +73,16 @@ impl<T> Recover<T>
 
     pub fn before(token: T) -> Self {
         Recover {
-            before: Some(Expr::Var(Token(token))),
-            after: None,
+            before: DnfVec::from(std::iter::once(Expr::Var(Token(token)))),
+            after: DnfVec::from(None),
             limit: None,
         }
     }
 
     pub fn after(token: T) -> Self {
         Recover {
-            before: None,
-            after: Some(Expr::Var(Token(token))),
+            before: DnfVec::from(None),
+            after: DnfVec::from(std::iter::once(Expr::Var(Token(token)))),
             limit: None,
         }
     }
