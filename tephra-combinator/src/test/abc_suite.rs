@@ -197,7 +197,7 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
     }
 
     // Setup error context.
-    let source = lexer.source();
+    let source = lexer.source_text();
     let ctx = ctx.push(std::rc::Rc::new(move |e| e
         .with_error_context(ParseError::new(source, "unrecognized pattern"))));
 
@@ -425,6 +425,34 @@ fn simple_not() {
 
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(1, 0, 1));
+}
+
+/// Test failed `pred` combinator.
+#[test]
+#[tracing::instrument]
+fn simple_not_failed() {
+    colored::control::set_override(false);
+
+    use crate::pred;
+    use crate::Expr;
+    use AbcToken::*;
+    const TEXT: &'static str = "dabc dac";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let ctx = Context::empty();
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = pred(Expr::Not(Box::new(Expr::Var(D))))
+        (lexer.clone(), ctx)
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: unexpected token
+ --> (0:0-0:8, bytes 0-8)
+  | 
+0 | dabc dac
+  | ^ expected DnfVec([Not(Var(Token(D)))])
+");
 }
 
 /// Test successful `both` combinator.

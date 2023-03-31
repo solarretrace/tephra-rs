@@ -1,6 +1,6 @@
 [package]
 name = "tephra"
-version = "0.0.181"
+version = "0.0.182"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -28,7 +28,6 @@ trace = [
 
 # Required dependencies
 [dependencies]
-simple_predicates = { version = "0.4.1" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
 tephra-span = { version = "*", path = "../tephra-span" }
 tephra-error = { version = "*", path = "../tephra-error" }

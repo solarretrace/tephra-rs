@@ -113,7 +113,7 @@ pub fn recover_default<'text, Sc, F, V>(
                     Err(RecoverError::EndOfText) => {
                         Err(Failure {
                             parse_error: ParseError::unexpected_end_of_text(
-                                    base_lexer.source(),
+                                    base_lexer.source_text(),
                                     base_lexer.cursor_span())
                                 .with_source(Box::new(RecoverError::EndOfText)),
                             lexer: base_lexer,
@@ -126,6 +126,23 @@ pub fn recover_default<'text, Sc, F, V>(
                 },
             },
         }
+    }
+}
+
+/// A combinator which performs error recovery, returning a default value when
+/// an error occurs. The recovery token is determined when the combinator is
+/// called rather than when it is constructed, as in `recover_default`.
+pub fn recover_default_delayed<'text, Sc, F, V>(
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text>, Recover<Sc::Token>)
+        -> ParseResult<'text, Sc, V>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        V: Default
+{
+    move |lexer, ctx, recover| {
+        recover_default(&mut parser, recover)(lexer, ctx)
     }
 }
 
@@ -150,7 +167,8 @@ pub fn recover_option<'text, Sc, F, V>(
 }
 
 /// A combinator which performs error recovery, returning a `None` value when
-/// an error occurs.
+/// an error occurs. The recovery token is determined when the combinator is
+/// called rather than when it is constructed, as in `recover_option`.
 pub fn recover_option_delayed<'text, Sc, F, V>(
     mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>, Recover<Sc::Token>)
@@ -171,6 +189,8 @@ pub fn recover_option_delayed<'text, Sc, F, V>(
     }
 }
 
+/// A combinator which ends error recovery if a successful parse is achieved, or
+/// resumes error recovery if a failure occurs.
 pub fn recover_until<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
         -> ParseResult<'text, Sc, V>
@@ -197,7 +217,7 @@ pub fn recover_until<'text, Sc, F, V>(mut parser: F)
                         fail.lexer.clear_recover_state();
                         return Err(Failure {
                             parse_error: ParseError::unexpected_end_of_text(
-                                    fail.lexer.source(),
+                                    fail.lexer.source_text(),
                                     fail.lexer.cursor_span())
                                 .with_source(Box::new(RecoverError::EndOfText)),
                             lexer: fail.lexer,
@@ -225,6 +245,10 @@ pub fn recover_until<'text, Sc, F, V>(mut parser: F)
 /// + `filter_fn`: A function which will return `false` for any
 /// [`Scanner::Token`] to be excluded during the parse.
 /// + `parser`: The parser to run with with the applied token filter.
+///
+/// ### Error recovery
+///
+/// No error recovery is attempted.
 ///
 /// [`Scanner::Token`]: tephra::Scanner#associatedtype.Token
 pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
@@ -261,6 +285,10 @@ pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
 ///
 /// ### Parameters
 /// + `parser`: The parser to run without a token filter.
+///
+/// ### Error recovery
+///
+/// No error recovery is attempted.
 pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
     where
@@ -297,6 +325,10 @@ pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A combinator which discards a parsed value, replacing it with `()`.
+///
+/// ### Error recovery
+///
+/// No error recovery is attempted.
 pub fn discard<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
         -> ParseResult<'text, Sc, ()>
@@ -324,6 +356,10 @@ pub fn discard<'text, Sc, F, V>(mut parser: F)
 
 /// A combinator which replaces a parsed value with the source text of the
 /// parsed span.
+///
+/// ### Error recovery
+///
+/// No error recovery is attempted.
 pub fn text<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>) 
         -> ParseResult<'text, Sc, &'text str>
@@ -341,7 +377,7 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
         {
             Ok(succ) => {
                 let end = succ.lexer.end_pos().byte;
-                let value = &succ.lexer.source().as_str()[start..end];
+                let value = &succ.lexer.source_text().as_str()[start..end];
 
                 Ok(Success {
                     lexer: succ.lexer,
@@ -355,6 +391,10 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
 
 
 /// A combinator which includes the span of the parsed value.
+///
+/// ### Error recovery
+///
+/// No error recovery is attempted.
 pub fn spanned<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
         -> ParseResult<'text, Sc, Spanned<V>>

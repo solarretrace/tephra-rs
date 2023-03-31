@@ -13,6 +13,7 @@
 #![deny(missing_abi)]
 #![deny(pointer_structural_match)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unreachable_patterns)]
 #![warn(absolute_paths_not_starting_with_crate)]
 #![warn(anonymous_parameters)]
 #![warn(bad_style)]
