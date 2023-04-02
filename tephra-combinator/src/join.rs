@@ -264,11 +264,8 @@ pub fn bracket_matching<'text: 'a, 'a, Sc, F, X: 'a>(
             Ok(BracketMatch {mut open, mut close, index }) => {
                 // Prepare the sublexers.
                 let _ = open.next();
-                // println!("open: {}", open);
                 let center_lexer = open.sublexer();
                 let _ = close.next();
-                // println!("center_lexer: {}", center_lexer.source_text());
-                // println!("close: {}", close);
 
                 // NOTE: We will do manual error recovery here: we don't want to
                 // advance to a token, because they're potentially nested. We
@@ -283,7 +280,6 @@ pub fn bracket_matching<'text: 'a, 'a, Sc, F, X: 'a>(
                         lexer: close,
                     }),
                     Err(fail) => {
-                        println!("{fail}");
                         match ctx.send_error(fail.parse_error, &fail.lexer)
                         {
                             Err(parse_error) => Err(Failure {

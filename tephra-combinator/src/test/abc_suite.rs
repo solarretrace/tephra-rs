@@ -1038,4 +1038,43 @@ error: expected pattern
 }
 
 
+/// Test `bracket_matching` combinator failing due to mismatched brackets.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_matching_both_mismatch() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[abc,[aac]";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = both(
+            bracket_matching(
+                &[OpenBracket, OpenBracket],
+                pattern,
+                &[CloseBracket, Comma],
+                &[]),
+            bracket_matching(
+                &[OpenBracket, OpenBracket],
+                pattern,
+                &[CloseBracket, Comma],
+                &[]))
+        (lexer.clone(), ctx)
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: unmatched brackets
+ --> (0:0-0:10, bytes 0-10)
+  | 
+0 | [abc,[aac]
+  | ^ the bracket here
+  |     ^ ... does not match the closing bracket here
+");
+}
+
+
 
