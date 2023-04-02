@@ -45,7 +45,7 @@ use tephra_tracing::span;
 /// ### Error recovery
 ///
 /// No error recovery is attempted.
-pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>, _ctx: Context<'text>)
+pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>, _ctx: Context<'text, Sc>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
@@ -68,7 +68,7 @@ pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>, _ctx: Context<'text>)
 ///
 /// No error recovery is attempted.
 pub fn one<'text, Sc>(token: Sc::Token)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Sc::Token>
     where Sc: Scanner,
 {
@@ -78,26 +78,15 @@ pub fn one<'text, Sc>(token: Sc::Token)
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
 
-        if lexer.is_empty() {
-            event!(Level::TRACE, "lexer is empty");
-            // Unexpected End-of-text.
-            return Err(Failure::new(
-                ParseError::unexpected_end_of_text(
-                    lexer.source_text(),
-                    lexer.end_span()),
-                lexer
-            ));
-        }
-
         match lexer.next() {
-            // Lexer error.
+            // Unexpected end-of-text.
             None => {
-                event!(Level::TRACE, "lexer error");
+                event!(Level::TRACE, "lexer is empty");
                 Err(Failure::new(
-                    ParseError::unrecognized_token(
+                    ParseError::unexpected_end_of_text(
                         lexer.source_text(),
                         lexer.end_span()),
-                    lexer,
+                    lexer
                 ))
             },
 
@@ -136,7 +125,7 @@ pub fn one<'text, Sc>(token: Sc::Token)
 ///
 /// No error recovery is attempted.
 pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Sc::Token> + 'a
     where Sc: Scanner,
 {
@@ -150,13 +139,16 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
             let _span = span!(Level::TRACE, "any", expect = ?token).entered();
 
             match lexer.peek() {
-                // Lexer error.
-                None => return Err(Failure::new(
-                    ParseError::unrecognized_token(
-                        lexer.source_text(),
-                        lexer.end_span()),
-                    lexer
-                )),
+                // Unexpected end-of-text.
+                None => {
+                    event!(Level::TRACE, "lexer is empty");
+                    return Err(Failure::new(
+                        ParseError::unexpected_end_of_text(
+                            lexer.source_text(),
+                            lexer.end_span()),
+                        lexer
+                    ));
+                },
 
                 // Matching token.
                 Some(lex) if lex == *token => {
@@ -190,7 +182,7 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
 ///
 /// No error recovery is attempted.
 pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, usize> + 'a
     where Sc: Scanner,
 {
@@ -204,13 +196,16 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
             let _span = span!(Level::TRACE, "any", expect = ?token).entered();
 
             match lexer.peek() {
-                // Lexer error.
-                None => return Err(Failure::new(
-                    ParseError::unrecognized_token(
-                        lexer.source_text(),
-                        lexer.end_span()),
-                    lexer
-                )),
+                // Unexpected end-of-text.
+                None => {
+                    event!(Level::TRACE, "lexer is empty");
+                    return Err(Failure::new(
+                        ParseError::unexpected_end_of_text(
+                            lexer.source_text(),
+                            lexer.end_span()),
+                        lexer
+                    ));
+                },
 
                 // Matching token.
                 Some(lex) if lex == *token => {
@@ -280,7 +275,7 @@ impl<'a, T> std::fmt::Debug for DisplayList<'a, T>
 ///
 /// No error recovery is attempted.
 pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<Sc::Token>> + 'a
     where Sc: Scanner,
 {
@@ -301,20 +296,10 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         for token in tokens {
             let _span = span!(Level::TRACE, "seq", expect = ?token).entered();
 
-            if lexer.is_empty() {
-                // Unexpected End-of-text.
-                return Err(Failure::new(
-                    ParseError::unexpected_end_of_text(
-                        lexer.source_text(),
-                        lexer.end_span()),
-                    lexer
-                ));
-            }
-
             match lexer.next() {
-                // Lexer error.
+                // Unexpected end-of-text.
                 None => return Err(Failure::new(
-                    ParseError::unrecognized_token(
+                    ParseError::unexpected_end_of_text(
                         lexer.source_text(),
                         lexer.end_span()),
                     lexer
@@ -350,7 +335,7 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
 ///
 /// No error recovery is attempted.
 pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, usize> + 'a
     where Sc: Scanner,
 {
@@ -368,7 +353,7 @@ pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
             if lexer.is_empty() { break }
 
             match lexer.peek() {
-                // Lexer error.
+                // Unexpected end-of-text.
                 None => return Err(Failure::new(
                     ParseError::unrecognized_token(
                         lexer.source_text(),
@@ -405,7 +390,7 @@ pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
 ///
 /// No error recovery is attempted.
 pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Sc::Token>
     where Sc: Scanner,
 {
@@ -415,26 +400,15 @@ pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
 
-        if lexer.is_empty() {
-            event!(Level::TRACE, "lexer is empty");
-            // Unexpected End-of-text.
-            return Err(Failure::new(
-                ParseError::unexpected_end_of_text(
-                    lexer.source_text(),
-                    lexer.end_span()),
-                lexer
-            ));
-        }
-
         match lexer.next() {
-            // Lexer error.
+            // Unexpected end-of-text.
             None => {
                 event!(Level::TRACE, "lexer error");
                 Err(Failure::new(
-                    ParseError::unrecognized_token(
+                    ParseError::unexpected_end_of_text(
                         lexer.source_text(),
                         lexer.end_span()),
-                    lexer,
+                    lexer
                 ))
             },
 
@@ -487,7 +461,7 @@ impl<T> Eval for Token<T> where T: Clone + PartialEq {
 /// No error recovery is attempted.
 pub fn end_of_text<'text, Sc>(
     lexer: Lexer<'text, Sc>,
-    _ctx: Context<'text>)
+    _ctx: Context<'text, Sc>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
@@ -523,7 +497,7 @@ pub fn end_of_text<'text, Sc>(
 /// No error recovery is attempted.
 pub fn fail<'text, Sc, V>(
     mut lexer: Lexer<'text, Sc>,
-    _ctx: Context<'text>)
+    _ctx: Context<'text, Sc>)
     -> ParseResult<'text, Sc, V>
     where Sc: Scanner,
 {

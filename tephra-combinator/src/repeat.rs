@@ -40,11 +40,11 @@ pub fn repeat_count<'text, Sc, F, V>(
     low: usize,
     high: Option<usize>,
     mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
         intersperse_count(low, high, 
@@ -65,12 +65,12 @@ pub fn repeat_count_until<'text, Sc, F, G, V, U>(
     high: Option<usize>,
     mut stop_parser: F,
     mut parser: G)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer, ctx| {
         intersperse_count_until(low, high, 
@@ -91,11 +91,11 @@ pub fn repeat<'text, Sc, F, V>(
     low: usize,
     high: Option<usize>,
     mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
         intersperse(low, high,
@@ -118,12 +118,12 @@ pub fn repeat_until<'text, Sc, F, G, V, U>(
     high: Option<usize>,
     mut stop_parser: F,
     mut parser: G)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<U>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer, ctx| {
         intersperse_until(low, high, &mut stop_parser,
@@ -149,12 +149,12 @@ pub fn intersperse_count<'text, Sc, F, G, V, U>(
     high: Option<usize>,
     mut parser: F,
     mut inter_parser: G)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer, ctx| {
         intersperse(low, high, 
@@ -178,13 +178,13 @@ pub fn intersperse_count_until<'text, Sc, F, G, H, V, U, T>(
     mut stop_parser: F,
     mut parser: G,
     mut inter_parser: H)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, usize>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
-        H: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, T>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, U>,
+        H: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, T>,
 {
     move |lexer, ctx| {
         intersperse_until(low, high, 
@@ -208,12 +208,12 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
     high: Option<usize>,
     mut parser: F,
     mut inter_parser: G)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, U>,
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "intersperse").entered();
@@ -303,13 +303,13 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
     mut stop_parser: F,
     mut parser: G,
     mut inter_parser: H)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<U>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
-        G: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, U>,
-        H: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, T>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
+        G: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, U>,
+        H: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, T>,
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "intersperse_until").entered();
@@ -411,11 +411,11 @@ pub fn intersperse_default<'text, Sc, F, V>(
     high: Option<usize>,
     mut parser: F,
     sep_token: Sc::Token)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
         V: Default,
 {
     move |lexer, ctx| {

@@ -11,15 +11,16 @@
 
 // Internal library imports.
 use crate::one;
-use crate::any_index;
 use crate::spanned;
 use crate::recover_option;
-use crate::recover_option_delayed;
 
 // External library imports.
 use tephra::Context;
 use tephra::Lexer;
+use tephra::Failure;
+use tephra::Success;
 use tephra::Recover;
+use tephra::SpanDisplay;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
@@ -40,11 +41,11 @@ use smallvec::SmallVec;
 ///
 /// No error recovery is attempted.
 pub fn left<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, X>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
-        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "left").entered();
@@ -64,11 +65,11 @@ pub fn left<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
 /// Returns a parser which sequences two parsers which must both succeed,
 /// returning the value of the second one.
 pub fn right<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
-        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "right").entered();
@@ -90,12 +91,12 @@ pub fn right<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
 ///
 /// No error recovery is attempted.
 pub fn both<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, (X, Y)>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
-        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "both").entered();
@@ -122,12 +123,12 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
     mut left: L,
     mut center: C,
     mut right: R)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>
     where
         Sc: Scanner,
-        L: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
-        C: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Y>,
-        R: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, Z>,
+        L: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, X>,
+        C: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Z>,
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "center").entered();
@@ -160,61 +161,6 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
 // Bracket combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Returns a parser which brackets the given parser in a pair of tokens.
-///
-/// ## Error recovery
-///
-/// Attempts error recovery if the given parser fails by scanning for the right
-/// token. If the right token is not found, an unmatched delimiter error will
-/// be emitted.
-pub fn bracket<'text, Sc, F, X>(
-    left_token: Sc::Token,
-    center: F,
-    right_token: Sc::Token)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
-        -> ParseResult<'text, Sc, Option<X>>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, X>,
-{
-    let mut recover_center = recover_option(
-        center,
-        Recover::before(right_token.clone()));
-
-    move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "bracket").entered();
-
-        let (l, succ) = spanned(one(left_token.clone()))
-            (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left_token discard")?
-            .take_value();
-
-        let ctx = ctx
-            .push(std::rc::Rc::new(move |e| if e.is_recover_error() {
-                ParseError::unmatched_delimiter(
-                    *e.source_text(),
-                    "unmatched delimiter",
-                    l.span.clone())
-            } else {
-                e
-            }));
-
-        let (c, succ) = match (recover_center)
-            (succ.lexer, ctx.clone())
-            .trace_result(Level::TRACE, "center capture")
-            .apply_context(ctx.clone())
-        {
-            Ok(succ) => succ.take_value(),
-            Err(fail) => return Err(fail),
-        };
-
-        one(right_token.clone())
-            (succ.lexer, ctx.clone())
-            .trace_result(Level::TRACE, "right_token discard")
-            .map_value(|_| c)
-    }
-}
-
 /// Returns a parser which brackets the given parser in a any of a given pair of
 /// matching tokens.
 /// 
@@ -233,14 +179,14 @@ pub fn bracket<'text, Sc, F, X>(
 /// be emitted.
 pub fn bracket_matching<'text: 'a, 'a, Sc, F, X: 'a>(
     open_tokens: &'a [Sc::Token],
-    center: F,
+    mut center: F,
     close_tokens: &'a [Sc::Token],
     abort_tokens: &'a [Sc::Token])
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
-        -> ParseResult<'text, Sc, Option<X>> + 'a
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+        -> ParseResult<'text, Sc, (Option<X>, usize)> + 'a
     where
         Sc: Scanner + 'a,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>)
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, X> + 'a,
 { 
     if open_tokens.is_empty() || close_tokens.is_empty() {
@@ -258,55 +204,95 @@ pub fn bracket_matching<'text: 'a, 'a, Sc, F, X: 'a>(
     }
 
     use BracketError::*;
-    let mut recover_center =  recover_option_delayed(center);
 
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "bracket_matching").entered();
 
-        match match_nested_brackets(lexer,
+        match match_nested_brackets(lexer.clone(),
             open_tokens,
             close_tokens,
             abort_tokens)
         {
-            Err(NoneFound(lexer)) => todo!(),
-            Err(Unopened(lexer)) => todo!(),
-            Err(Unclosed(lexer)) => todo!(),
-            Err(Mismatch(open_lexer, close_lexer)) => todo!(),
+            Err(NoneFound(lexer)) => {
+                // TODO: Better error message.
+                Err(Failure {
+                    parse_error: ParseError::new(
+                        lexer.source_text(),
+                        "Expected [bracket]"),
+                    lexer,
+                })
+            },
+            Err(Unopened(lexer)) => {
+                // TODO: Better error message.
+                Err(Failure {
+                    parse_error: ParseError::new(
+                            lexer.source_text(),
+                            "unmatched close bracket"),
+                    lexer,
+                })
+            },
+            Err(Unclosed(mut lexer)) => {
+                // TODO: Better error message.
+                Err(Failure {
+                    parse_error: ParseError::new(
+                            lexer.source_text(),
+                            "unmatched open bracket")
+                        .with_span_display(SpanDisplay::new_error_highlight(
+                            lexer.source_text(),
+                            lexer.peek_token_span().unwrap(),
+                            "this bracket is not closed",
+                        )),
+                    lexer,
+                })
+            },
+            Err(Mismatch(_open_lexer, _close_lexer)) => {
+                // TODO: Better error message.
+                Err(Failure {
+                    parse_error: ParseError::new(
+                        lexer.source_text(),
+                        "open bracket found with wrong close"),
+                    lexer,
+                })
+            },
 
-            Ok((open_lexer, close_lexer)) => todo!(),
+            Ok(BracketMatch {mut open, mut close, index }) => {
+                // Prepare the sublexers.
+                let _ = open.next();
+                // println!("open: {}", open);
+                let center_lexer = open.sublexer();
+                let _ = close.next();
+                // println!("center_lexer: {}", center_lexer.source_text());
+                // println!("close: {}", close);
+
+                // NOTE: We will do manual error recovery here: we don't want to
+                // advance to a token, because they're potentially nested. We
+                // instead substitute the close, which is already pointing
+                // to the proper recovery position.
+                match (center)
+                    (center_lexer, ctx.clone())
+                    .map_value(|v| (Some(v), index))
+                {
+                    Ok(succ) => Ok(Success {
+                        value: succ.value,
+                        lexer: close,
+                    }),
+                    Err(fail) => {
+                        println!("{fail}");
+                        match ctx.send_error(fail.parse_error, &fail.lexer)
+                        {
+                            Err(parse_error) => Err(Failure {
+                                parse_error,
+                                lexer: close,
+                            }),
+                            Ok(()) => Ok(Success {
+                                value: (None, index),
+                                lexer: close,
+                            }),
+                        }
+                    },
+                }
+            },
         }
-
-        // let (l, succ) = spanned(any_index(open_tokens))
-        //     (lexer, ctx.clone())
-        //     .trace_result(Level::TRACE, "left_token discard")?
-        //     .take_value();
-        // let idx = l.value;
-        // let span = l.span;
-        // let recover = Recover::before(close_tokens[idx].clone());
-
-        // let ctx = ctx
-        //     .push(std::rc::Rc::new(move |e| if e.is_recover_error() {
-        //         ParseError::unmatched_delimiter(
-        //             *e.source_text(),
-        //             "unmatched delimiter",
-        //             span.clone())
-        //     } else {
-        //         e
-        //     }));
-
-        // let (c, succ) = match (recover_center)
-        //     (succ.lexer, ctx.clone(), recover)
-        //     .trace_result(Level::TRACE, "center capture")
-        //     .apply_context(ctx.clone())
-        // {
-        //     Ok(succ) => succ.take_value(),
-        //     Err(fail) => return Err(fail),
-        // };
-
-        // one(right_tokens[idx].clone())
-        //     (succ.lexer, ctx.clone())
-        //     .trace_result(Level::TRACE, "right_token discard")
-        //     .map_value(|_| c)
     }
 }
 
@@ -326,7 +312,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
     open_tokens: &'a [Sc::Token],
     close_tokens: &'a [Sc::Token],
     abort_tokens: &'a [Sc::Token])
-    -> Result<(Lexer<'text, Sc>, Lexer<'text, Sc>), BracketError<'text, Sc>>
+    -> Result<BracketMatch<'text, Sc>, BracketError<'text, Sc>>
     where Sc: Scanner
 {
     use BracketError::*;
@@ -349,7 +335,11 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
                     opened.push((t, n-1));
                 },
                 Some((t, n)) if t == idx && n == 1 && opened.is_empty() => {
-                    return Ok((open_lexer.unwrap(), lexer));
+                    return Ok(BracketMatch {
+                        open: open_lexer.unwrap(),
+                        close: lexer,
+                        index: idx,
+                    });
                 },
                 Some(_) => unreachable!(),
             }
@@ -389,6 +379,12 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
 
 
 const DEFAULT_TOKEN_VEC_SIZE: usize = 4;
+
+struct BracketMatch<'text, Sc> where Sc: Scanner {
+    open: Lexer<'text, Sc>,
+    close: Lexer<'text, Sc>,
+    index: usize,
+}
 
 enum BracketError<'text, Sc> where Sc: Scanner {
     NoneFound(Lexer<'text, Sc>),

@@ -117,7 +117,13 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Returns true if there is no more text available to process.
     pub fn is_empty(&self) -> bool {
+        // TODO: Replace with Option::is_some_and when stabilized.
         self.cursor.byte >= self.source_text.len()
+            || match self.filter.as_ref()
+        {
+            None    => false,
+            Some(_) => self.peek().is_none(),
+        }
     }
 
     /// Returns the underlying source text.
@@ -243,6 +249,7 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
     }
 
+    /// Retrieves the `next` token from the buffer is any token is buffered.
     fn next_buffered(&mut self) -> Option<<Self as Iterator>::Item> {
         let _span = span!(Level::TRACE, "next_buffered").entered();
 
@@ -296,6 +303,20 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn token_span(&self) -> Span {
         Span::new_enclosing(self.token_start, self.end)
     }
+
+    /// Returns the span (excludinf filtered text) of the next available token.
+    pub fn peek_token_span(&self) -> Option<Span> {
+        if let Some((_, pos, _)) = self.buffer.as_ref() {
+            Some(Span::new_enclosing(self.end, *pos))
+        } else {
+            self.clone()
+                .iter_with_spans()
+                .peekable()
+                .peek()
+                .map(|(_tok, span)| *span)
+        }
+    }
+    
 
     /// Returns the span (excluding filtered text) back to the token_start
     /// consumed  position.
@@ -383,11 +404,8 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// text was reached.
     pub fn advance_to(&mut self, token: Sc::Token) -> bool {
         let _span = span!(Level::TRACE, "advance_to").entered();
-        event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
         while let Some(tok) = self.peek() {
-            event!(Level::TRACE, "found {:?}", token);
             if tok == token {
-                event!(Level::TRACE, "after: \n{}", self);
                 return true;
             }
             let _ = self.next();
@@ -401,15 +419,36 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// text was reached.
     pub fn advance_past(&mut self, token: Sc::Token) -> bool {
         let _span = span!(Level::TRACE, "advance_past").entered();
-        event!(Level::TRACE, "token={:?}, current: \n{}", token, self);
         while let Some(tok) = self.next() {
-            event!(Level::TRACE, "found {:?}", token);
             if tok == token {
-                event!(Level::TRACE, "after: \n{}", self);
                 return true;
             }
         }
         false
+    }
+
+    /// Advances the lexer state up to the next instance of the given token, with
+    /// token filtering disabled.
+    ///
+    /// Returns `true` if the given token was found, and `false` if the end of
+    /// text was reached.
+    pub fn advance_to_unfiltered(&mut self, token: Sc::Token) -> bool {
+        let filter = self.take_filter();
+        let res = self.advance_to(token);
+        self.set_filter(filter);
+        res
+    }
+
+    /// Advances the lexer state past the next instance of the given token, with
+    /// token filtering disabled.
+    ///
+    /// Returns `true` if the given token was found, and `false` if the end of
+    /// text was reached.
+    pub fn advance_past_unfiltered(&mut self, token: Sc::Token) -> bool {
+        let filter = self.take_filter();
+        let res = self.advance_past(token);
+        self.set_filter(filter);
+        res
     }
 }
 

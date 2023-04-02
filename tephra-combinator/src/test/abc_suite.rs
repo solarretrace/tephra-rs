@@ -16,7 +16,6 @@ use crate::any;
 use crate::both;
 use crate::one;
 use crate::unrecoverable;
-use crate::bracket;
 use crate::bracket_matching;
 use crate::recover_option;
 use crate::recover_until;
@@ -38,6 +37,7 @@ use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
+use tephra::SpanDisplay;
 use tephra::Span;
 use tephra::Spanned;
 use tephra::Recover;
@@ -65,6 +65,7 @@ enum AbcToken {
     Semicolon,
     OpenBracket,
     CloseBracket,
+    Invalid,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +90,7 @@ impl std::fmt::Display for AbcToken {
             Semicolon    => write!(f, "','"),
             OpenBracket  => write!(f, "'['"),
             CloseBracket => write!(f, "']'"),
+            Invalid      => write!(f, "invalid token"),
         }
     }
 }
@@ -150,17 +152,21 @@ impl Scanner for Abc {
                 AbcToken::D,
                 metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
             
-        } else {
+        } else if text.starts_with(char::is_whitespace) {
             self.0 = Some(AbcToken::Ws);
             let rest = text.trim_start_matches(char::is_whitespace);
-            if rest.len() < text.len() {
-                let substr_len = text.len() - rest.len();
-                let substr = &source.as_ref()[0.. base.byte + substr_len];
-                Some((AbcToken::Ws, metrics.end_position(substr, base)))
-            } else {
-                self.0 = None;
-                None
-            }
+            
+            let substr_len = text.len() - rest.len();
+            let substr = &source.as_ref()[0.. base.byte + substr_len];
+            Some((AbcToken::Ws, metrics.end_position(substr, base)))
+        } else if text.len() > 0 {
+            self.0 = Some(AbcToken::Invalid);
+            Some((
+                AbcToken::Invalid,
+                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+        } else {
+            self.0 = None;
+            None
         }
     }
 }
@@ -175,7 +181,7 @@ enum Pattern<'text> {
     Xyc(Spanned<&'text str>),
 }
 
-fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
+fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
     match maybe(spanned(text(abc)))
@@ -184,7 +190,7 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         Ok(Success { value: Some(sp), lexer }) => {
             return Ok(Success { value: Pattern::Abc(sp), lexer });
         },
-        _        => (),
+        _ => (),
     }
 
     match maybe(spanned(text(bxx)))
@@ -193,13 +199,18 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         Ok(Success { value: Some(sp), lexer }) => {
             return Ok(Success { value: Pattern::Bxx(sp), lexer });
         },
-        _        => (),
+        _ => (),
     }
 
     // Setup error context.
     let source = lexer.source_text();
-    let ctx = ctx.push(std::rc::Rc::new(move |e| e
-        .with_error_context(ParseError::new(source, "unrecognized pattern"))));
+    let ctx = ctx.push(std::rc::Rc::new(move |_e, lexer| ParseError::new(
+            source.clone(),
+            "expected pattern")
+        .with_span_display(SpanDisplay::new_error_highlight(
+            source,
+            lexer.parse_span(),
+            "expected 'ABC', 'BXX', or 'XYC' pattern"))));
 
     spanned(text(xyc))
         (lexer, ctx.clone())
@@ -207,7 +218,7 @@ fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         .map_value(Pattern::Xyc)
 }
 
-fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
+fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
@@ -216,7 +227,7 @@ fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         .map_value(|v| (v[0], v[1], v[2]))
 }
 
-fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
+fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
@@ -234,18 +245,21 @@ fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
         .map_value(|x2| (c, x1, x2))
 }
 
-fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text>)
+fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
-    let ((x, y), succ) = both(
+    let res = both(
         any(&[A, B, C, D]),
         any(&[A, B, C, D]))
-        (lexer, ctx.clone())?
+        (lexer, ctx.clone());
+    let ((x, y), succ) = res
+        .map_lexer_failure(|mut l| { l.advance_to_unfiltered(Ws); l })?
         .take_value();
 
     one(C)
         (succ.lexer, ctx)
+        .map_lexer_failure(|mut l| { l.advance_to_unfiltered(Ws); l })
         .map_value(|b| (x, y, b))
 }
 
@@ -375,7 +389,7 @@ fn initial_newline_ws_skip() {
     colored::control::set_override(false);
 
     use AbcToken::*;
-    const TEXT: &'static str = "\n    zzz";
+    const TEXT: &'static str = "\n    aaa";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let ctx = Context::empty();
@@ -386,12 +400,11 @@ fn initial_newline_ws_skip() {
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unrecognized pattern
-... caused by error: unrecognized token
+error: expected pattern
  --> (1:0-1:7, bytes 1-8)
   | 
-1 |     zzz
-  |     \\ symbol not recognized
+1 |     aaa
+  |     ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 
@@ -567,12 +580,11 @@ fn pattern_right_failed() {
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unrecognized pattern
-... caused by error: unexpected token
+error: expected pattern
  --> (0:0-0:7, bytes 0-7)
   | 
 0 | abc ddd
-  |       ^ expected 'c'
+  |     ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 
@@ -665,12 +677,11 @@ fn pattern_center_recover() {
 
     assert_eq!(errors.read().unwrap().len(), 1);
     assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
-error: unrecognized pattern
-... caused by error: unexpected token
+error: expected pattern
  --> (0:0-0:4, bytes 0-4)
   | 
 0 | [ab]
-  |    ^ expected 'c'
+  |  ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 
@@ -704,12 +715,11 @@ fn pattern_center_recover_delayed() {
 
     assert_eq!(errors.read().unwrap().len(), 1);
     assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
-error: unrecognized pattern
-... caused by error: unexpected token
+error: expected pattern
  --> (0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb] 
-  |       ^ expected 'c'
+  |  ^^^^^^^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 
@@ -729,19 +739,19 @@ fn pattern_bracket_recover_unmatched() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket(
-            OpenBracket,
+    let actual = bracket_matching(
+            &[OpenBracket],
             pattern,
-            CloseBracket)
+            &[CloseBracket], &[])
         (lexer.clone(), ctx)
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unmatched delimiter
+error: unmatched open bracket
  --> pattern_bracket_recover_unmatched:(0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb  
-  | ^ matching delimiter not found
+  | ^ this bracket is not closed
 ");
 }
 
@@ -761,20 +771,20 @@ fn pattern_bracket_recover_unmatched_raw() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = raw(bracket(
-            OpenBracket,
+    let actual = raw(bracket_matching(
+            &[OpenBracket],
             pattern,
-            CloseBracket))
+            &[CloseBracket], &[]))
         (lexer.clone(), ctx)
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unexpected end of text
+error: unmatched open bracket
  --> pattern_bracket_recover_unmatched_raw:(0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb  
-  |            \\ text ends here
-... caused by recover failure: end of text reached");
+  | ^ this bracket is not closed
+");
 }
 
 /// Test failed `bracket` combinator without error recovery, with an
@@ -793,20 +803,19 @@ fn pattern_bracket_recover_unmatched_unrecoverable() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = unrecoverable(bracket(
-            OpenBracket,
+    let actual = unrecoverable(bracket_matching(
+            &[OpenBracket],
             pattern,
-            CloseBracket))
+            &[CloseBracket], &[]))
         (lexer.clone(), ctx)
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unrecognized pattern
-... caused by error: unexpected token
+error: unmatched open bracket
  --> pattern_bracket_recover_unmatched_unrecoverable:(0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb  
-  |       ^ expected 'c'
+  | ^ this bracket is not closed
 ");
 }
 
@@ -817,26 +826,27 @@ fn comma_bracket_matching() {
     colored::control::set_override(false);
 
     use AbcToken::*;
-    const TEXT: &'static str = "b,b";
+    const TEXT: &'static str = "a,b";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = spanned(bracket_matching(
-            &[A, B, C],
+            &[A],
             one(Comma),
-            &[A, B, C]))
+            &[B],
+            &[]))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
     let actual = value;
     let expected = Spanned {
-        value: Some(Comma),
+        value: (Some(Comma), 0),
         span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
     };
-
+    println!("{:?}", actual);
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
 }
@@ -858,24 +868,26 @@ fn pattern_bracket_matching_both() {
             bracket_matching(
                 &[OpenBracket],
                 pattern,
-                &[CloseBracket]),
+                &[CloseBracket],
+                &[]),
             bracket_matching(
                 &[OpenBracket],
                 pattern,
-                &[CloseBracket]))
+                &[CloseBracket],
+                &[]))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
     let actual = value;
-    let expected = (Some(Pattern::Abc(Spanned {
+    let expected = ((Some(Pattern::Abc(Spanned {
             value: "abc",
             span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
-        })), 
-        Some(Pattern::Xyc(Spanned {
+        })), 0), 
+        (Some(Pattern::Xyc(Spanned {
             value: "aac",
             span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
-        })));
+        })), 0));
 
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
@@ -888,7 +900,7 @@ fn pattern_bracket_matching_both_first_fail() {
     colored::control::set_override(false);
 
     use AbcToken::*;
-    const TEXT: &'static str = "[ab ][aac]";
+    const TEXT: &'static str = "[a  ][aac]";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
@@ -899,34 +911,35 @@ fn pattern_bracket_matching_both_first_fail() {
             bracket_matching(
                 &[OpenBracket],
                 pattern,
-                &[CloseBracket]),
+                &[CloseBracket],
+                &[]),
             bracket_matching(
                 &[OpenBracket],
                 pattern,
-                &[CloseBracket]))
+                &[CloseBracket],
+                &[]))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
 
     let actual = value;
     let expected = (
-        None, 
-        Some(Pattern::Xyc(Spanned {
+        (None, 0), 
+        (Some(Pattern::Xyc(Spanned {
             value: "aac",
             span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
-        })));
+        })), 0));
 
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
 
     assert_eq!(errors.read().unwrap().len(), 1);
     assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
-error: unrecognized pattern
-... caused by error: unexpected token
+error: expected pattern
  --> (0:0-0:10, bytes 0-10)
   | 
-0 | [ab ][aac]
-  |     ^ expected 'c'
+0 | [a  ][aac]
+  |  ^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 

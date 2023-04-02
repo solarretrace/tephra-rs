@@ -10,6 +10,7 @@
 
 // Internal library imports.
 use crate::Context;
+use crate::lexer::Lexer;
 use crate::lexer::Scanner;
 use crate::result::Failure;
 use crate::result::Success;
@@ -42,19 +43,32 @@ pub trait ParseResultExt<'text, Sc, V>
 
     /// Converts `ParseResult<'_, _, _, V>` into a `ParseResult<'_, _, _, U>` by
     /// applying the given closure.
-    fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, U> 
+    fn map_value<F, U>(self, f: F) -> ParseResult<'text, Sc, U>
         where F: FnOnce(V) -> U;
 
+    /// Applies the given function to the `ParseResult`'s lexer.
+    fn map_lexer<F>(self, f: F) -> ParseResult<'text, Sc, V>
+        where F: FnOnce(Lexer<'text, Sc>) -> Lexer<'text, Sc>;
+
+    /// Applies the given function to the `ParseResult`'s lexer when the result
+    /// is `Ok`.
+    fn map_lexer_success<F>(self, f: F) -> ParseResult<'text, Sc, V>
+        where F: FnOnce(Lexer<'text, Sc>) -> Lexer<'text, Sc>;
+
+    /// Applies the given function to the `ParseResult`'s lexer when the result
+    /// is `Err`.
+    fn map_lexer_failure<F>(self, f: F) -> ParseResult<'text, Sc, V>
+        where F: FnOnce(Lexer<'text, Sc>) -> Lexer<'text, Sc>;
+
     /// Applies any `ErrorTransform`s in the given `Context`.
-    fn apply_context(self, ctx: Context<'text>) -> Self;
+    fn apply_context(self, ctx: Context<'text, Sc>) -> Self;
 
     /// Outputs a trace event displaying the parse result.
     fn trace_result(self, level: Level, label: &'static str) -> Self;
 }
 
 
-impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
-        for ParseResult<'text, Sc, V>
+impl<'text, Sc, V> ParseResultExt<'text, Sc, V> for ParseResult<'text, Sc, V>
     where Sc: Scanner,
 {
     fn finish(self) -> Result<V, ParseErrorOwned> {
@@ -72,12 +86,53 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V>
         }
     }
 
-    fn apply_context(self, ctx: Context<'text>) -> Self {
+    fn map_lexer<F>(self, f: F) -> ParseResult<'text, Sc, V>
+        where F: FnOnce(Lexer<'text, Sc>) -> Lexer<'text, Sc>
+    {
+        match self {
+            Ok(Success { value, lexer })  => Ok(Success {
+                value,
+                lexer: (f)(lexer),
+            }),
+            Err(Failure { parse_error, lexer })  => Err(Failure {
+                parse_error,
+                lexer: (f)(lexer),
+            }),
+        }
+    }
+
+    fn map_lexer_success<F>(self, f: F) -> ParseResult<'text, Sc, V>
+        where F: FnOnce(Lexer<'text, Sc>) -> Lexer<'text, Sc>
+    {
+        match self {
+            Ok(Success { value, lexer })  => Ok(Success {
+                value,
+                lexer: (f)(lexer),
+            }),
+            Err(fail) => Err(fail),
+        }
+    }
+
+    fn map_lexer_failure<F>(self, f: F) -> ParseResult<'text, Sc, V>
+        where F: FnOnce(Lexer<'text, Sc>) -> Lexer<'text, Sc>
+    {
+        match self {
+            Ok(succ) => Ok(succ),
+            Err(Failure { parse_error, lexer })  => Err(Failure {
+                parse_error,
+                lexer: (f)(lexer),
+            }),
+        }
+    }
+
+    fn apply_context(self, ctx: Context<'text, Sc>) -> Self {
         match self {
             Ok(succ)  => Ok(succ),
             Err(Failure { lexer, parse_error }) => Err(Failure {
+                parse_error: ctx.apply_error_transform_recursive(
+                    parse_error,
+                    &lexer),
                 lexer,
-                parse_error: ctx.apply_error_transform_recursive(parse_error),
             }),
         }
     }

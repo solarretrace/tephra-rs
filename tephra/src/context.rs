@@ -11,9 +11,13 @@
 #![allow(unused)]
 #![allow(missing_docs)]
 
+// Internal library imports.
+use crate::Scanner;
+use crate::Lexer;
 
 // External library imports.
 use tephra_error::ParseError;
+use tephra_span::Span;
 
 // Standard library imports.
 use std::rc::Rc;
@@ -34,8 +38,9 @@ pub type ErrorSink<'text> = Box<dyn Fn(ParseError<'text>) + 'text>;
 // ErrorTransform
 ////////////////////////////////////////////////////////////////////////////////
 /// A function to construct or modify `ParseError`s in a given `Context`.
-pub type ErrorTransform<'text>
-    = Rc<dyn Fn(ParseError<'text>) -> ParseError<'text> + 'text>;
+pub type ErrorTransform<'text, Sc> = Rc<
+    dyn for<'a> Fn(ParseError<'text>, &'a Lexer<'text, Sc>)
+        -> ParseError<'text> + 'text>;
 
 
 
@@ -61,37 +66,44 @@ impl<'text> std::fmt::Debug for SharedContext<'text> {
 ////////////////////////////////////////////////////////////////////////////////
 /// Local parse context. Forms a linked list of parse contexts back to the start
 /// of the parse.
-pub struct LocalContext<'text> {
+pub struct LocalContext<'text, Sc> where Sc: Scanner {
     /// The lowest `ErrorTransform` function in this context.
-    error_transform: Option<ErrorTransform<'text>>,
+    error_transform: Option<ErrorTransform<'text, Sc>>,
     /// The `LocalContext` of the next highest parse.
-    parent: Option<Rc<RwLock<LocalContext<'text>>>>,
+    parent: Option<Rc<RwLock<LocalContext<'text, Sc>>>>,
 }
 
-impl<'text> LocalContext<'text> {
-    /// Applies the lowest `ErrorTransform` function to the given `ParseError`.
-    fn apply_error_transform(&self, parse_error: ParseError<'text>)
+impl<'text, Sc> LocalContext<'text, Sc> where Sc: Scanner {
+    /// Applies the lowest `ErrorTransform` function to the given `ParseError`
+    /// and `Span`.
+    fn apply_error_transform(
+        &self,
+        parse_error: ParseError<'text>,
+        lexer: &Lexer<'text, Sc>)
         -> ParseError<'text>
     {
         match self.error_transform.as_ref() {
-            Some(transform) => (transform)(parse_error),
+            Some(transform) => (transform)(parse_error, lexer),
             None            => parse_error,
         }
     }
 
-    /// Applies the lowest `ErrorTransform` function to the given `ParseError`,
-    /// then visits each parent context and applies each transfom function in
-    /// sequence.
-    fn apply_error_transform_recursive(&self, parse_error: ParseError<'text>)
+    /// Applies the lowest `ErrorTransform` function to the given `ParseError`
+    /// and `Span`, then visits each parent context and applies each transfom
+    /// function in sequence.
+    fn apply_error_transform_recursive(
+        &self,
+        parse_error: ParseError<'text>,
+        lexer: &Lexer<'text, Sc>)
         -> ParseError<'text>
     {
-        let e = self.apply_error_transform(parse_error);
+        let e = self.apply_error_transform(parse_error, &lexer);
 
         match self.parent.as_ref() {
             Some(parent) => parent
                 .read()
                 .expect("read parent")
-                .apply_error_transform_recursive(e),
+                .apply_error_transform_recursive(e, lexer),
             None         => e,
 
         }
@@ -99,7 +111,7 @@ impl<'text> LocalContext<'text> {
 }
 
 
-impl<'text> std::fmt::Debug for LocalContext<'text> {
+impl<'text, Sc> std::fmt::Debug for LocalContext<'text, Sc> where Sc: Scanner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SharedContext")
             .field("error_transform", &option_fmt(&self.error_transform))
@@ -114,16 +126,16 @@ impl<'text> std::fmt::Debug for LocalContext<'text> {
 ////////////////////////////////////////////////////////////////////////////////
 /// A parse context.
 #[derive(Debug, Clone)]
-pub struct Context<'text> {
+pub struct Context<'text, Sc> where Sc: Scanner {
     /// The `SharedContext`.
     shared: Rc<RwLock<SharedContext<'text>>>,
     /// The `LocalContext`.
-    local: Rc<RwLock<LocalContext<'text>>>,
+    local: Rc<RwLock<LocalContext<'text, Sc>>>,
     /// Indicates that the context is locked and no new contexts may be added.
     locked: bool,
 }
 
-impl<'text> Context<'text> {
+impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
     /// Constructs a new `Context`.
     pub fn empty() -> Self {
         Context {
@@ -162,7 +174,7 @@ impl<'text> Context<'text> {
 
     /// Constructs a new `Context` by wrapping a new `ErrorTransform` around the
     /// given `Context`.
-    pub fn push(self, error_transform: ErrorTransform<'text>) -> Self {
+    pub fn push(self, error_transform: ErrorTransform<'text, Sc>) -> Self {
         if !self.locked {
             Context {
                 shared: self.shared.clone(),
@@ -190,30 +202,37 @@ impl<'text> Context<'text> {
         shared.error_sink.replace(error_sink)
     }
 
-    fn apply_error_transform(&self, parse_error: ParseError<'text>)
+    fn apply_error_transform(
+        &self,
+        parse_error: ParseError<'text>,
+        lexer: &Lexer<'text, Sc>)
         -> ParseError<'text>
     {
         self.local
             .read()
             .expect("read local context")
-            .apply_error_transform(parse_error)
+            .apply_error_transform(parse_error, lexer)
     }
 
     pub fn apply_error_transform_recursive(
         &self,
-        parse_error: ParseError<'text>)
+        parse_error: ParseError<'text>,
+        lexer: &Lexer<'text, Sc>)
         -> ParseError<'text>
     {
         self.local
             .read()
             .expect("read local context")
-            .apply_error_transform_recursive(parse_error)
+            .apply_error_transform_recursive(parse_error, lexer)
     }
 
     /// Sends a `ParseError` to the `ErrorSink`, applying `ErrorTransform`s.
     ///
     /// Returns the given error if no `ErrorSink` is configured.
-    pub fn send_error<'a>(&'a self, parse_error: ParseError<'text>)
+    pub fn send_error(
+        &self,
+        parse_error: ParseError<'text>,
+        lexer: &Lexer<'text, Sc>)
         -> Result<(), ParseError<'text>>
     {
         match self.shared
@@ -223,7 +242,9 @@ impl<'text> Context<'text> {
             .as_ref()
         {
             Some(sink) => {
-                (sink)(self.apply_error_transform_recursive(parse_error));
+                (sink)(self.apply_error_transform_recursive(
+                    parse_error,
+                    lexer));
                 Ok(())
             },
             None => Err(parse_error),
@@ -231,7 +252,7 @@ impl<'text> Context<'text> {
     }
 
     /// Removes the `LocalContext` from the `Context` if present.
-    pub fn take_local_context(&mut self) -> LocalContext<'text> {
+    pub fn take_local_context(&mut self) -> LocalContext<'text, Sc> {
         std::mem::replace(&mut *self.local
                 .write()
                 .expect("write local context"),
@@ -241,8 +262,8 @@ impl<'text> Context<'text> {
             })
     }
 
-    pub fn replace_local_context(&mut self, local: LocalContext<'text>)
-        -> LocalContext<'text>
+    pub fn replace_local_context(&mut self, local: LocalContext<'text, Sc>)
+        -> LocalContext<'text, Sc>
     {
         std::mem::replace(&mut *self.local
                 .write()

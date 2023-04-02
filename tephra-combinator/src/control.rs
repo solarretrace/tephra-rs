@@ -33,10 +33,10 @@ use tephra_tracing::span;
 ////////////////////////////////////////////////////////////////////////////////
 /// A combinator which disables error contexts.
 pub fn raw<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "raw").entered();
@@ -53,10 +53,10 @@ pub fn raw<'text, Sc, F, V>(mut parser: F)
 
 /// A combinator which disables error recovery.
 pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "unrecoverable").entered();
@@ -75,10 +75,10 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
 pub fn recover_default<'text, Sc, F, V>(
     mut parser: F,
     recover: Recover<Sc::Token>)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
         V: Default
 {
     if recover.is_empty() || recover.limit() == Some(0) {
@@ -99,7 +99,7 @@ pub fn recover_default<'text, Sc, F, V>(
             Ok(succ) => Ok(succ),
 
             Err(Failure { lexer, parse_error, .. }) => match ctx
-                .send_error(parse_error)
+                .send_error(parse_error, &lexer)
             {
                 Err(parse_error) => Err(Failure { lexer, parse_error }),
 
@@ -134,11 +134,11 @@ pub fn recover_default<'text, Sc, F, V>(
 /// called rather than when it is constructed, as in `recover_default`.
 pub fn recover_default_delayed<'text, Sc, F, V>(
     mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>, Recover<Sc::Token>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>, Recover<Sc::Token>)
         -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
         V: Default
 {
     move |lexer, ctx, recover| {
@@ -151,11 +151,11 @@ pub fn recover_default_delayed<'text, Sc, F, V>(
 pub fn recover_option<'text, Sc, F, V>(
     mut parser: F,
     recover: Recover<Sc::Token>)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
 {
     let option_parser = move |lexer, ctx| {
         (parser)
@@ -171,11 +171,11 @@ pub fn recover_option<'text, Sc, F, V>(
 /// called rather than when it is constructed, as in `recover_option`.
 pub fn recover_option_delayed<'text, Sc, F, V>(
     mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>, Recover<Sc::Token>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>, Recover<Sc::Token>)
         -> ParseResult<'text, Sc, Option<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
 {
     
     move |lexer, ctx, recover| {
@@ -192,11 +192,11 @@ pub fn recover_option_delayed<'text, Sc, F, V>(
 /// A combinator which ends error recovery if a successful parse is achieved, or
 /// resumes error recovery if a failure occurs.
 pub fn recover_until<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
         let mut res = (parser)
@@ -252,11 +252,11 @@ pub fn recover_until<'text, Sc, F, V>(mut parser: F)
 ///
 /// [`Scanner::Token`]: tephra::Scanner#associatedtype.Token
 pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
         F: for<'a> Fn(&'a Sc::Token) -> bool + Clone + 'static,
-        P: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        P: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer, ctx| {
         let _span = span!(Level::DEBUG, "filter").entered();
@@ -290,10 +290,10 @@ pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
 ///
 /// No error recovery is attempted.
 pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer, ctx| {
         let _span = span!(Level::DEBUG, "unfiltered").entered();
@@ -330,11 +330,11 @@ pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
 ///
 /// No error recovery is attempted.
 pub fn discard<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, ()>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "discard").entered();
@@ -361,11 +361,11 @@ pub fn discard<'text, Sc, F, V>(mut parser: F)
 ///
 /// No error recovery is attempted.
 pub fn text<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>) 
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>) 
         -> ParseResult<'text, Sc, &'text str>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>) -> ParseResult<'text, Sc, V>,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "text").entered();
@@ -396,11 +396,11 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
 ///
 /// No error recovery is attempted.
 pub fn spanned<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Spanned<V>>
     where
         Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text>)
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
