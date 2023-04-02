@@ -723,11 +723,42 @@ error: expected pattern
 ");
 }
 
-/// Test failed `bracket` combinator with error recovery, with an
-/// unmatched bracket.
+/// Test failed `bracket` combinator with error recovery, with missing brackets.
 #[test]
 #[tracing::instrument]
-fn pattern_bracket_recover_unmatched() {
+fn pattern_bracket_recover_missing() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = " abc ";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = bracket_matching(
+            &[OpenBracket],
+            pattern,
+            &[CloseBracket], &[])
+        (lexer.clone(), ctx)
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: expected open bracket
+ --> (0:0-0:5, bytes 0-5)
+  | 
+0 |  abc 
+  |  \\ bracket expected here
+");
+}
+
+
+/// Test failed `bracket` combinator with error recovery, with an unmatched open
+/// bracket.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_recover_unmatched_open() {
     colored::control::set_override(false);
 
     use AbcToken::*;
@@ -752,6 +783,69 @@ error: unmatched open bracket
   | 
 0 | [ab   bbb  
   | ^ this bracket is not closed
+");
+}
+
+/// Test failed `bracket` combinator with error recovery, with an unmatched
+/// close bracket.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_recover_unmatched_closed() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = " abc]";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = bracket_matching(
+            &[OpenBracket],
+            pattern,
+            &[CloseBracket], &[])
+        (lexer.clone(), ctx)
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: unmatched close bracket
+ --> (0:0-0:5, bytes 0-5)
+  | 
+0 |  abc]
+  |     ^ this bracket has no matching open
+");
+}
+
+/// Test failed `bracket` combinator with error recovery, with an unmatched
+/// close bracket.
+#[test]
+#[tracing::instrument]
+fn pattern_bracket_recover_mismatched() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[abc,";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let actual = bracket_matching(
+            &[OpenBracket, OpenBracket],
+            pattern,
+            &[CloseBracket, Comma], &[])
+        (lexer.clone(), ctx)
+        .unwrap_err();
+
+    assert_eq!(format!("{actual}"), "\
+error: unmatched brackets
+ --> (0:0-0:5, bytes 0-5)
+  | 
+0 | [abc,
+  | ^ the bracket here
+  |     ^ ... does not match the closing bracket here
 ");
 }
 
@@ -942,5 +1036,6 @@ error: expected pattern
   |  ^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
+
 
 

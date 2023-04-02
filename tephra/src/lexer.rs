@@ -217,7 +217,11 @@ impl<'text, Sc> Lexer<'text, Sc>
                     .as_ref()
                     .map_or(false, |f| !(f)(&token)) => 
                 {
-                    // Parsed a filtered token.
+                    // Parsed a filtered token. If we have not yet started a
+                    // parse, we advance the parse_start and the cursor.
+                    if self.cursor == self.parse_start {
+                        self.parse_start = adv;
+                    }
                     self.cursor = adv;
                 },
 
@@ -318,19 +322,25 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
     
 
-    /// Returns the span (excluding filtered text) back to the token_start
-    /// consumed  position.
+    /// Returns the span (excluding filtered text) from the start of the parse
+    /// to the current position.
     pub fn parse_span(&self) -> Span {
         Span::new_enclosing(self.parse_start, self.end)
     }
 
-    /// Returns the cursor span (including filtered text) back to the
-    /// token_start consumed position.
+    /// Returns the span (including filtered text) from the start of the parse
+    /// to the current position.
     pub fn parse_span_unfiltered(&self) -> Span {
         Span::new_enclosing(self.parse_start, self.cursor)
     }
 
-    /// Returns the span of the end of the lexed text.
+    /// Returns the span of the start of the current parse.
+    pub fn start_span(&self) -> Span {
+        Span::new_at(self.parse_start)
+    }
+
+    /// Returns the span of the end of the lexed text (the end of the current
+    /// parse.)
     pub fn end_span(&self) -> Span {
         Span::new_at(self.end)
     }

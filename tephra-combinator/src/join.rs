@@ -9,17 +9,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-// Internal library imports.
-use crate::one;
-use crate::spanned;
-use crate::recover_option;
-
 // External library imports.
 use tephra::Context;
 use tephra::Lexer;
 use tephra::Failure;
+use tephra::Highlight;
 use tephra::Success;
-use tephra::Recover;
 use tephra::SpanDisplay;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
@@ -214,25 +209,30 @@ pub fn bracket_matching<'text: 'a, 'a, Sc, F, X: 'a>(
             abort_tokens)
         {
             Err(NoneFound(lexer)) => {
-                // TODO: Better error message.
                 Err(Failure {
                     parse_error: ParseError::new(
-                        lexer.source_text(),
-                        "Expected [bracket]"),
+                            lexer.source_text(),
+                            "expected open bracket")
+                        .with_span_display(SpanDisplay::new_error_highlight(
+                            lexer.source_text(),
+                            lexer.start_span(),
+                            "bracket expected here")),
                     lexer,
                 })
             },
             Err(Unopened(lexer)) => {
-                // TODO: Better error message.
                 Err(Failure {
                     parse_error: ParseError::new(
                             lexer.source_text(),
-                            "unmatched close bracket"),
+                            "unmatched close bracket")
+                        .with_span_display(SpanDisplay::new_error_highlight(
+                            lexer.source_text(),
+                            lexer.peek_token_span().unwrap(),
+                            "this bracket has no matching open")),
                     lexer,
                 })
             },
-            Err(Unclosed(mut lexer)) => {
-                // TODO: Better error message.
+            Err(Unclosed(lexer)) => {
                 Err(Failure {
                     parse_error: ParseError::new(
                             lexer.source_text(),
@@ -240,17 +240,23 @@ pub fn bracket_matching<'text: 'a, 'a, Sc, F, X: 'a>(
                         .with_span_display(SpanDisplay::new_error_highlight(
                             lexer.source_text(),
                             lexer.peek_token_span().unwrap(),
-                            "this bracket is not closed",
-                        )),
+                            "this bracket is not closed")),
                     lexer,
                 })
             },
-            Err(Mismatch(_open_lexer, _close_lexer)) => {
-                // TODO: Better error message.
+            Err(Mismatch(open_lexer, close_lexer)) => {
                 Err(Failure {
                     parse_error: ParseError::new(
-                        lexer.source_text(),
-                        "open bracket found with wrong close"),
+                            lexer.source_text(),
+                            "unmatched brackets")
+                        .with_span_display(SpanDisplay::new_error_highlight(
+                            lexer.source_text(),
+                            open_lexer.peek_token_span().unwrap(),
+                            "the bracket here")
+                            .with_highlight(Highlight::new(
+                                close_lexer.peek_token_span().unwrap(),
+                                "... does not match the closing bracket here")
+                                .with_error_type())),
                     lexer,
                 })
             },
