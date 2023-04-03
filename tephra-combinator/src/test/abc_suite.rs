@@ -40,7 +40,7 @@ use tephra::SourceText;
 use tephra::SpanDisplay;
 use tephra::Span;
 use tephra::Spanned;
-use tephra::Recover;
+use tephra::recover_before;
 use tephra::Success;
 use tephra::ParseError;
 use test_log::test;
@@ -663,7 +663,7 @@ fn pattern_center_recover() {
 
     let (value, succ) = center(
             one(OpenBracket),
-            recover_option(pattern, Recover::before(CloseBracket)),
+            recover_option(pattern, recover_before(CloseBracket)),
             recover_until(one(CloseBracket)))
         (lexer.clone(), ctx)
         .expect("successful parse")
@@ -701,7 +701,7 @@ fn pattern_center_recover_delayed() {
 
     let (value, succ) = center(
             one(OpenBracket),
-            recover_option(pattern, Recover::before(CloseBracket)),
+            recover_option(pattern, recover_before(CloseBracket)),
             recover_until(one(CloseBracket)))
         (lexer.clone(), ctx)
         .expect("successful parse")

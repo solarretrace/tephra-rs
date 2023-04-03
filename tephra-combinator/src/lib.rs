@@ -104,20 +104,22 @@
 
 
 // Internal modules.
-#[cfg(test)]
-mod test;
+mod alt;
 mod control;
+mod delimit;
+mod imp;
 mod join;
 mod primitive;
 mod repeat;
-mod alt;
-mod imp;
+#[cfg(test)]
+mod test;
 
 // Exports.
+pub use alt::*;
 pub use control::*;
+pub use delimit::*;
+pub use imp::*;
 pub use join::*;
 pub use primitive::*;
 pub use repeat::*;
-pub use alt::*;
-pub use imp::*;
 pub use simple_predicates::Expr;

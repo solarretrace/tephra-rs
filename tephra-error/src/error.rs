@@ -16,7 +16,6 @@ use crate::CodeDisplay;
 use crate::Note;
 use crate::SpanDisplay;
 use crate::MessageType;
-use crate::RecoverError;
 
 // External libary imports.
 use tephra_span::ColumnMetrics;
@@ -153,13 +152,6 @@ impl<'text> ParseError<'text> {
         };
         event!(Level::TRACE, "{e:?}");
         e
-    }
-
-    pub fn is_recover_error(&self) -> bool {
-        self.source
-            .as_ref()
-            .filter(|s| s.is::<RecoverError>())
-            .is_some()
     }
 
     /// Adds the given span to the `ParseError` and returns it.

@@ -19,7 +19,6 @@ use tephra::Scanner;
 use tephra::Spanned;
 use tephra::Success;
 use tephra::Failure;
-use tephra::RecoverError;
 use tephra::Recover;
 use tephra_tracing::event;
 use tephra_tracing::Level;
@@ -81,16 +80,11 @@ pub fn recover_default<'text, Sc, F, V>(
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
         V: Default
 {
-    if recover.is_empty() || recover.limit() == Some(0) {
-        // TODO: Maybe Wait is a useful state to prevent advancing?
-        panic!("invalid recover state");
-    }
-
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "recover_default").entered();
         
         let mut base_lexer = lexer.clone();
-        *base_lexer.recover_state_mut() = recover.clone();
+        base_lexer.set_recover_state(Some(recover.clone()));
 
         match (parser)
             (lexer, ctx.clone())
@@ -110,18 +104,13 @@ pub fn recover_default<'text, Sc, F, V>(
                             value: V::default(),
                         })
                     },
-                    Err(RecoverError::EndOfText) => {
+                    Err(recover_error_msg) => {
                         Err(Failure {
-                            parse_error: ParseError::unexpected_end_of_text(
-                                    base_lexer.source_text(),
-                                    base_lexer.cursor_span())
-                                .with_source(Box::new(RecoverError::EndOfText)),
+                            parse_error: ParseError::new(
+                                base_lexer.source_text(),
+                                recover_error_msg),
                             lexer: base_lexer,
                         })
-                    },
-                    Err(RecoverError::LimitExceeded) => {
-                        // Recover limit should be non-zero.
-                        unreachable!()
                     },
                 },
             },
@@ -205,23 +194,18 @@ pub fn recover_until<'text, Sc, F, V>(mut parser: F)
         loop {
             match res {
                 Ok(mut succ) => {
-                    succ.lexer.clear_recover_state();
+                    succ.lexer.set_recover_state(None);
                     return Ok(succ);
                 },
                 Err(mut fail) => match fail.lexer.advance_to_recover() {
-                    Err(RecoverError::LimitExceeded) => {
-                        fail.lexer.clear_recover_state();
-                        return Err(fail);
-                    },
-                    Err(RecoverError::EndOfText) => {
-                        fail.lexer.clear_recover_state();
+                    Err(recover_error_msg) => {
+                        fail.lexer.set_recover_state(None);
                         return Err(Failure {
-                            parse_error: ParseError::unexpected_end_of_text(
-                                    fail.lexer.source_text(),
-                                    fail.lexer.cursor_span())
-                                .with_source(Box::new(RecoverError::EndOfText)),
+                            parse_error: ParseError::new(
+                                fail.lexer.source_text(),
+                                recover_error_msg),
                             lexer: fail.lexer,
-                        });
+                        })
                     },
                     Ok(_) => {
                         res = (parser)

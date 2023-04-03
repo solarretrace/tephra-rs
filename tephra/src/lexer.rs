@@ -18,8 +18,6 @@ use tephra_span::Pos;
 use tephra_span::Span;
 use tephra_span::SourceText;
 use tephra_error::Recover;
-use tephra_error::PositionType;
-use tephra_error::RecoverError;
 
 // External library imports.
 use tephra_tracing::Level;
@@ -71,7 +69,7 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
     cursor: Pos,
 
     /// The error recovery type.
-    recover: Recover<Sc::Token>,
+    recover: Option<Recover<Sc::Token>>,
 
     /// The next token to emit, its position, and the resulting scanner state.
     buffer: Option<(Sc::Token, Pos, Sc)>,
@@ -92,7 +90,7 @@ impl<'text, Sc> Lexer<'text, Sc>
             end: Pos::ZERO,
             cursor: Pos::ZERO,
             buffer: None,
-            recover: Recover::empty(),
+            recover: None,
             scanner,
         }
     }
@@ -352,61 +350,49 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Returns the recover state used to indicate a token to advance to when a
     /// recoverable parse error occurs.
-    pub fn recover_state(&self) -> &Recover<Sc::Token> {
-        &self.recover
+    pub fn recover_state(&self) -> Option<&Recover<Sc::Token>> {
+        self.recover.as_ref()
     }
 
-    /// Returns a mutable reference to the recover state of the lexer.
-    pub fn recover_state_mut(&mut self) -> &mut Recover<Sc::Token> {
-        &mut self.recover
-    }
-
-    /// Clears the recover state of the lexer.
-    pub fn clear_recover_state(&mut self) {
-        self.recover = Recover::empty();
+    /// Sets the recover state used to indicate a token to advance to when a
+    /// recoverable parse error occurs.
+    pub fn set_recover_state(&mut self, recover: Option<Recover<Sc::Token>>) {
+        self.recover = recover;
     }
 
     /// Advances to the next token indicated by the current recover state.
-    pub fn advance_to_recover(&mut self) -> Result<Span, RecoverError> {
-        if self.recover.is_empty() {
+    pub fn advance_to_recover(&mut self) -> Result<Span, &'static str> {
+        if !self.recover.is_some() {
             return Ok(self.cursor_span());
         }
 
         let start_pos = self.cursor_pos();
+        let rec = self.recover
+            .clone()
+            .unwrap();
 
-        match self.recover.limit_mut().as_mut() {
-            Some(limit) => if *limit == 0 {
-                return Err(RecoverError::LimitExceeded);
-            } else {
-                *limit -= 1;
-            },
-            _ => (),
-        }
+        let mut rec = rec.write()
+            .expect("lock recover fn for writing");
 
         let mut token_found = false;
-        while let Some(token) = self.peek() {
-            match self.recover.check(&token) {
-                None => { 
-                    let _ = self.next();
-                },
-                Some(PositionType::Before) => {
+        {
+
+            while let Some(token) = self.peek() {
+                if rec(token)? {
                     token_found = true;
                     break;
-                },
-                Some(PositionType::After) => {
-                    token_found = true;
-                    let _ = self.next();
-                    break;
-                },
+                }
+                let _ = self.next();
             }
         }
 
         if token_found {
             Ok(Span::new_enclosing(start_pos, self.cursor_pos()))
         } else {
-            Err(RecoverError::EndOfText)
+            Err("error recovery failed: end-of-text")
         }
     }
+
 
     /// Advances the lexer state up to the next instance of the given token.
     ///
@@ -525,7 +511,7 @@ impl<'text, Sc> Debug for Lexer<'text, Sc>
             .field("parse_start", &self.parse_start)
             .field("end", &self.end)
             .field("cursor", &self.cursor)
-            .field("recover", &self.recover)
+            .field("recover", &self.recover.is_some())
             .field("buffer", &self.buffer)
             .finish()
     }
@@ -544,7 +530,7 @@ impl<'text, Sc> PartialEq for Lexer<'text, Sc>
         self.end == other.end && 
         self.cursor == other.cursor &&
         self.buffer == other.buffer &&
-        self.recover == other.recover
+        self.recover.is_some() == other.recover.is_some()
     }
 }
 
