@@ -10,5 +10,7 @@
 
 
 // Internal modules.
-mod abc_suite;
+mod abc_scanner;
+mod abc_join;
+mod abc_bracket;
 mod lexer_suite;
