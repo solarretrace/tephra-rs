@@ -240,12 +240,12 @@ pub fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
         any(&[A, B, C, D]))
         (lexer, ctx.clone());
     let ((x, y), succ) = res
-        .map_lexer_failure(|mut l| { l.advance_to_unfiltered(Ws); l })?
+        .map_lexer_failure(|mut l| { l.advance_up_to_unfiltered(&[Ws]); l })?
         .take_value();
 
     one(C)
         (succ.lexer, ctx)
-        .map_lexer_failure(|mut l| { l.advance_to_unfiltered(Ws); l })
+        .map_lexer_failure(|mut l| { l.advance_up_to_unfiltered(&[Ws]); l })
         .map_value(|b| (x, y, b))
 }
 

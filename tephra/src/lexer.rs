@@ -120,7 +120,7 @@ impl<'text, Sc> Lexer<'text, Sc>
             || match self.filter.as_ref()
         {
             None    => false,
-            Some(_) => self.peek().is_none(),
+            Some(_) => self.buffer.is_none(),
         }
     }
 
@@ -224,6 +224,7 @@ impl<'text, Sc> Lexer<'text, Sc>
                 },
 
                 Some((token, adv)) => {
+
                     // Parsed a non-filtered token.
                     self.buffer = Some((token, adv, scanner));
                     break;
@@ -251,22 +252,22 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
     }
 
-    /// Retrieves the `next` token from the buffer is any token is buffered.
+    /// Retrieves the `next` token from the buffer if any token is buffered.
     fn next_buffered(&mut self) -> Option<<Self as Iterator>::Item> {
         let _span = span!(Level::TRACE, "next_buffered").entered();
 
-        let (token, adv, scanner) = self.buffer.take()
-            .expect("nonempty buffer");
+        match self.buffer.take() {
+            None => None,
+            Some((token, adv, scanner)) => {
+                self.token_start = self.cursor;
+                self.end = adv;
+                self.cursor = adv;
+                self.scanner = scanner;
+                self.scan_to_buffer();
 
-        event!(Level::DEBUG, "token {:?}", token);
-
-        self.token_start = self.cursor;
-        self.end = adv;
-        self.cursor = adv;
-        self.scanner = scanner;
-        self.scan_to_buffer();
-
-        Some(token)
+                Some(token)
+            },
+        }
     }
 
     /// Creates a sublexer starting at the current lex position. The returned
@@ -376,7 +377,6 @@ impl<'text, Sc> Lexer<'text, Sc>
 
         let mut token_found = false;
         {
-
             while let Some(token) = self.peek() {
                 if rec(token)? {
                     token_found = true;
@@ -394,14 +394,15 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
 
-    /// Advances the lexer state up to the next instance of the given token.
+    /// Advances the lexer state up to the next instance of one of the given
+    /// tokens.
     ///
-    /// Returns `true` if the given token was found, and `false` if the end of
-    /// text was reached.
-    pub fn advance_to(&mut self, token: Sc::Token) -> bool {
+    /// Returns `true` if one of the given tokens was found, and `false` if the
+    /// end of text was reached.
+    pub fn advance_up_to(&mut self, tokens: &[Sc::Token]) -> bool {
         let _span = span!(Level::TRACE, "advance_to").entered();
         while let Some(tok) = self.peek() {
-            if tok == token {
+            if tokens.contains(&tok) {
                 return true;
             }
             let _ = self.next();
@@ -409,40 +410,41 @@ impl<'text, Sc> Lexer<'text, Sc>
         false
     }
 
-    /// Advances the lexer state past the next instance of the given token.
+    /// Advances the lexer state to after the next instance of one of the given
+    /// tokens.
     ///
-    /// Returns `true` if the given token was found, and `false` if the end of
-    /// text was reached.
-    pub fn advance_past(&mut self, token: Sc::Token) -> bool {
+    /// Returns `true` if one of the given tokens was found, and `false` if the
+    /// end of text was reached.
+    pub fn advance_to(&mut self, tokens: &[Sc::Token]) -> bool {
         let _span = span!(Level::TRACE, "advance_past").entered();
         while let Some(tok) = self.next() {
-            if tok == token {
+            if tokens.contains(&tok) {
                 return true;
             }
         }
         false
     }
 
-    /// Advances the lexer state up to the next instance of the given token, with
-    /// token filtering disabled.
+    /// Advances the lexer state up to the next instance of one of the given
+    /// tokens, with token filtering disabled.
     ///
-    /// Returns `true` if the given token was found, and `false` if the end of
-    /// text was reached.
-    pub fn advance_to_unfiltered(&mut self, token: Sc::Token) -> bool {
+    /// Returns `true` if one of the given tokens was found, and `false` if the
+    /// end of text was reached.
+    pub fn advance_up_to_unfiltered(&mut self, tokens: &[Sc::Token]) -> bool {
         let filter = self.take_filter();
-        let res = self.advance_to(token);
+        let res = self.advance_up_to(tokens);
         self.set_filter(filter);
         res
     }
 
-    /// Advances the lexer state past the next instance of the given token, with
-    /// token filtering disabled.
+    /// Advances the lexer state to after the next instance of one of the given
+    /// tokens, with token filtering disabled.
     ///
-    /// Returns `true` if the given token was found, and `false` if the end of
-    /// text was reached.
-    pub fn advance_past_unfiltered(&mut self, token: Sc::Token) -> bool {
+    /// Returns `true` if one of the given tokens was found, and `false` if the
+    /// end of text was reached.
+    pub fn advance_to_unfiltered(&mut self, tokens: &[Sc::Token]) -> bool {
         let filter = self.take_filter();
-        let res = self.advance_past(token);
+        let res = self.advance_to(tokens);
         self.set_filter(filter);
         res
     }
@@ -457,11 +459,9 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
         let _span = span!(Level::DEBUG, "next").entered();
 
         while self.cursor.byte < self.source_text.len() {
-            event!(Level::TRACE, "buffer {:?}", self.buffer);
             if self.buffer.is_some() {
-                let res = self.next_buffered();
-                event!(Level::TRACE, "lexer {}", self);
-                return res;
+                event!(Level::TRACE, "buffer {:?}", self.buffer);
+                return self.next_buffered();
             }
 
             match self.scanner.scan(self.source_text, self.cursor) {

@@ -17,8 +17,8 @@ use crate::center;
 use crate::left;
 use crate::one;
 use crate::raw;
-use crate::recover_option;
-use crate::recover_until;
+use crate::recover;
+use crate::stabilize;
 use crate::right;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
@@ -295,8 +295,8 @@ fn pattern_center_recover() {
 
     let (value, succ) = center(
             one(OpenBracket),
-            recover_option(pattern, recover_before(CloseBracket)),
-            recover_until(one(CloseBracket)))
+            recover(pattern, recover_before(CloseBracket)),
+            stabilize(one(CloseBracket)))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -333,8 +333,8 @@ fn pattern_center_recover_delayed() {
 
     let (value, succ) = center(
             one(OpenBracket),
-            recover_option(pattern, recover_before(CloseBracket)),
-            recover_until(one(CloseBracket)))
+            recover(pattern, recover_before(CloseBracket)),
+            stabilize(one(CloseBracket)))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();

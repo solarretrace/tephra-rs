@@ -13,7 +13,7 @@
 
 // Internal library imports.
 use crate::both;
-use crate::bracket_matching;
+use crate::bracket;
 use crate::one;
 use crate::raw;
 use crate::spanned;
@@ -55,7 +55,7 @@ fn recover_missing() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket_matching(
+    let actual = bracket(
             &[OpenBracket],
             pattern,
             &[CloseBracket], &[])
@@ -88,7 +88,7 @@ fn recover_unmatched_open() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket_matching(
+    let actual = bracket(
             &[OpenBracket],
             pattern,
             &[CloseBracket], &[])
@@ -119,7 +119,7 @@ fn recover_unmatched_closed() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket_matching(
+    let actual = bracket(
             &[OpenBracket],
             pattern,
             &[CloseBracket], &[])
@@ -150,7 +150,7 @@ fn recover_mismatched() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket_matching(
+    let actual = bracket(
             &[OpenBracket, OpenBracket],
             pattern,
             &[CloseBracket, Comma], &[])
@@ -183,7 +183,7 @@ fn recover_unmatched_raw() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = raw(bracket_matching(
+    let actual = raw(bracket(
             &[OpenBracket],
             pattern,
             &[CloseBracket], &[]))
@@ -215,7 +215,7 @@ fn recover_unmatched_unrecoverable() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = unrecoverable(bracket_matching(
+    let actual = unrecoverable(bracket(
             &[OpenBracket],
             pattern,
             &[CloseBracket], &[]))
@@ -231,10 +231,10 @@ error: unmatched open bracket
 ");
 }
 
-/// Test successful `bracket_matching` combinator.
+/// Test successful `bracket` combinator.
 #[test]
 #[tracing::instrument]
-fn comma_bracket_matching() {
+fn comma_bracket() {
     colored::control::set_override(false);
 
     use AbcToken::*;
@@ -244,7 +244,7 @@ fn comma_bracket_matching() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = spanned(bracket_matching(
+    let (value, succ) = spanned(bracket(
             &[A],
             one(Comma),
             &[B],
@@ -263,7 +263,7 @@ fn comma_bracket_matching() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
 }
 
-/// Test successful `bracket_matching` combinator.
+/// Test successful `bracket` combinator.
 #[test]
 #[tracing::instrument]
 fn matching_both() {
@@ -277,12 +277,12 @@ fn matching_both() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(
-            bracket_matching(
+            bracket(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
                 &[]),
-            bracket_matching(
+            bracket(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
@@ -305,7 +305,7 @@ fn matching_both() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
 }
 
-/// Test successful `bracket_matching` combinator.
+/// Test successful `bracket` combinator.
 #[test]
 #[tracing::instrument]
 fn matching_both_first_fail() {
@@ -320,12 +320,12 @@ fn matching_both_first_fail() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(
-            bracket_matching(
+            bracket(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
                 &[]),
-            bracket_matching(
+            bracket(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
@@ -356,7 +356,7 @@ error: expected pattern
 }
 
 
-/// Test `bracket_matching` combinator failing due to mismatched brackets.
+/// Test `bracket` combinator failing due to mismatched brackets.
 #[test]
 #[tracing::instrument]
 fn matching_both_mismatch() {
@@ -371,12 +371,12 @@ fn matching_both_mismatch() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = both(
-            bracket_matching(
+            bracket(
                 &[OpenBracket, OpenBracket],
                 pattern,
                 &[CloseBracket, Comma],
                 &[]),
-            bracket_matching(
+            bracket(
                 &[OpenBracket, OpenBracket],
                 pattern,
                 &[CloseBracket, Comma],

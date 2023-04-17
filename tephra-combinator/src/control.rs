@@ -119,8 +119,8 @@ pub fn recover_default<'text, Sc, F, V>(
 }
 
 /// A combinator which performs error recovery, returning a default value when
-/// an error occurs. The recovery token is determined when the combinator is
-/// called rather than when it is constructed, as in `recover_default`.
+/// an error occurs. The recovery token is required when the combinator is
+/// called rather than when it is constructed.
 pub fn recover_default_delayed<'text, Sc, F, V>(
     mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>, Recover<Sc::Token>)
@@ -137,7 +137,7 @@ pub fn recover_default_delayed<'text, Sc, F, V>(
 
 /// A combinator which performs error recovery, returning a `None` value when
 /// an error occurs.
-pub fn recover_option<'text, Sc, F, V>(
+pub fn recover<'text, Sc, F, V>(
     mut parser: F,
     recover: Recover<Sc::Token>)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
@@ -156,9 +156,9 @@ pub fn recover_option<'text, Sc, F, V>(
 }
 
 /// A combinator which performs error recovery, returning a `None` value when
-/// an error occurs. The recovery token is determined when the combinator is
-/// called rather than when it is constructed, as in `recover_option`.
-pub fn recover_option_delayed<'text, Sc, F, V>(
+/// an error occurs. The recovery token is required when the combinator is
+/// called rather than when it is constructed.
+pub fn recover_delayed<'text, Sc, F, V>(
     mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>, Recover<Sc::Token>)
         -> ParseResult<'text, Sc, Option<V>>
@@ -180,7 +180,7 @@ pub fn recover_option_delayed<'text, Sc, F, V>(
 
 /// A combinator which ends error recovery if a successful parse is achieved, or
 /// resumes error recovery if a failure occurs.
-pub fn recover_until<'text, Sc, F, V>(mut parser: F)
+pub fn stabilize<'text, Sc, F, V>(mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, V>
     where
@@ -199,7 +199,6 @@ pub fn recover_until<'text, Sc, F, V>(mut parser: F)
                 },
                 Err(mut fail) => match fail.lexer.advance_to_recover() {
                     Err(recover_error_msg) => {
-                        fail.lexer.set_recover_state(None);
                         return Err(Failure {
                             parse_error: ParseError::new(
                                 fail.lexer.source_text(),
