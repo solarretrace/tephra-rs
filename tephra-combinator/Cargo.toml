@@ -40,9 +40,11 @@ tracing = { version = "0.1", optional = true }
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]
 pretty_assertions = "*"
+ntest = { version = "0.9" }
 test-log = { version = "0.2", default_features = false, features = ["trace"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+
 
 [badges]
 maintenance = { status = "experimental" }

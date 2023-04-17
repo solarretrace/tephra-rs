@@ -29,6 +29,8 @@ use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
 use test_log::test;
+use ntest::timeout;
+
 
 // Standard library imports.
 use std::rc::Rc;
@@ -41,6 +43,7 @@ use std::sync::RwLock;
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn list_empty() {
     colored::control::set_override(false);
 
@@ -70,6 +73,7 @@ fn list_empty() {
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn list_one() {
     colored::control::set_override(false);
 
@@ -103,6 +107,7 @@ fn list_one() {
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn bracket_list_one() {
     colored::control::set_override(false);
 
@@ -141,6 +146,7 @@ fn bracket_list_one() {
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn list_two() {
     colored::control::set_override(false);
 
@@ -177,6 +183,7 @@ fn list_two() {
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn bracket_list_two() {
     colored::control::set_override(false);
 
@@ -219,6 +226,7 @@ fn bracket_list_two() {
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn list_one_failed() {
     colored::control::set_override(false);
 
@@ -249,6 +257,7 @@ error: expected more items in list
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn bracket_list_zero() {
     colored::control::set_override(false);
 
@@ -281,6 +290,7 @@ fn bracket_list_zero() {
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn bracket_list_one_failed() {
     colored::control::set_override(false);
 
@@ -315,6 +325,7 @@ error: expected more items in list
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn bracket_list_one_recovered() {
     colored::control::set_override(false);
 
@@ -359,6 +370,7 @@ error: expected more items in list
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn bracket_list_two_recovered_first() {
     colored::control::set_override(false);
 
@@ -408,6 +420,7 @@ error: expected pattern
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn bracket_list_two_recovered_second() {
     colored::control::set_override(false);
 
@@ -458,6 +471,7 @@ error: expected pattern
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[tracing::instrument]
+#[timeout(100)]
 fn bracket_list_missing_delimiter() {
     colored::control::set_override(false);
 
