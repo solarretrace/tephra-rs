@@ -394,15 +394,17 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
 
-    /// Advances the lexer state up to the next instance of one of the given
-    /// tokens.
+    /// Advances the lexer state up to the next token satisfying the given
+    /// predicate. 
     ///
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
-    pub fn advance_up_to(&mut self, tokens: &[Sc::Token]) -> bool {
+    pub fn advance_up_to<P>(&mut self, mut pred: P) -> bool
+        where P: FnMut(&Sc::Token) -> bool
+    {
         let _span = span!(Level::TRACE, "advance_to").entered();
         while let Some(tok) = self.peek() {
-            if tokens.contains(&tok) {
+            if (&mut pred)(&tok) {
                 return true;
             }
             let _ = self.next();
@@ -410,41 +412,47 @@ impl<'text, Sc> Lexer<'text, Sc>
         false
     }
 
-    /// Advances the lexer state to after the next instance of one of the given
-    /// tokens.
+    /// Advances the lexer state to after the next token satisfying the given
+    /// predicate. 
     ///
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
-    pub fn advance_to(&mut self, tokens: &[Sc::Token]) -> bool {
+    pub fn advance_to<P>(&mut self, mut pred: P) -> bool
+        where P: FnMut(&Sc::Token) -> bool
+    {
         let _span = span!(Level::TRACE, "advance_past").entered();
         while let Some(tok) = self.next() {
-            if tokens.contains(&tok) {
+            if (&mut pred)(&tok) {
                 return true;
             }
         }
         false
     }
 
-    /// Advances the lexer state up to the next instance of one of the given
-    /// tokens, with token filtering disabled.
+    /// Advances the lexer state up to the next token satisfying the given
+    /// predicate, with token filtering disabled.
     ///
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
-    pub fn advance_up_to_unfiltered(&mut self, tokens: &[Sc::Token]) -> bool {
+    pub fn advance_up_to_unfiltered<P>(&mut self, pred: P) -> bool
+        where P: FnMut(&Sc::Token) -> bool
+    {
         let filter = self.take_filter();
-        let res = self.advance_up_to(tokens);
+        let res = self.advance_up_to(pred);
         self.set_filter(filter);
         res
     }
 
-    /// Advances the lexer state to after the next instance of one of the given
-    /// tokens, with token filtering disabled.
+    /// Advances the lexer state to after the next token satisfying the given
+    /// predicate, with token filtering disabled.
     ///
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
-    pub fn advance_to_unfiltered(&mut self, tokens: &[Sc::Token]) -> bool {
+    pub fn advance_to_unfiltered<P>(&mut self, pred: P) -> bool
+        where P: FnMut(&Sc::Token) -> bool
+    {
         let filter = self.take_filter();
-        let res = self.advance_to(tokens);
+        let res = self.advance_to(pred);
         self.set_filter(filter);
         res
     }

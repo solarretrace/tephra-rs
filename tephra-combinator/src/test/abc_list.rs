@@ -120,8 +120,7 @@ fn bracket_list_one() {
 
     let (value, succ) = bracket_default(
             &[OpenBracket],
-            delimited_list_bounded(
-                0, None,
+            delimited_list(
                 pattern,
                 Comma,
                 &[CloseBracket]),
@@ -196,8 +195,7 @@ fn bracket_list_two() {
 
     let (value, succ) = bracket_default(
             &[OpenBracket],
-            delimited_list_bounded(
-                0, None,
+            delimited_list(
                 pattern,
                 Comma,
                 &[CloseBracket]),
@@ -270,8 +268,7 @@ fn bracket_list_zero() {
 
     let (value, _succ) = bracket_default(
             &[OpenBracket],
-            delimited_list_bounded(
-                0, None,
+            delimited_list(
                 pattern,
                 Comma,
                 &[CloseBracket]),
@@ -384,8 +381,7 @@ fn bracket_list_two_recovered_first() {
 
     let (value, succ) = bracket_default(
             &[OpenBracket],
-            delimited_list_bounded(
-                0, None,
+            delimited_list(
                 pattern,
                 Comma,
                 &[CloseBracket]),
@@ -413,7 +409,7 @@ error: expected pattern
  --> (0:0-0:9, bytes 0-9)
   | 
 0 | [   ,aac]
-  |      ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+  |     \\ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 
@@ -434,8 +430,7 @@ fn bracket_list_two_recovered_second() {
 
     let (value, succ) = bracket_default(
             &[OpenBracket],
-            delimited_list_bounded(
-                0, None,
+            delimited_list(
                 pattern,
                 Comma,
                 &[CloseBracket]),
@@ -485,8 +480,7 @@ fn bracket_list_missing_delimiter() {
 
     let (value, succ) = bracket_default(
             &[OpenBracket],
-            delimited_list_bounded(
-                0, None,
+            delimited_list(
                 pattern,
                 Comma,
                 &[CloseBracket]),
@@ -509,5 +503,118 @@ error: expected pattern
   | 
 0 | [abc aac]
   |  ^^^^^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+");
+}
+
+/// Test successful `delimited_list_bounded` combinator.
+#[test]
+#[tracing::instrument]
+#[timeout(100)]
+fn bracket_list_nested() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[[],[abc, abc], [aac]]";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = bracket_default(
+            &[OpenBracket],
+            delimited_list(
+                bracket_default(
+                    &[OpenBracket],
+                    delimited_list(
+                        pattern,
+                        Comma,
+                        &[CloseBracket]),
+                    &[CloseBracket],
+                    &[]),
+                Comma,
+                &[CloseBracket]),
+            &[CloseBracket],
+            &[])
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = (vec![
+            Some((vec![], 0)),
+            Some((vec![
+                Some(Pattern::Abc(Spanned {
+                    value: "abc",
+                    span: Span::new_enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
+                })),
+                Some(Pattern::Abc(Spanned {
+                    value: "abc",
+                    span: Span::new_enclosing(Pos::new(10, 0, 10), Pos::new(13, 0, 13)),
+                })),
+            ], 0)),
+            Some((vec![
+                Some(Pattern::Xyc(Spanned {
+                    value: "aac",
+                    span: Span::new_enclosing(Pos::new(17, 0, 17), Pos::new(20, 0, 20)),
+                })),
+            ], 0)),
+        ], 0);
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(22, 0, 22));
+}
+
+/// Test successful `delimited_list_bounded` combinator.
+#[test]
+#[tracing::instrument]
+#[timeout(100)]
+fn bracket_list_commas() {
+    colored::control::set_override(false);
+
+    use AbcToken::*;
+    const TEXT: &'static str = "[,,,,,abc]";
+    let source = SourceText::new(TEXT);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    lexer.set_filter_fn(|tok| *tok != Ws);
+
+    let (value, succ) = bracket_default(
+            &[OpenBracket],
+            delimited_list_bounded(
+                1, None,
+                pattern,
+                Comma,
+                &[CloseBracket]),
+            &[CloseBracket],
+            &[])
+        (lexer.clone(), ctx)
+        .expect("successful parse")
+        .take_value();
+
+    let actual = value;
+    let expected = (vec![
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(Pattern::Abc(Spanned {
+                value: "abc",
+                span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
+            })),
+        ], 0);
+
+    assert_eq!(actual, expected);
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
+
+    assert_eq!(errors.read().unwrap().len(), 5);
+    assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
+error: expected pattern
+ --> (0:0-0:10, bytes 0-10)
+  | 
+0 | [,,,,,abc]
+  |  \\ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }

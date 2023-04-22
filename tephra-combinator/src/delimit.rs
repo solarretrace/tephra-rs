@@ -66,7 +66,7 @@ pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a>(
             Some(tok) if abort_tokens.contains(&tok) => Ok(succ),
             _ => {
                 // Advance lexer to the expected token.
-                succ.lexer.advance_to(abort_tokens);
+                succ.lexer.advance_to(|tok| abort_tokens.contains(tok));
 
                 Err(Failure {
                     parse_error: ParseError::new(
@@ -361,6 +361,7 @@ enum BracketError<'text, Sc> where Sc: Scanner {
     Mismatch(Lexer<'text, Sc>, Lexer<'text, Sc>),
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // List combinators.
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,7 +489,7 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
             }
             let (val, succ) = res?
                 .take_value();
-            lexer = succ.lexer.sublexer();
+            lexer = succ.lexer;
             vals.push(val);
 
             // End loop if high is reached.
@@ -507,7 +508,9 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
                     recover_pat.clone()))
                 (lexer.clone(), ctx.clone())?
                 .take_value();
-            lexer = succ.lexer.sublexer();
+            lexer = succ.lexer;
+
+            
         }
 
         if vals.len() < low {

@@ -203,6 +203,11 @@ impl<'text> ParseError<'text> {
         self.source = Some(Box::new(source.into_owned()));
     }
 
+    /// Returns a mutable reference to the error's `CodeDisplay`.
+    pub fn code_display_mut(&mut self) -> &mut CodeDisplay {
+        &mut self.code_display
+    }
+
     pub fn description(&self) -> &str {
         self.code_display.message()
     }

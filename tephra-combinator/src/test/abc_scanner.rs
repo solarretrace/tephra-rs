@@ -189,14 +189,18 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     }
 
     // Setup error context.
+    let start_span = lexer.start_span();
     let source = lexer.source_text();
-    let ctx = ctx.push(std::rc::Rc::new(move |_e, lexer| ParseError::new(
+    let ctx = ctx.push(std::rc::Rc::new(move |_e, lexer| {
+        
+        ParseError::new(
             source.clone(),
             "expected pattern")
         .with_span_display(SpanDisplay::new_error_highlight(
             source,
-            lexer.parse_span(),
-            "expected 'ABC', 'BXX', or 'XYC' pattern"))));
+            start_span,
+            "expected 'ABC', 'BXX', or 'XYC' pattern"))
+    }));
 
     spanned(text(xyc))
         (lexer, ctx.clone())
@@ -240,12 +244,12 @@ pub fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
         any(&[A, B, C, D]))
         (lexer, ctx.clone());
     let ((x, y), succ) = res
-        .map_lexer_failure(|mut l| { l.advance_up_to_unfiltered(&[Ws]); l })?
+        .map_lexer_failure(|mut l| { l.advance_up_to_unfiltered(|tok| *tok == Ws); l })?
         .take_value();
 
     one(C)
         (succ.lexer, ctx)
-        .map_lexer_failure(|mut l| { l.advance_up_to_unfiltered(&[Ws]); l })
+        .map_lexer_failure(|mut l| { l.advance_up_to_unfiltered(|tok| *tok == Ws); l })
         .map_value(|b| (x, y, b))
 }
 
