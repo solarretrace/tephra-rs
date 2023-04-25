@@ -29,6 +29,7 @@ use tephra::Context;
 use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
+use tephra::common::SourceError;
 use tephra::Span;
 use tephra::Spanned;
 use test_log::test;
@@ -52,7 +53,9 @@ fn recover_missing() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| 
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+    )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = bracket(
@@ -60,6 +63,7 @@ fn recover_missing() {
             pattern,
             &[CloseBracket], &[])
         (lexer.clone(), ctx)
+        .map_err(|e| SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -85,7 +89,7 @@ fn recover_unmatched_open() {
         .with_name("recover_unmatched");
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = bracket(
@@ -93,6 +97,8 @@ fn recover_unmatched_open() {
             pattern,
             &[CloseBracket], &[])
         (lexer.clone(), ctx)
+        .map_err(|e|
+            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -116,7 +122,7 @@ fn recover_unmatched_closed() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = bracket(
@@ -124,6 +130,7 @@ fn recover_unmatched_closed() {
             pattern,
             &[CloseBracket], &[])
         (lexer.clone(), ctx)
+        .map_err(|e| SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -147,7 +154,7 @@ fn recover_mismatched() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = bracket(
@@ -155,10 +162,11 @@ fn recover_mismatched() {
             pattern,
             &[CloseBracket, Comma], &[])
         (lexer.clone(), ctx)
+        .map_err(|e| SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unmatched brackets
+error: mismatched brackets
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | [abc,
@@ -180,7 +188,7 @@ fn recover_unmatched_raw() {
         .with_name("recover_unmatched_raw");
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = raw(bracket(
@@ -188,6 +196,7 @@ fn recover_unmatched_raw() {
             pattern,
             &[CloseBracket], &[]))
         (lexer.clone(), ctx)
+        .map_err(|e| SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -212,7 +221,7 @@ fn recover_unmatched_unrecoverable() {
         .with_name("recover_unmatched_unrecoverable");
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = unrecoverable(bracket(
@@ -220,6 +229,7 @@ fn recover_unmatched_unrecoverable() {
             pattern,
             &[CloseBracket], &[]))
         (lexer.clone(), ctx)
+        .map_err(|e| SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -316,7 +326,7 @@ fn matching_both_first_fail() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(
@@ -367,7 +377,7 @@ fn matching_both_mismatch() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = both(
@@ -382,10 +392,11 @@ fn matching_both_mismatch() {
                 &[CloseBracket, Comma],
                 &[]))
         (lexer.clone(), ctx)
+        .map_err(|e| SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: unmatched brackets
+error: mismatched brackets
  --> (0:0-0:10, bytes 0-10)
   | 
 0 | [abc,[aac]

@@ -31,6 +31,7 @@ use tephra::Context;
 use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
+use tephra::common::SourceError;
 use tephra::Span;
 use tephra::Spanned;
 use tephra::recover_before;
@@ -89,6 +90,8 @@ fn simple_not_failed() {
 
     let actual = pred(Expr::Not(Box::new(Expr::Var(D))))
         (lexer.clone(), ctx)
+        .map_err(|e|
+            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -96,7 +99,7 @@ error: unexpected token
  --> (0:0-0:8, bytes 0-8)
   | 
 0 | dabc dac
-  | ^ expected DnfVec([Not(Var(Token(D)))])
+  | ^ expected DnfVec([Not(Var(Token(D)))]); found 'd'
 ");
 }
 
@@ -209,6 +212,8 @@ fn pattern_right_failed() {
 
     let actual = right(pattern, pattern)
         (lexer.clone(), ctx)
+        .map_err(|e|
+            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -237,6 +242,8 @@ fn pattern_right_failed_raw() {
 
     let actual = raw(right(pattern, pattern))
         (lexer.clone(), ctx)
+        .map_err(|e|
+            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -244,7 +251,7 @@ error: unexpected token
  --> (0:0-0:7, bytes 0-7)
   | 
 0 | abc ddd
-  |       ^ expected 'c'
+  |       ^ expected 'c'; found 'd'
 ");
 }
 
@@ -290,7 +297,9 @@ fn pattern_center_recover() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e| 
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+    )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = center(
@@ -328,7 +337,9 @@ fn pattern_center_recover_delayed() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e|
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))
+    ));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = center(

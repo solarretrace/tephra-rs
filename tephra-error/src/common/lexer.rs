@@ -1,0 +1,251 @@
+////////////////////////////////////////////////////////////////////////////////
+// Tephra parser library
+////////////////////////////////////////////////////////////////////////////////
+// Copyright 2022 Skylor R. Schermer
+// This code is dual licenced using the MIT or Apache 2 license.
+// See licence-mit.md and licence-apache.md for details.
+////////////////////////////////////////////////////////////////////////////////
+//! Common lexer errors.
+////////////////////////////////////////////////////////////////////////////////
+// TODO: This module is currently under development.
+#![allow(unused)]
+#![allow(missing_docs)]
+
+
+// Internal library imports.
+use crate::IntoErrorOwned;
+use crate::Note;
+use crate::SpanDisplay;
+use crate::CodeDisplay;
+use crate::common::SourceError;
+
+// External library imports.
+use tephra_span::SourceText;
+use tephra_span::Span;
+use tephra_span::Pos;
+use simple_predicates::Expr;
+use simple_predicates::DnfVec;
+
+
+// Standard library imports.
+use std::error::Error;
+use std::fmt::Display;
+use std::fmt::Debug;
+use std::fmt::Write;
+use std::iter::IntoIterator;
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// UnrecognizedTokenError
+////////////////////////////////////////////////////////////////////////////////
+/// An error generated when a token is unrecognized.
+#[derive(Debug, Clone)]
+pub struct UnrecognizedTokenError {
+    /// The start position of the unrecognized token.
+    pub pos: Pos,
+}
+
+impl UnrecognizedTokenError {
+    /// Converts the error into a `SourceError` attached to the given
+    /// `SourceText`.
+    pub fn into_source_error<'text>(self, source_text: SourceText<'text>)
+        -> SourceError<'text>
+    {
+        SourceError::new(source_text, "unrecognized token")
+            .with_span_display(SpanDisplay::new(
+                source_text,
+                Span::new_at(self.pos)))
+            .with_cause(Box::new(self))
+    }
+}
+
+impl Display for UnrecognizedTokenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}",
+            "unrecognized token",
+            self.pos)
+    }
+}
+
+impl Error for UnrecognizedTokenError {}
+
+impl IntoErrorOwned for UnrecognizedTokenError {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+        self
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Expected and found token descriptors.
+////////////////////////////////////////////////////////////////////////////////
+/// Describes expected parseable tokens.
+#[derive(Debug, Clone)]
+pub enum Expected<T> {
+    /// Expected one token.
+    Token(T),
+    /// Expected one or more kinds of tokens.
+    Tokens(Vec<T>),
+    /// Expected end-of-text.
+    EndOfText,
+    /// Expected any token.
+    AnyToken,
+    /// Expected something else.
+    Other(String),
+}
+
+impl<T> Expected<T> {
+    /// The maximum number of items to display in the expected items
+    /// description.
+    const MAX_EXPECTED_DISPLAY: usize = 5;
+
+    /// Returns `true` if the expected token list is empty.
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Expected::Tokens(toks) if toks.is_empty())
+    }
+
+    /// Constructs an `Expected` description for any of the given tokens.
+    pub fn any<I>(tokens: I) -> Self
+        where I: IntoIterator<Item=T>
+    {
+        Expected::Tokens(tokens.into_iter().collect())
+    }
+}
+
+impl<T> Display for Expected<T> where T: Debug + Display + 'static {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Expected::*;
+
+        match self {
+            Token(tok) => write!(f, "{}", tok),
+            Tokens(toks) if toks.is_empty() => write!(f, "nothing"),
+            Tokens(toks) if toks.len() == 1 => write!(f, "{}", toks[0]),
+            Tokens(toks) if toks.len() < Self::MAX_EXPECTED_DISPLAY
+                => write!(f, "one of {}", fmt_list(&toks[..])?),
+            Tokens(toks) => write!(f,
+                "one of {}",
+                fmt_list(&toks[..Self::MAX_EXPECTED_DISPLAY])?),
+            Other(message) =>write!(f, "{}", message),
+            EndOfText => write!(f, "end of text"),
+            AnyToken => write!(f, "any token"),
+        }
+    }
+}
+
+/// Formats an iterator of items into a comma-delimited list.
+fn fmt_list<I, T>(items: I) -> Result<String, std::fmt::Error>
+    where
+        I: IntoIterator<Item=T>,
+        T: Display,
+{
+    let mut items = items.into_iter();
+    let mut res = String::new();
+
+    if let Some(item) = items.next() {
+        write!(&mut res, "{}", item)?;
+    }
+    for item in items {
+        write!(&mut res, ", {}", item)?;
+    }
+    Ok(res)
+}
+
+
+/// Describes found parseable tokens.
+#[derive(Debug, Clone)]
+pub enum Found<T> {
+    /// Found the given token.
+    Token(T),
+    /// Found the end-of-text.
+    EndOfText,
+}
+
+impl<T> Display for Found<T> where T: Debug + Display + 'static {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Found::*;
+
+        match self {
+            Token(tok) => write!(f, "{}", tok),
+            EndOfText => write!(f, "end of text"),
+        }
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// UnexpectedTokenError
+////////////////////////////////////////////////////////////////////////////////
+/// An error generated when a token is unexpected.
+#[derive(Debug, Clone)]
+pub struct UnexpectedTokenError<T> where T: Debug + Display + 'static {
+    /// The expected tokens.
+    pub expected: Expected<T>,
+    /// The found token.
+    pub found: Found<T>,
+    /// The span of the found token.
+    pub span: Span,
+}
+
+impl<T> UnexpectedTokenError<T> where T: Debug + Display {
+
+    /// Constructs a string describing the expected and found tokens.
+    fn expected_description(&self) -> String {
+        if self.expected.is_empty() {
+            format!("found {}", self.found)
+        } else {
+            format!("expected {}; found {}", self.expected, self.found)
+        }
+    }
+
+    /// Converts the error into a `SourceError` attached to the given
+    /// `SourceText`.
+    pub fn into_source_error<'text>(self, source_text: SourceText<'text>)
+        -> SourceError<'text>
+    {
+        SourceError::new(source_text, "unexpected token")
+            .with_span_display(SpanDisplay::new_error_highlight(
+                source_text,
+                self.span,
+                self.expected_description()))
+            .with_cause(Box::new(self))
+    }
+}
+
+impl<T> Display for UnexpectedTokenError<T> where T: Debug + Display + 'static {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}",
+            self.expected_description(),
+            self.span)
+    }
+}
+
+impl<T> Error for UnexpectedTokenError<T> where T: Debug + Display + 'static {}
+
+impl<T> IntoErrorOwned for UnexpectedTokenError<T> where T: Debug + Display + 'static {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+        self
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// RecoverError
+////////////////////////////////////////////////////////////////////////////////
+/// An error generated when error recovery fails.
+#[derive(Debug, Clone)]
+pub struct RecoverError;
+
+impl Display for RecoverError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "unable to recover from previous error")
+    }
+}
+
+impl Error for RecoverError {}
+
+impl IntoErrorOwned for RecoverError {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+        self
+    }
+}

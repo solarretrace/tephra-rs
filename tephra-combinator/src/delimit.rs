@@ -16,20 +16,19 @@ use crate::recover_default;
 use crate::stabilize;
 
 // External library imports.
+use smallvec::SmallVec;
+use tephra::common::BracketError;
+use tephra::common::IncompleteParseError;
+use tephra::common::ItemCountError;
 use tephra::Context;
 use tephra::Lexer;
-use tephra::Failure;
-use tephra::Highlight;
-use tephra::Success;
-use tephra::Span;
-use tephra::SpanDisplay;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
-use tephra::ParseError;
+use tephra::Span;
+use tephra::Success;
 use tephra_tracing::Level;
 use tephra_tracing::span;
-use smallvec::SmallVec;
 
 // Standard library imports.
 use std::rc::Rc;
@@ -65,15 +64,16 @@ pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a>(
             None                                     => Ok(succ),
             Some(tok) if abort_tokens.contains(&tok) => Ok(succ),
             _ => {
+                let start_pos = succ.lexer.start_pos();
+                let actual_end_pos = succ.lexer.end_pos();
                 // Advance lexer to the expected token.
                 succ.lexer.advance_to(|tok| abort_tokens.contains(tok));
 
-                Err(Failure {
-                    parse_error: ParseError::new(
-                        succ.lexer.source_text(),
-                        "incomplete parse"),
-                    lexer: succ.lexer,
-                })
+                Err(Box::new(IncompleteParseError {
+                    start_pos,
+                    actual_end_pos,
+                    expected_end_pos: succ.lexer.cursor_pos(),
+                }))
             },
         }
     }
@@ -165,8 +165,6 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
         }
     }
 
-    use BracketError::*;
-
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "bracket").entered();
 
@@ -175,58 +173,7 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
             close_tokens,
             abort_tokens)
         {
-            Err(NoneFound(lexer)) => {
-                Err(Failure {
-                    parse_error: ParseError::new(
-                            lexer.source_text(),
-                            "expected open bracket")
-                        .with_span_display(SpanDisplay::new_error_highlight(
-                            lexer.source_text(),
-                            lexer.start_span(),
-                            "bracket expected here")),
-                    lexer,
-                })
-            },
-            Err(Unopened(lexer)) => {
-                Err(Failure {
-                    parse_error: ParseError::new(
-                            lexer.source_text(),
-                            "unmatched close bracket")
-                        .with_span_display(SpanDisplay::new_error_highlight(
-                            lexer.source_text(),
-                            lexer.peek_token_span().unwrap(),
-                            "this bracket has no matching open")),
-                    lexer,
-                })
-            },
-            Err(Unclosed(lexer)) => {
-                Err(Failure {
-                    parse_error: ParseError::new(
-                            lexer.source_text(),
-                            "unmatched open bracket")
-                        .with_span_display(SpanDisplay::new_error_highlight(
-                            lexer.source_text(),
-                            lexer.peek_token_span().unwrap(),
-                            "this bracket is not closed")),
-                    lexer,
-                })
-            },
-            Err(Mismatch(open_lexer, close_lexer)) => {
-                Err(Failure {
-                    parse_error: ParseError::new(
-                            lexer.source_text(),
-                            "unmatched brackets")
-                        .with_span_display(SpanDisplay::new_error_highlight(
-                            lexer.source_text(),
-                            open_lexer.peek_token_span().unwrap(),
-                            "the bracket here")
-                            .with_highlight(Highlight::new(
-                                close_lexer.peek_token_span().unwrap(),
-                                "... does not match the closing bracket here")
-                                .with_error_type())),
-                    lexer,
-                })
-            },
+            Err(bracket_error) => Err(Box::new(bracket_error)),
 
             Ok(BracketMatch {mut open, mut close, index }) => {
                 // Prepare the sublexers.
@@ -247,11 +194,8 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
                         lexer: close,
                     }),
                     Err(fail) => {
-                        match ctx.send_error(fail.parse_error, &fail.lexer) {
-                            Err(parse_error) => Err(Failure {
-                                parse_error,
-                                lexer: close,
-                            }),
+                        match ctx.send_error(fail) {
+                            Err(parse_error) => Err(parse_error),
                             Ok(()) => Ok(Success {
                                 value: (X::default(), index),
                                 lexer: close,
@@ -280,11 +224,11 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
     open_tokens: &'a [Sc::Token],
     close_tokens: &'a [Sc::Token],
     abort_tokens: &'a [Sc::Token])
-    -> Result<BracketMatch<'text, Sc>, BracketError<'text, Sc>>
+    -> Result<BracketMatch<'text, Sc>, BracketError>
     where Sc: Scanner
 {
     use BracketError::*;
-    let mut open_lexer = None;
+    let mut open_lexer: Option<Lexer<Sc>> = None;
     // Detected open tokens as (index, count) pairs.
     let mut opened: SmallVec<[(usize, usize); DEFAULT_TOKEN_VEC_SIZE]>
         = SmallVec::with_capacity(open_tokens.len());
@@ -293,11 +237,15 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
         if let Some(idx) = close_tokens.iter().position(|t| t == &tok) {
             match opened.pop() {
                 // Close token found before open token.
-                None => return Err(Unopened(lexer)),
+                None => return Err(Unopened {
+                    found_end: lexer.peek_token_span().unwrap(),
+                }),
 
                 // Wrong close token for current open token.
-                Some((t, _)) if t != idx 
-                    => return Err(Mismatch(open_lexer.unwrap(), lexer)),
+                Some((t, _)) if t != idx => return Err(Mismatch {
+                    found_start: open_lexer.unwrap().peek_token_span().unwrap(),
+                    found_end: lexer.peek_token_span().unwrap(),
+                }),
 
                 Some((t, n)) if t == idx && n > 1 => {
                     opened.push((t, n-1));
@@ -331,7 +279,9 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
             }
         } else if abort_tokens.contains(&tok) && open_lexer.is_none() {
             // Abort search if no open tokens found before abort token.
-            return Err(NoneFound(lexer));
+            return Err(NoneFound {
+                expected_start: lexer.peek_token_span().unwrap(),
+            });
         }
 
         let _ = lexer.next();
@@ -339,9 +289,13 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
 
     match open_lexer {
         // End-of-text reached.
-        None    => Err(NoneFound(lexer)),
+        None => Err(NoneFound {
+            expected_start: lexer.peek_token_span().unwrap(),
+        }),
         // Unclosed open token.
-        Some(o) => Err(Unclosed(o)),
+        Some(open_lexer) => Err(Unclosed {
+            found_start: open_lexer.peek_token_span().unwrap(),
+        }),
     }
 }
 
@@ -353,14 +307,6 @@ struct BracketMatch<'text, Sc> where Sc: Scanner {
     close: Lexer<'text, Sc>,
     index: usize,
 }
-
-enum BracketError<'text, Sc> where Sc: Scanner {
-    NoneFound(Lexer<'text, Sc>),
-    Unopened(Lexer<'text, Sc>),
-    Unclosed(Lexer<'text, Sc>),
-    Mismatch(Lexer<'text, Sc>, Lexer<'text, Sc>),
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // List combinators.
@@ -509,26 +455,20 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
                 (lexer.clone(), ctx.clone())?
                 .take_value();
             lexer = succ.lexer;
-
-            
         }
 
         if vals.len() < low {
-            let parse_error = ParseError::new(
-                    lexer.source_text(),
-                    "expected more items in list")
-                .with_span_display(SpanDisplay::new_error_highlight(
-                    lexer.source_text(),
-                    Span::new_enclosing(start_position, lexer.cursor_pos()),
-                    format!("expected {low} item{}, found {}",
-                        if vals.len() > 0 { "s" } else { "" },
-                        vals.len())));
+            let parse_error = Box::new(ItemCountError {
+                items_span: Span::new_enclosing(
+                    start_position,
+                    lexer.cursor_pos()),
+                found: vals.len(),
+                expected_min: low,
+                expected_max: high,
+            });
                 
-            match ctx.send_error(parse_error, &lexer) {
-                Err(parse_error) => Err(Failure {
-                    parse_error,
-                    lexer,
-                }),
+            match ctx.send_error(parse_error) {
+                Err(parse_error) => Err(parse_error),
                 Ok(()) => Ok(Success {
                     value: vals,
                     lexer,

@@ -12,6 +12,7 @@
 use tephra_error::Highlight;
 use tephra_error::CodeDisplay;
 use tephra_error::SpanDisplay;
+use tephra_error::common::RecoverError;
 use tephra_span::ColumnMetrics;
 use tephra_span::LineEnding;
 use tephra_span::Pos;
@@ -147,6 +148,11 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns the tab width for the source text.
     pub fn tab_width(&self) -> u8 {
         self.column_metrics().tab_width
+    }
+
+    /// Returns the start position for the lexer's current parse.
+    pub fn start_pos(&self) -> Pos {
+        self.parse_start
     }
 
     /// Returns the end position for the lexer's current parse.
@@ -362,7 +368,10 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Advances to the next token indicated by the current recover state.
-    pub fn advance_to_recover(&mut self) -> Result<Span, &'static str> {
+    ///
+    /// Returns the span of the skipped text, or an UnexpectedTokenError if the
+    /// end-of-text is reached during recovery.
+    pub fn advance_to_recover(&mut self) -> Result<Span, RecoverError> {
         if !self.recover.is_some() {
             return Ok(self.cursor_span());
         }
@@ -389,7 +398,7 @@ impl<'text, Sc> Lexer<'text, Sc>
         if token_found {
             Ok(Span::new_enclosing(start_pos, self.cursor_pos()))
         } else {
-            Err("error recovery failed: end-of-text")
+            Err(RecoverError)
         }
     }
 

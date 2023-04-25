@@ -8,6 +8,9 @@
 //! Error recovery.
 ////////////////////////////////////////////////////////////////////////////////
 
+// Internal library imports.
+use crate::common::RecoverError;
+
 // Standard library imports.
 use std::rc::Rc;
 use std::sync::RwLock;
@@ -19,7 +22,7 @@ use std::sync::RwLock;
 // Err(&str) => recover failed, 
 
 pub type Recover<T>
-    = Rc<RwLock<dyn FnMut(T) -> Result<bool, &'static str>>>;
+    = Rc<RwLock<dyn FnMut(T) -> Result<bool, RecoverError>>>;
 
 pub fn recover_after<T>(token: T) -> Recover<T> 
     where T: PartialEq + Send + Sync + 'static

@@ -29,10 +29,10 @@ use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
+use tephra::common::SourceError;
 use tephra::SpanDisplay;
 use tephra::Spanned;
 use tephra::Success;
-use tephra::ParseError;
 use test_log::test;
 
 
@@ -190,16 +190,14 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
 
     // Setup error context.
     let start_span = lexer.start_span();
-    let source = lexer.source_text();
-    let ctx = ctx.push(std::rc::Rc::new(move |_e, lexer| {
-        
-        ParseError::new(
-            source.clone(),
-            "expected pattern")
-        .with_span_display(SpanDisplay::new_error_highlight(
-            source,
-            start_span,
-            "expected 'ABC', 'BXX', or 'XYC' pattern"))
+    let source_text = lexer.source_text();
+    let ctx = ctx.push(std::rc::Rc::new(move |e| {
+        Box::new(SourceError::new(source_text, "expected pattern")
+            .with_span_display(SpanDisplay::new_error_highlight(
+                source_text,
+                start_span,
+                "expected 'ABC', 'BXX', or 'XYC' pattern"))
+            .with_cause(e.into_owned()))
     }));
 
     spanned(text(xyc))
@@ -239,17 +237,14 @@ pub fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
-    let res = both(
-        any(&[A, B, C, D]),
-        any(&[A, B, C, D]))
-        (lexer, ctx.clone());
-    let ((x, y), succ) = res
-        .map_lexer_failure(|mut l| { l.advance_up_to_unfiltered(|tok| *tok == Ws); l })?
+    let ((x, y), succ) = both(
+            any(&[A, B, C, D]),
+            any(&[A, B, C, D]))
+        (lexer, ctx.clone())?
         .take_value();
 
     one(C)
         (succ.lexer, ctx)
-        .map_lexer_failure(|mut l| { l.advance_up_to_unfiltered(|tok| *tok == Ws); l })
         .map_value(|b| (x, y, b))
 }
 
@@ -387,6 +382,8 @@ fn initial_newline_ws_skip() {
 
     let actual = pattern
         (lexer.clone(), ctx)
+        .map_err(|e|
+            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\

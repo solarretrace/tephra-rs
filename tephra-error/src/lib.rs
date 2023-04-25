@@ -107,17 +107,19 @@
 
 
 // Internal modules.
-#[cfg(test)]
-mod test;
 mod display;
 mod error;
 mod highlight;
 mod message;
+mod note;
 mod recover;
+
+pub mod common;
 
 // Exports.
 pub use display::*;
 pub use error::*;
 pub use highlight::*;
 pub use message::*;
+pub use note::*;
 pub use recover::*;

@@ -13,12 +13,10 @@
 use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResult;
-use tephra::ParseError;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Spanned;
 use tephra::Success;
-use tephra::Failure;
 use tephra::Recover;
 use tephra_tracing::event;
 use tephra_tracing::Level;
@@ -98,10 +96,8 @@ pub fn recover_default<'text, Sc, F, V>(
         {
             Ok(succ) => Ok(succ),
 
-            Err(Failure { lexer, parse_error, .. }) => match ctx
-                .send_error(parse_error, &lexer)
-            {
-                Err(parse_error) => Err(Failure { lexer, parse_error }),
+            Err(fail) => match ctx.send_error(fail) {
+                Err(fail) => Err(fail),
 
                 Ok(()) => match base_lexer.advance_to_recover() {
                     Ok(_) => {
@@ -110,14 +106,7 @@ pub fn recover_default<'text, Sc, F, V>(
                             value: V::default(),
                         })
                     },
-                    Err(recover_error_msg) => {
-                        Err(Failure {
-                            parse_error: ParseError::new(
-                                base_lexer.source_text(),
-                                recover_error_msg),
-                            lexer: base_lexer,
-                        })
-                    },
+                    Err(recover_error) => Err(Box::new(recover_error)),
                 },
             },
         }
@@ -197,9 +186,9 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, V>
 {
-    move |lexer, ctx| {
+    move |mut lexer, ctx| {
         let mut res = (parser)
-            (lexer, ctx.clone());
+            (lexer.clone(), ctx.clone());
 
         loop {
             match res {
@@ -207,18 +196,11 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
                     succ.lexer.set_recover_state(None);
                     return Ok(succ);
                 },
-                Err(mut fail) => match fail.lexer.advance_to_recover() {
-                    Err(recover_error_msg) => {
-                        return Err(Failure {
-                            parse_error: ParseError::new(
-                                fail.lexer.source_text(),
-                                recover_error_msg),
-                            lexer: fail.lexer,
-                        })
-                    },
+                Err(_) => match lexer.advance_to_recover() {
+                    Err(recover_error) => return Err(Box::new(recover_error)),
                     Ok(_) => {
                         res = (parser)
-                            (fail.lexer, ctx.clone());
+                            (lexer.clone(), ctx.clone());
                     },
                 },
             }
@@ -230,8 +212,6 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
 ////////////////////////////////////////////////////////////////////////////////
 // Token filtering combinators.
 ////////////////////////////////////////////////////////////////////////////////
-
-
 /// A combinator which filters tokens during exectution of the given parser.
 ///
 /// ### Parameters
@@ -259,19 +239,13 @@ pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
         let old_filter = lexer.take_filter();
         lexer.set_filter_fn(filter_fn.clone());
 
-        match (parser)
+        (parser)
             (lexer, ctx)
             .trace_result(Level::TRACE, "subparse")
-        {
-            Ok(mut succ)  => {
+            .map(|mut succ| {
                 succ.lexer.set_filter(old_filter);
-                Ok(succ)
-            },
-            Err(mut fail) => {
-                fail.lexer.set_filter(old_filter);
-                Err(fail)
-            },
-        }
+                succ
+            })
     }
 }
 
@@ -298,19 +272,13 @@ pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
         event!(Level::TRACE, "before removing filter:\n{}", lexer);
 
         let filter = lexer.take_filter();
-        match (parser)
+        (parser)
             (lexer, ctx)
             .trace_result(Level::TRACE, "subparse")
-        {
-            Ok(mut succ)  => {
+            .map(|mut succ| {
                 succ.lexer.set_filter(filter);
-                Ok(succ)
-            },
-            Err(mut fail) => {
-                fail.lexer.set_filter(filter);
-                Err(fail)
-            },
-        }
+                succ
+            })
     }
 }
 

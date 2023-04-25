@@ -63,7 +63,7 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "maybe").entered();
 
-        match (parser)(lexer, ctx)
+        match (parser)(lexer.clone(), ctx)
             .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => {
@@ -72,9 +72,9 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
                     value: Some(succ.value),
                 })
             },
-            Err(fail) => {
+            Err(_) => {
                 Ok(Success {
-                    lexer: fail.lexer,
+                    lexer: lexer,
                     value: None,
                 })
             },

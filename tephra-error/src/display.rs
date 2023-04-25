@@ -15,15 +15,16 @@
 // Internal library imports.
 use crate::MessageType;
 use crate::Highlight;
+use crate::Note;
 
 
 // External library imports.
 use colored::Color;
 use colored::Colorize as _;
 use tephra_span::ColumnMetrics;
+use tephra_span::SourceText;
 use tephra_span::Span;
 use tephra_span::SplitLines;
-use tephra_span::SourceText;
 use tephra_tracing::event;
 use tephra_tracing::Level;
 use tephra_tracing::span;
@@ -33,12 +34,16 @@ use std::borrow::Cow;
 use std::fmt::Write;
 use std::borrow::Borrow as _;
 use std::fmt::Display;
+use std::error::Error;
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // CodeDisplay
 ////////////////////////////////////////////////////////////////////////////////
-/// A structure for displaying source text with spans, notes, and highlights.
+/// Data attachments for displaying source text with spans, notes, and
+/// highlights.
 #[derive(Debug, Clone)]
 pub struct CodeDisplay {
     /// The top-level description for all of the spans.
@@ -70,56 +75,56 @@ impl CodeDisplay {
         }
     }
 
-    /// Returns the given CodeDisplay with the given message.
+    /// Returns the given `CodeDisplay` with the given message.
     pub fn with_message(mut self, message: String) -> Self {
         self.message = message;
         self
     }
 
-    /// Returns the given CodeDisplay with the given color enablement.
+    /// Returns the given `CodeDisplay` with the given color enablement.
     pub fn with_color(mut self, color_enabled: bool) -> Self {
         self.color_enabled = color_enabled;
         self
     }
 
 
-    /// Returns the given CodeDisplay with the error MessageType.
+    /// Returns the given `CodeDisplay` with the error MessageType.
     pub fn with_error_type(mut self) -> Self {
         self.message_type = MessageType::Error;
         self
     }
 
-    /// Returns the given CodeDisplay with the warning MessageType.
+    /// Returns the given `CodeDisplay` with the warning MessageType.
     pub fn with_warning_type(mut self) -> Self {
         self.message_type = MessageType::Warning;
         self
     }
     
-    /// Returns the given CodeDisplay with the note MessageType.
+    /// Returns the given `CodeDisplay` with the note MessageType.
     pub fn with_note_type(mut self) -> Self {
         self.message_type = MessageType::Note;
         self
     }
 
-    /// Returns the given CodeDisplay with the hel MessageType.
+    /// Returns the given `CodeDisplay` with the hel MessageType.
     pub fn with_help_type(mut self) -> Self {
         self.message_type = MessageType::Help;
         self
     }
 
-    /// Returns the given CodeDisplay with the given MessageType.
+    /// Returns the given `CodeDisplay` with the given MessageType.
     pub fn with_message_type(mut self, message_type: MessageType) -> Self {
         self.message_type = message_type;
         self
     }
 
-    /// Returns the given CodeDisplay with the given error code id.
+    /// Returns the given `CodeDisplay` with the given error code id.
     pub fn with_code_id(mut self, code_id: Option<&'static str>) -> Self {
         self.code_id = code_id;
         self
     }
 
-    /// Returns the given CodeDisplay with the given SpanDisplay attachment.
+    /// Returns the given `CodeDisplay` with the given SpanDisplay attachment.
     pub fn with_span_display<S>(mut self, span_display: S)
         -> Self
         where S: Into<SpanDisplay>
@@ -128,7 +133,7 @@ impl CodeDisplay {
         self
     }
 
-    /// Returns the given CodeDisplay with the given note attachment.
+    /// Returns the given `CodeDisplay` with the given note attachment.
     pub fn with_note<N>(mut self, note: N)
         -> Self
         where N: Into<Note>
@@ -137,7 +142,7 @@ impl CodeDisplay {
         self
     }
 
-    /// Returns the given CodeDisplay with the given SpanDisplay attachment.
+    /// Returns the given `CodeDisplay` with the given SpanDisplay attachment.
     pub fn push_span_display<S>(&mut self, span_display: S)
         where S: Into<SpanDisplay>
     {
@@ -145,13 +150,14 @@ impl CodeDisplay {
     }
 
 
-    /// Returns the given CodeDisplay with the given note attachment.
+    /// Returns the given `CodeDisplay` with the given note attachment.
     pub fn push_note<N>(&mut self, note: N)
         where N: Into<Note>
     {
         self.notes.push(note.into());
     }
 
+    /// Returns the `CodeDisplay`'s message.
     pub fn message(&self) -> &str {
         self.message.as_str()
     }
@@ -318,38 +324,6 @@ impl SpanDisplay {
         }
 
         Ok(())
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Note
-////////////////////////////////////////////////////////////////////////////////
-/// A note which can be attached to a `SpanDisplay` or `CodeDisplay`.
-#[derive(Debug, Clone)]
-pub struct Note {
-    /// The message type for the note.
-    pub(in crate) note_type: MessageType,
-    /// The note to display.
-    pub(in crate) note: String,
-}
-
-impl Note {
-    pub(in crate) fn write_with_color_enablement<W>(
-        &self,
-        out: &mut W,
-        color_enabled: bool)
-        -> std::fmt::Result
-        where W: Write
-    {
-        self.note_type.write_with_color_enablement(out, color_enabled)?;
-        write!(out, ": {}", self.note)
-    }
-}
-
-impl Display for Note {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.write_with_color_enablement(f, true)
     }
 }
 

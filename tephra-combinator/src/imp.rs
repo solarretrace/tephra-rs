@@ -16,54 +16,12 @@ use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
-use tephra::Success;
 
 // External library imports.
 use tephra_tracing::Level;
 use tephra_tracing::span;
 
 
-////////////////////////////////////////////////////////////////////////////////
-// atomic
-////////////////////////////////////////////////////////////////////////////////
-/// Returns a parser which attempts a parse such that if any prefix of it
-/// succeeds, the entire parse must succeed.
-/// 
-/// Note that filtered tokens are not counted as prefix tokens.
-pub fn atomic<'text, Sc, F, V>(mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
-        -> ParseResult<'text, Sc, Option<V>>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
-{
-    move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "atomic").entered();
-
-        // TODO: Remove filtered prefix tokens.
-        let start = lexer.cursor_pos();
-
-        match (parser)
-            (lexer, ctx)
-            .trace_result(Level::TRACE, "subparse")
-        {
-            Ok(succ) => {
-                Ok(Success {
-                    lexer: succ.lexer,
-                    value: Some(succ.value),
-                })
-            },
-            Err(fail) => if start == fail.lexer.cursor_pos() {
-                Ok(Success {
-                    lexer: fail.lexer,
-                    value: None,
-                })
-            } else {
-                Err(fail)
-            },
-        }
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // implies

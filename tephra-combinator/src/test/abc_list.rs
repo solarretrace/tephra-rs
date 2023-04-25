@@ -27,6 +27,7 @@ use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
 use tephra::Span;
+use tephra::common::SourceError;
 use tephra::Spanned;
 use test_log::test;
 use ntest::timeout;
@@ -241,14 +242,16 @@ fn list_one_failed() {
             Comma,
             &[])
         (lexer.clone(), ctx)
+        .map_err(|e|
+            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: expected more items in list
+error: invalid item count
  --> (0:0-0:2, bytes 0-2)
   | 
 0 |   
-  |   \\ expected 1 item, found 0
+  |   \\ expected 1 item; found 0
 ");
 }
 
@@ -308,14 +311,16 @@ fn bracket_list_one_failed() {
             &[CloseBracket],
             &[])
         (lexer.clone(), ctx)
+        .map_err(|e|
+            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
-error: expected more items in list
+error: invalid item count
  --> (0:0-0:2, bytes 0-2)
   | 
 0 | []
-  |  \\ expected 1 item, found 0
+  |  \\ expected 1 item; found 0
 ");
 }
 
@@ -331,7 +336,9 @@ fn bracket_list_one_recovered() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e|
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+    )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default(
@@ -355,11 +362,11 @@ fn bracket_list_one_recovered() {
 
     assert_eq!(errors.read().unwrap().len(), 1);
     assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
-error: expected more items in list
+error: invalid item count
  --> (0:0-0:9, bytes 0-9)
   | 
 0 | [       ]
-  |         \\ expected 1 item, found 0
+  |         \\ expected 1 item; found 0
 ");
 }
 
@@ -376,7 +383,9 @@ fn bracket_list_two_recovered_first() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e|
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+    )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default(
@@ -425,7 +434,9 @@ fn bracket_list_two_recovered_second() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e|
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+    )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default(
@@ -475,7 +486,9 @@ fn bracket_list_missing_delimiter() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e|
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+    )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default(
@@ -518,7 +531,9 @@ fn bracket_list_nested() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e|
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+    )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default(
@@ -577,7 +592,9 @@ fn bracket_list_commas() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e))));
+    let ctx = Context::new(Some(Box::new(|e|
+        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+    )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default(
