@@ -91,7 +91,7 @@ fn simple_not_failed() {
     let actual = pred(Expr::Not(Box::new(Expr::Var(D))))
         (lexer.clone(), ctx)
         .map_err(|e|
-            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+            SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -213,7 +213,7 @@ fn pattern_right_failed() {
     let actual = right(pattern, pattern)
         (lexer.clone(), ctx)
         .map_err(|e|
-            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+            SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -243,7 +243,7 @@ fn pattern_right_failed_raw() {
     let actual = raw(right(pattern, pattern))
         (lexer.clone(), ctx)
         .map_err(|e|
-            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+            SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -298,7 +298,7 @@ fn pattern_center_recover() {
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx = Context::new(Some(Box::new(|e| 
-        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+        errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source))
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
@@ -338,7 +338,7 @@ fn pattern_center_recover_delayed() {
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap().push(SourceError::try_convert::<AbcToken>(e.into_owned(), source)))
+        errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source)))
     ));
     lexer.set_filter_fn(|tok| *tok != Ws);
 

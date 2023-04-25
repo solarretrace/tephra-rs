@@ -82,8 +82,9 @@ impl IncompleteParseError {
                     source_text,
                     self.full_span())
                 .with_highlight(Highlight::new(
-                    self.unparsed_span(),
-                    "unexpected text")))
+                        self.unparsed_span(),
+                        "unexpected text")
+                    .with_error_type()))
             .with_cause(Box::new(self))
     }
 }
@@ -179,8 +180,9 @@ impl BracketError {
                     found_start,
                     "the bracket here")
                     .with_highlight(Highlight::new(
-                        found_end,
-                        "... does not match the closing bracket here"))),
+                            found_end,
+                            "... does not match the closing bracket here")
+                        .with_error_type())),
         };
 
         source_error.with_cause(Box::new(self))
@@ -266,8 +268,9 @@ impl ItemCountError {
                     source_text,
                     self.items_span)
                 .with_highlight(Highlight::new(
-                    self.items_span,
-                    self.expected_description())))
+                        self.items_span,
+                        self.expected_description())
+                    .with_error_type()))
             .with_cause(Box::new(self))
     }
 }

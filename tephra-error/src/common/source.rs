@@ -32,15 +32,17 @@ use std::fmt::Debug;
 
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // SourceError
 ////////////////////////////////////////////////////////////////////////////////
 /// A general-purpose error supporting formatted source text display.
 #[derive(Debug)]
 pub struct SourceError<'text> {
+    /// The source text.
     source_text: SourceText<'text>,
+    /// The `CodeDisplay` used to format the error output.
     code_display: CodeDisplay,
+    /// The underlying cause of the error.
     cause: Option<Box<dyn Error + 'static>>,
 }
 
@@ -99,7 +101,7 @@ impl<'text> SourceError<'text> {
     ///
     /// If the conversion fails, the error will be returned unchanged. The
     /// method is generic over the `Scanner`'s token type.
-    pub fn try_convert<T>(
+    pub fn convert<T>(
         error: Box<dyn Error + 'static>,
         source_text: SourceText<'text>)
         -> Box<dyn Error + 'static>
@@ -217,7 +219,8 @@ impl SourceErrorOwned {
     {
         SourceErrorOwned {
             source_text,
-            code_display: CodeDisplay::new(message),
+            code_display: CodeDisplay::new(message)
+                .with_error_type(),
             cause: None,
         }
     }

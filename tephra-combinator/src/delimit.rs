@@ -454,7 +454,7 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
                     recover_pat.clone()))
                 (lexer.clone(), ctx.clone())?
                 .take_value();
-            lexer = succ.lexer;
+            lexer = succ.lexer.sublexer();
         }
 
         if vals.len() < low {

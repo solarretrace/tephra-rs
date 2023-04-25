@@ -26,6 +26,7 @@ use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
+use tephra::Span;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
@@ -52,6 +53,16 @@ pub enum AbcToken {
     OpenBracket,
     CloseBracket,
     Invalid,
+}
+
+impl AbcToken {
+    fn is_pattern_token(&self) -> bool {
+        use AbcToken::*;
+        match self {
+            A | B | C | D => true,
+            _             => false
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,13 +200,16 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     }
 
     // Setup error context.
-    let start_span = lexer.start_span();
+    let start_lexer = lexer.clone();
     let source_text = lexer.source_text();
     let ctx = ctx.push(std::rc::Rc::new(move |e| {
+        let mut lexer = start_lexer.clone();
+        let start_pos = lexer.start_pos();
+        lexer.advance_up_to_unfiltered(|tok| !tok.is_pattern_token());
         Box::new(SourceError::new(source_text, "expected pattern")
             .with_span_display(SpanDisplay::new_error_highlight(
                 source_text,
-                start_span,
+                Span::new_enclosing(start_pos, start_lexer.end_pos()),
                 "expected 'ABC', 'BXX', or 'XYC' pattern"))
             .with_cause(e.into_owned()))
     }));
@@ -383,7 +397,7 @@ fn initial_newline_ws_skip() {
     let actual = pattern
         (lexer.clone(), ctx)
         .map_err(|e|
-            SourceError::try_convert::<AbcToken>(e.into_owned(), source))
+            SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
