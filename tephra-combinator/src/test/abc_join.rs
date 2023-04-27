@@ -221,8 +221,11 @@ error: expected pattern
  --> (0:0-0:7, bytes 0-7)
   | 
 0 | abc ddd
-  |     ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+  | ^^^^^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
+    // NOTE: This error message is odd, but it is due to a poorly written parser
+    // composition. Since there is no sublex between the patterns, the whole
+    // parse fails or succeeds together.
 }
 
 /// Test failed `right` combinator with `raw` wrapper. Ensure error is not
@@ -322,11 +325,16 @@ error: expected pattern
  --> (0:0-0:4, bytes 0-4)
   | 
 0 | [ab]
-  |  ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+  | ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
+    // NOTE: This error message is odd, but it is due to a poorly written parser
+    // composition. The error context for this parse should know that there's a
+    // bracket prefix and a better error message should be written. (Or a
+    // bracket combinator should be used.)
 }
 
-/// Test failed `center` combinator with error recovery, with a delayed close center.
+/// Test failed `center` combinator with error recovery, with a delayed close
+/// center.
 #[test]
 #[tracing::instrument]
 fn pattern_center_recover_delayed() {
@@ -338,7 +346,8 @@ fn pattern_center_recover_delayed() {
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source)))
+        errors.write().unwrap()
+            .push(SourceError::convert::<AbcToken>(e.into_owned(), source)))
     ));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
@@ -362,6 +371,10 @@ error: expected pattern
  --> (0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb] 
-  |  ^^^^^^^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+  | ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
+    // NOTE: This error message is odd, but it is due to a poorly written parser
+    // composition. The error context for this parse should know that there's a
+    // bracket prefix and a better error message should be written. (Or a
+    // bracket combinator should be used.)
 }

@@ -57,8 +57,12 @@ impl Span {
         Span { byte, page }
     }
 
-    /// Constructs a new span covering given start and end positions.
+    /// Constructs a new span covering given start and end positions. The start
+    /// byte must be less than the end byte.
     pub fn new_enclosing(a: Pos, b: Pos) -> Self {
+        if a.byte > b.byte {
+            panic!("invalid span: byte order is not increasing");
+        }
         let byte = ByteSpan { start: a.byte, end: b.byte };
         let page = PageSpan { start: a.page, end: b.page };
 

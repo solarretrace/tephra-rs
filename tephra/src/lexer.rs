@@ -114,17 +114,6 @@ impl<'text, Sc> Lexer<'text, Sc>
         self
     }
 
-    /// Returns true if there is no more text available to process.
-    pub fn is_empty(&self) -> bool {
-        // TODO: Replace with Option::is_some_and when stabilized.
-        self.cursor.byte >= self.source_text.len()
-            || match self.filter.as_ref()
-        {
-            None    => false,
-            Some(_) => self.buffer.is_none(),
-        }
-    }
-
     /// Returns the underlying source text.
     pub fn source_text(&self) -> SourceText<'text> {
         self.source_text
@@ -150,6 +139,17 @@ impl<'text, Sc> Lexer<'text, Sc>
         self.column_metrics().tab_width
     }
 
+    /// Returns true if there is no more text available to process.
+    pub fn is_empty(&self) -> bool {
+        // TODO: Replace with Option::is_some_and when stabilized.
+        self.cursor.byte >= self.source_text.len()
+            || match self.filter.as_ref()
+        {
+            None    => false,
+            Some(_) => self.buffer.is_none(),
+        }
+    }
+
     /// Returns the start position for the lexer's current parse.
     pub fn start_pos(&self) -> Pos {
         self.parse_start
@@ -169,7 +169,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Consumes the text from the `parse_start` of the current parse up to the
     /// current position. This ends the 'current parse' and prevents further
     /// spans from including any previously lexed text.
-    fn end_current_span(&mut self) {
+    fn end_current_parse(&mut self) {
         self.token_start = self.cursor;
         self.parse_start = self.cursor;
         self.end = self.cursor;
@@ -280,7 +280,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// lexer will begin a new parse and advance past any filtered tokens.
     pub fn sublexer(&self) -> Self {
         let mut sub = self.clone();
-        sub.end_current_span();
+        sub.end_current_parse();
         sub
     }
 
@@ -339,18 +339,18 @@ impl<'text, Sc> Lexer<'text, Sc>
         Span::new_enclosing(self.parse_start, self.cursor)
     }
 
-    /// Returns the span of the start of the current parse.
+    /// Returns the span at the start of the current parse.
     pub fn start_span(&self) -> Span {
         Span::new_at(self.parse_start)
     }
 
-    /// Returns the span of the end of the lexed text (the end of the current
+    /// Returns the span at the end of the lexed text (the end of the current
     /// parse.)
     pub fn end_span(&self) -> Span {
         Span::new_at(self.end)
     }
 
-    /// Returns the span of the lexer cursor.
+    /// Returns the span at the lexer cursor.
     pub fn cursor_span(&self) -> Span {
         Span::new_at(self.cursor)
     }
@@ -413,9 +413,8 @@ impl<'text, Sc> Lexer<'text, Sc>
     {
         let _span = span!(Level::TRACE, "advance_to").entered();
         while let Some(tok) = self.peek() {
-            if (&mut pred)(&tok) {
-                return true;
-            }
+
+            if (&mut pred)(&tok) { return true; }
             let _ = self.next();
         }
         false
@@ -431,9 +430,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     {
         let _span = span!(Level::TRACE, "advance_past").entered();
         while let Some(tok) = self.next() {
-            if (&mut pred)(&tok) {
-                return true;
-            }
+            if (&mut pred)(&tok) { return true; }
         }
         false
     }

@@ -633,11 +633,18 @@ fn bracket_list_commas() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
 
     assert_eq!(errors.read().unwrap().len(), 5);
-    assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
+    assert_eq!(format!("{}", errors.write().unwrap().first().unwrap()), "\
 error: expected pattern
  --> (0:0-0:10, bytes 0-10)
   | 
 0 | [,,,,,abc]
   |  \\ expected 'ABC', 'BXX', or 'XYC' pattern
+");
+    assert_eq!(format!("{}", errors.write().unwrap().last().unwrap()), "\
+error: expected pattern
+ --> (0:0-0:10, bytes 0-10)
+  | 
+0 | [,,,,,abc]
+  |      \\ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }

@@ -208,8 +208,8 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
     }
 }
 
-/// Returns a pair of lexers such that the first lexer's `next` token is in
-/// `open_tokens` and the second lexer's `next` token is the corresponding entry
+/// Returns a `BracketMatch` object where the open lexer's `next` token is in
+/// `open_tokens` and the close lexer's `next` token is the corresponding entry
 /// in `right_tokens`.
 ///
 /// Each token in `open_tokens` is paired with the token of the same index in
@@ -228,6 +228,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
     where Sc: Scanner
 {
     use BracketError::*;
+    let start_span = lexer.start_span();
     let mut open_lexer: Option<Lexer<Sc>> = None;
     // Detected open tokens as (index, count) pairs.
     let mut opened: SmallVec<[(usize, usize); DEFAULT_TOKEN_VEC_SIZE]>
@@ -290,7 +291,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
     match open_lexer {
         // End-of-text reached.
         None => Err(NoneFound {
-            expected_start: lexer.peek_token_span().unwrap(),
+            expected_start: start_span,
         }),
         // Unclosed open token.
         Some(open_lexer) => Err(Unclosed {
@@ -300,13 +301,19 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
 }
 
 
+/// Default token buffer size for matching nested brackets.
 const DEFAULT_TOKEN_VEC_SIZE: usize = 4;
 
+/// Return value for `match_nested_brackets`.
 struct BracketMatch<'text, Sc> where Sc: Scanner {
+    /// The lexer whose `next` token is an open bracket.
     open: Lexer<'text, Sc>,
+    /// The lexer whose `next` token is an close bracket.
     close: Lexer<'text, Sc>,
+    /// The index of the brackets that were matched.
     index: usize,
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // List combinators.

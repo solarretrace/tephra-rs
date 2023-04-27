@@ -200,16 +200,19 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     }
 
     // Setup error context.
-    let start_lexer = lexer.clone();
+    let mut initial_lexer = lexer.clone();
+    let start_pos = initial_lexer.start_pos();
+    let _ = initial_lexer.take_filter();
     let source_text = lexer.source_text();
     let ctx = ctx.push(std::rc::Rc::new(move |e| {
-        let mut lexer = start_lexer.clone();
-        let start_pos = lexer.start_pos();
-        lexer.advance_up_to_unfiltered(|tok| !tok.is_pattern_token());
+        let mut lexer = initial_lexer.clone();
+        lexer.advance_up_to(|tok| *tok != AbcToken::Ws);
+        lexer.advance_up_to(|tok| !tok.is_pattern_token());
+        
         Box::new(SourceError::new(source_text, "expected pattern")
             .with_span_display(SpanDisplay::new_error_highlight(
                 source_text,
-                Span::new_enclosing(start_pos, start_lexer.end_pos()),
+                Span::new_enclosing(start_pos, lexer.cursor_pos()),
                 "expected 'ABC', 'BXX', or 'XYC' pattern"))
             .with_cause(e.into_owned()))
     }));
