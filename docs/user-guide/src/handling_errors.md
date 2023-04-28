@@ -110,14 +110,14 @@ A parse can fail for many reasons, and some of those failures should be ignored 
         .. because a prefix of it was successful
             1. Use `atomic` to delineate the section
             2. Why are we parsing?
-            3. What failed? -> in ParseError
-            4. What was expected. -> in ParseError
+            3. What failed? -> in ParseError<'text>
+            4. What was expected. -> in ParseError<'text>
 
         .. because a validation condition failed
             1. use `section` to delineate the section.
             2. Why are we parsing?
-            3. What failed? -> in ParseError
-            4. What was expected. -> in ParseError
+            3. What failed? -> in ParseError<'text>
+            4. What was expected. -> in ParseError<'text>
     It is not an attempt to match
         .. because no prefix was successful
             1. use `maybe` to delineate the section

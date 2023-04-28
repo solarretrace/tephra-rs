@@ -13,7 +13,6 @@
 
 
 // Internal library imports.
-use crate::IntoErrorOwned;
 use crate::ParseError;
 use crate::Note;
 use crate::SpanDisplay;
@@ -73,21 +72,21 @@ impl<'text> SourceError<'text> {
         };
 
         error = match error
-            .downcast::<crate::common::IncompleteParseError>()
+            .downcast::<crate::common::ParseBoundaryError>()
         {
             Ok(e)  => { return Ok(e.into_source_error(source_text)); }
             Err(e) => e,
         };
 
         error = match error
-            .downcast::<crate::common::BracketError>()
+            .downcast::<crate::common::MatchBracketError>()
         {
             Ok(e)  => { return Ok(e.into_source_error(source_text)); }
             Err(e) => e,
         };
 
         error = match error
-            .downcast::<crate::common::ItemCountError>()
+            .downcast::<crate::common::RepeatCountError>()
         {
             Ok(e)  => { return Ok(e.into_source_error(source_text)); }
             Err(e) => e,
@@ -189,7 +188,7 @@ impl<'text> Error for SourceError<'text> {
     }
 }
 
-impl<'text> IntoErrorOwned for SourceError<'text> {
+impl<'text> ParseError<'text> for SourceError<'text> {
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
         Box::new(SourceErrorOwned {
             source_text: self.source_text.to_owned(),
@@ -288,17 +287,9 @@ impl Error for SourceErrorOwned {
     }
 }
 
-impl IntoErrorOwned for SourceErrorOwned {
+impl<'text> ParseError<'text> for SourceErrorOwned {
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
         self
     }
 }
 
-
-
-// ////////////////////////////////////////////////////////////////////////////////
-// // Delimiter errors.
-// ////////////////////////////////////////////////////////////////////////////////
-
-// pub struct UnmatchedDelimiterError {
-// }

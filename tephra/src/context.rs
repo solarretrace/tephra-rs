@@ -31,15 +31,15 @@ fn option_fmt<T>(opt: &Option<T>) -> &'static str {
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorSink
 ////////////////////////////////////////////////////////////////////////////////
-/// A function which can receive recoverable `ParseError`s.
-pub type ErrorSink<'text> = Box<dyn Fn(ParseError<'text>) + 'text>;
+/// A function which can receive recoverable `ParseError<'text>`s.
+pub type ErrorSink<'text> = Box<dyn Fn(Box<dyn ParseError<'text>>) + 'text>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorTransform
 ////////////////////////////////////////////////////////////////////////////////
-/// A function to construct or modify `ParseError`s in a given `Context`.
+/// A function to construct or modify `ParseError<'text>`s in a given `Context`.
 pub type ErrorTransform<'text> = Rc<
-    dyn for<'a> Fn(ParseError<'text>) -> ParseError<'text> + 'text>;
+    dyn for<'a> Fn(Box<dyn ParseError<'text>>) -> Box<dyn ParseError<'text>> + 'text>;
 
 
 
@@ -73,12 +73,12 @@ pub struct LocalContext<'text, Sc> where Sc: Scanner {
 }
 
 impl<'text, Sc> LocalContext<'text, Sc> where Sc: Scanner {
-    /// Applies the lowest `ErrorTransform` function to the given `ParseError`
+    /// Applies the lowest `ErrorTransform` function to the given `ParseError<'text>`
     /// and `Span`.
     fn apply_error_transform(
         &self,
-        parse_error: ParseError<'text>)
-        -> ParseError<'text>
+        parse_error: Box<dyn ParseError<'text>>)
+        -> Box<dyn ParseError<'text>>
     {
         match self.error_transform.as_ref() {
             Some(transform) => (transform)(parse_error),
@@ -86,13 +86,13 @@ impl<'text, Sc> LocalContext<'text, Sc> where Sc: Scanner {
         }
     }
 
-    /// Applies the lowest `ErrorTransform` function to the given `ParseError`
+    /// Applies the lowest `ErrorTransform` function to the given `ParseError<'text>`
     /// and `Span`, then visits each parent context and applies each transfom
     /// function in sequence.
     fn apply_error_transform_recursive(
         &self,
-        parse_error: ParseError<'text>)
-        -> ParseError<'text>
+        parse_error: Box<dyn ParseError<'text>>)
+        -> Box<dyn ParseError<'text>>
     {
         let e = self.apply_error_transform(parse_error);
 
@@ -201,8 +201,8 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
 
     pub fn apply_error_transform_recursive(
         &self,
-        parse_error: ParseError<'text>)
-        -> ParseError<'text>
+        parse_error: Box<dyn ParseError<'text>>)
+        -> Box<dyn ParseError<'text>>
     {
         self.local
             .read()
@@ -210,8 +210,8 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
             .apply_error_transform_recursive(parse_error)
     }
     
-    fn apply_error_transform(&self, parse_error: ParseError<'text>)
-        -> ParseError<'text>
+    fn apply_error_transform(&self, parse_error: Box<dyn ParseError<'text>>)
+        -> Box<dyn ParseError<'text>>
     {
         self.local
             .read()
@@ -219,13 +219,13 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
             .apply_error_transform(parse_error)
     }
 
-    /// Sends a `ParseError` to the `ErrorSink`, applying `ErrorTransform`s.
+    /// Sends a `ParseError<'text>` to the `ErrorSink`, applying `ErrorTransform`s.
     ///
     /// Returns the given error if no `ErrorSink` is configured.
     pub fn send_error(
         &self,
-        parse_error: ParseError<'text>)
-        -> Result<(), ParseError<'text>>
+        parse_error: Box<dyn ParseError<'text>>)
+        -> Result<(), Box<dyn ParseError<'text>>>
     {
         match self.shared
             .read()

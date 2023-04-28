@@ -11,6 +11,13 @@
 #![allow(unused)]
 #![allow(missing_docs)]
 
+// Internal library imports.
+use crate::common::SourceError;
+
+// External library imports.
+use tephra_span::Span;
+use tephra_span::SourceText;
+
 // Standard library imports.
 use std::error::Error;
 
@@ -20,26 +27,14 @@ use std::error::Error;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Provides a method to convert an error into an owned error.
-pub trait IntoErrorOwned {
-    /// Converts an error into an owned error.
+pub trait ParseError<'text>: std::error::Error + 'text {
+    /// Returns the span of the current parse when the failure occurred, if
+    /// available.
+    fn parse_span(&self) -> Option<Span> {
+        None
+    }
+
+    /// Converts a ParseError<'text> into an owned error.
     fn into_owned(self: Box<Self>) -> Box<dyn std::error::Error + 'static>;
 }
-
-
-/// An `Error` that implements `ToErrorOwned`.
-pub trait OwnableError<'text>: std::error::Error + IntoErrorOwned + 'text {}
-
-impl<'text, T> OwnableError<'text> for T
-    where T: std::error::Error + IntoErrorOwned + 'text {}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Error types.
-////////////////////////////////////////////////////////////////////////////////
-
-/// A generic parse error to be returned by a combinator, scoped to the lifetime
-/// of the source text.
-pub type ParseError<'text> = Box<dyn OwnableError<'text>>;
-
-
 

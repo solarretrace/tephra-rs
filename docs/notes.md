@@ -65,23 +65,10 @@
 
         5. Error recovery is risky. If a parse fails, any future parses can be assumed invalid via ex falso qoudlibet, so if we never get a good parse after a failure, we can safely assume all of the following errors are a result of the first. An error is only successfully recovered from if there is a successful parse of a specific user-defined value. It should be easy to specify this value and silence any errors encountered before the success.
 
+    * Use boxed error types with downcasting
 
+        1. This allows errors to carry more contextual information and allows for more useful error messages.
 
-# Error Handling
-
-Unexpected eot
-    During parse of...
-        * Source EOT error
-Unrecognized token
-    During parse of...
-    Skip token and continue lexing?
-        * Span of fail
-Parsed wrong token
-    During parse of...
-Error constructing value
-    During parse of...
-    Which token value...
-        * Span of fail
 
 
 
@@ -167,8 +154,8 @@ SpanDisplay (highlight, span)
 SpanDisplayOwned
 CodeDisplay (span_display)
 CodeDisplayOwned
-ParseError
-ParseErrorOwned
+ParseError<'text>
+ParseError<'text>Owned
 
 # Tephra Parse Errors
 

@@ -17,15 +17,14 @@ use crate::stabilize;
 
 // External library imports.
 use smallvec::SmallVec;
-use tephra::common::BracketError;
-use tephra::common::IncompleteParseError;
-use tephra::common::ItemCountError;
+use tephra::common::MatchBracketError;
+use tephra::common::ParseBoundaryError;
+use tephra::common::RepeatCountError;
 use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
-use tephra::Span;
 use tephra::Success;
 use tephra_tracing::Level;
 use tephra_tracing::span;
@@ -64,14 +63,12 @@ pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a>(
             None                                     => Ok(succ),
             Some(tok) if abort_tokens.contains(&tok) => Ok(succ),
             _ => {
-                let start_pos = succ.lexer.start_pos();
-                let actual_end_pos = succ.lexer.end_pos();
+                let parse_span = succ.lexer.parse_span();
                 // Advance lexer to the expected token.
                 succ.lexer.advance_to(|tok| abort_tokens.contains(tok));
 
-                Err(Box::new(IncompleteParseError {
-                    start_pos,
-                    actual_end_pos,
+                Err(Box::new(ParseBoundaryError {
+                    parse_span,
                     expected_end_pos: succ.lexer.cursor_pos(),
                 }))
             },
@@ -178,7 +175,7 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
             Ok(BracketMatch {mut open, mut close, index }) => {
                 // Prepare the sublexers.
                 let _ = open.next();
-                let center_lexer = open.sublexer();
+                let center_lexer = open.into_sublexer();
                 let _ = close.next();
 
                 // NOTE: We will do manual error recovery here: we don't want to
@@ -224,10 +221,10 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
     open_tokens: &'a [Sc::Token],
     close_tokens: &'a [Sc::Token],
     abort_tokens: &'a [Sc::Token])
-    -> Result<BracketMatch<'text, Sc>, BracketError>
+    -> Result<BracketMatch<'text, Sc>, MatchBracketError>
     where Sc: Scanner
 {
-    use BracketError::*;
+    use MatchBracketError::*;
     let start_span = lexer.start_span();
     let mut open_lexer: Option<Lexer<Sc>> = None;
     // Detected open tokens as (index, count) pairs.
@@ -415,7 +412,6 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
             None    => Vec::with_capacity(LIST_UNBOUND_PREALLOCATE),
         };
 
-        let start_position = lexer.cursor_pos();
         let mut aborting = false;
         
         loop {
@@ -461,14 +457,12 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
                     recover_pat.clone()))
                 (lexer.clone(), ctx.clone())?
                 .take_value();
-            lexer = succ.lexer.sublexer();
+            lexer = succ.lexer.into_sublexer();
         }
 
         if vals.len() < low {
-            let parse_error = Box::new(ItemCountError {
-                items_span: Span::new_enclosing(
-                    start_position,
-                    lexer.cursor_pos()),
+            let parse_error = Box::new(RepeatCountError {
+                parse_span: lexer.parse_span(),
                 found: vals.len(),
                 expected_min: low,
                 expected_max: high,

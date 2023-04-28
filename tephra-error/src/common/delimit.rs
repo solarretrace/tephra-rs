@@ -13,7 +13,7 @@
 
 
 // Internal library imports.
-use crate::IntoErrorOwned;
+use crate::ParseError;
 use crate::Note;
 use crate::SpanDisplay;
 use crate::CodeDisplay;
@@ -36,39 +36,30 @@ use std::iter::IntoIterator;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// IncompleteParseError
+// ParseBoundaryError
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when a successful parse does not consume as much text as
 /// required.
 #[derive(Debug, Clone)]
-pub struct IncompleteParseError {
-    /// The start position of the parse.
-    pub start_pos: Pos,
-    /// The actual end position of the parse.
-    pub actual_end_pos: Pos,
+pub struct ParseBoundaryError {
+    /// The span of the parse up to the expected parse boundary.
+    pub parse_span: Span,
     /// The expected end position of the parse.
     pub expected_end_pos: Pos,
 }
 
-impl IncompleteParseError {
-    /// Returns the span of the parsed text.
-    pub fn parsed_span(&self) -> Span {
-        Span::new_enclosing(
-            self.start_pos,
-            self.actual_end_pos)
-    }
-
+impl ParseBoundaryError {
     /// Returns the full span of the parsed and unexpected text.
     pub fn full_span(&self) -> Span {
         Span::new_enclosing(
-            self.start_pos,
+            self.parse_span.start(),
             self.expected_end_pos)
     }
 
     /// Returns the span of the unexpected text.
     pub fn unparsed_span(&self) -> Span {
         Span::new_enclosing(
-            self.actual_end_pos,
+            self.parse_span.end(),
             self.expected_end_pos)
     }
 
@@ -89,16 +80,20 @@ impl IncompleteParseError {
     }
 }
 
-impl Display for IncompleteParseError {
+impl Display for ParseBoundaryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "incomplete parse: unexpected text at {}",
             self.unparsed_span())
     }
 }
 
-impl Error for IncompleteParseError {}
+impl Error for ParseBoundaryError {}
 
-impl IntoErrorOwned for IncompleteParseError {
+impl<'text> ParseError<'text> for ParseBoundaryError {
+    fn parse_span(&self) -> Option<Span> {
+        Some(self.parse_span)
+    }
+
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
         self
     }
@@ -106,12 +101,12 @@ impl IntoErrorOwned for IncompleteParseError {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// BracketError
+// MatchBracketError
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when a successful parse does not consume as much text as
 /// required.
 #[derive(Debug, Clone)]
-pub enum BracketError {
+pub enum MatchBracketError {
     NoneFound {
         expected_start: Span,
     },
@@ -127,10 +122,10 @@ pub enum BracketError {
     },
 }
 
-impl BracketError {
+impl MatchBracketError {
     /// Returns the full span of the error.
     fn full_span(&self) -> Span {
-        use BracketError::*;
+        use MatchBracketError::*;
         match self {
             NoneFound { expected_start } => *expected_start,
             Unclosed { found_start }     => *found_start,
@@ -146,7 +141,7 @@ impl BracketError {
     pub fn into_source_error<'text>(self, source_text: SourceText<'text>)
         -> SourceError<'text>
     {
-        use BracketError::*;
+        use MatchBracketError::*;
         let mut source_error = match self {
             NoneFound { expected_start } => SourceError::new(
                     source_text,
@@ -189,9 +184,9 @@ impl BracketError {
     }
 }
 
-impl Display for BracketError {
+impl Display for MatchBracketError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use BracketError::*;
+        use MatchBracketError::*;
         match self {
             NoneFound { expected_start } => write!(f,
                 "bracket error: expected open bracket at {}",
@@ -213,29 +208,33 @@ impl Display for BracketError {
     }
 }
 
-impl Error for BracketError {}
+impl Error for MatchBracketError {}
 
-impl IntoErrorOwned for BracketError {
+impl<'text> ParseError<'text> for MatchBracketError {
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
         self
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// ItemCountError
+// RepeatCountError
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when a repeated parse fails to occur the required number
 /// of times.
 #[derive(Debug, Clone)]
-pub struct ItemCountError {
-    pub items_span: Span,
+pub struct RepeatCountError {
+    /// The span of the parse up to the end of the valid count.
+    pub parse_span: Span,
+    /// The number of parsed items found.
     pub found: usize,
+    /// The minimum expected number of parsed items.
     pub expected_min: usize,
+    /// The maximum expected number of parsed items.
     pub expected_max: Option<usize>,
 }
 
 
-impl ItemCountError {
+impl RepeatCountError {
     fn expected_description(&self) -> String {
         if self.found < self.expected_min {
             format!("expected {} item{}; found {}",
@@ -266,25 +265,29 @@ impl ItemCountError {
         SourceError::new(source_text, "invalid item count")
             .with_span_display(SpanDisplay::new(
                     source_text,
-                    self.items_span)
+                    self.parse_span)
                 .with_highlight(Highlight::new(
-                        self.items_span,
+                        self.parse_span,
                         self.expected_description())
                     .with_error_type()))
             .with_cause(Box::new(self))
     }
 }
 
-impl Display for ItemCountError {
+impl Display for RepeatCountError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "invalid item count: {}",
             self.expected_description())
     }
 }
 
-impl Error for ItemCountError {}
+impl Error for RepeatCountError {}
 
-impl IntoErrorOwned for ItemCountError {
+impl<'text> ParseError<'text> for RepeatCountError {
+    fn parse_span(&self) -> Option<Span> {
+        Some(self.parse_span)
+    }
+
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
         self
     }

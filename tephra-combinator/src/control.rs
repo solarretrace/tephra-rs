@@ -24,7 +24,6 @@ use tephra_tracing::span;
 
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer context combinators.
 ////////////////////////////////////////////////////////////////////////////////
@@ -357,6 +356,32 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// Span manipulation & saving combinators.
+////////////////////////////////////////////////////////////////////////////////
+
+/// A combinator which performs a sub-parse (or sub-lex,) ensuring emitted spans
+/// are clipped before the start of the given parser.
+///
+/// This effectively runs the given parser as a new parse. An filtered tokens at
+/// the start of the sub-parse will also be omitted.
+///
+/// ### Error recovery
+///
+/// No error recovery is attempted.
+pub fn sub<'text, Sc, F, V>(mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+        -> ParseResult<'text, Sc, V>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, V>,
+{
+    move |lexer, ctx| {
+        (parser)(lexer.into_sublexer(), ctx)
+    }
+}
+
 /// A combinator which includes the span of the parsed value.
 ///
 /// ### Error recovery
@@ -376,7 +401,7 @@ pub fn spanned<'text, Sc, F, V>(mut parser: F)
         event!(Level::TRACE, "before subparse:\n{}", lexer);
 
         match (parser)
-            (lexer.sublexer(), ctx)
+            (lexer.clone().into_sublexer(), ctx)
             .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => {

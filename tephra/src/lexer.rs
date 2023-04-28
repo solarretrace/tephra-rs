@@ -165,16 +165,21 @@ impl<'text, Sc> Lexer<'text, Sc>
         self.cursor
     }
 
-
     /// Consumes the text from the `parse_start` of the current parse up to the
     /// current position. This ends the 'current parse' and prevents further
     /// spans from including any previously lexed text.
-    fn end_current_parse(&mut self) {
+    pub fn end_current_parse(&mut self) {
         self.token_start = self.cursor;
         self.parse_start = self.cursor;
         self.end = self.cursor;
     }
 
+    /// Creates a sublexer starting at the current lex position. The returned
+    /// lexer will begin a new parse and advance past any filtered tokens.
+    pub fn into_sublexer(mut self) -> Self {
+        self.end_current_parse();
+        self
+    }
 
     /// Returns an iterator over the lexer tokens together with their spans.
     pub fn iter_with_spans<'l>(&'l mut self)
@@ -276,13 +281,6 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
     }
 
-    /// Creates a sublexer starting at the current lex position. The returned
-    /// lexer will begin a new parse and advance past any filtered tokens.
-    pub fn sublexer(&self) -> Self {
-        let mut sub = self.clone();
-        sub.end_current_parse();
-        sub
-    }
 
     /// Extends the receiver lexer to include the current parse span of the
     /// given lexer. (The given lexer's Scanner state will be discarded.)

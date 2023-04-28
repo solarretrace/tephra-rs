@@ -14,6 +14,7 @@
 // Internal library imports.
 use crate::delimited_list;
 use crate::delimited_list_bounded;
+use crate::sub;
 use crate::bracket_default;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
@@ -236,11 +237,11 @@ fn list_one_failed() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = delimited_list_bounded(
+    let actual = sub(delimited_list_bounded(
             1, None,
             pattern,
             Comma,
-            &[])
+            &[]))
         (lexer.clone(), ctx)
         .map_err(|e|
             SourceError::convert::<AbcToken>(e.into_owned(), source))

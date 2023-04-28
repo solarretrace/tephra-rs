@@ -13,7 +13,7 @@
 
 
 // Internal library imports.
-use crate::IntoErrorOwned;
+use crate::ParseError;
 use crate::Note;
 use crate::SpanDisplay;
 use crate::CodeDisplay;
@@ -42,8 +42,8 @@ use std::iter::IntoIterator;
 /// An error generated when a token is unrecognized.
 #[derive(Debug, Clone)]
 pub struct UnrecognizedTokenError {
-    /// The start position of the unrecognized token.
-    pub pos: Pos,
+    /// The span of the parse up to the unrecognized token.
+    pub parse_span: Span,
 }
 
 impl UnrecognizedTokenError {
@@ -55,7 +55,7 @@ impl UnrecognizedTokenError {
         SourceError::new(source_text, "unrecognized token")
             .with_span_display(SpanDisplay::new(
                 source_text,
-                Span::new_at(self.pos)))
+                Span::new_at(self.parse_span.end())))
             .with_cause(Box::new(self))
     }
 }
@@ -64,13 +64,17 @@ impl Display for UnrecognizedTokenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}",
             "unrecognized token",
-            self.pos)
+            self.parse_span.end())
     }
 }
 
 impl Error for UnrecognizedTokenError {}
 
-impl IntoErrorOwned for UnrecognizedTokenError {
+impl<'text> ParseError<'text> for UnrecognizedTokenError {
+    fn parse_span(&self) -> Option<Span> {
+        Some(self.parse_span)
+    }
+
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
         self
     }
@@ -184,7 +188,9 @@ pub struct UnexpectedTokenError<T> where T: Debug + Display + 'static {
     /// The found token.
     pub found: Found<T>,
     /// The span of the found token.
-    pub span: Span,
+    pub token_span: Span,
+    /// The span of the parse up to the end of the found token.
+    pub parse_span: Span,
 }
 
 impl<T> UnexpectedTokenError<T> where T: Debug + Display {
@@ -206,7 +212,7 @@ impl<T> UnexpectedTokenError<T> where T: Debug + Display {
         SourceError::new(source_text, "unexpected token")
             .with_span_display(SpanDisplay::new_error_highlight(
                 source_text,
-                self.span,
+                self.token_span,
                 self.expected_description()))
             .with_cause(Box::new(self))
     }
@@ -216,13 +222,19 @@ impl<T> Display for UnexpectedTokenError<T> where T: Debug + Display + 'static {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}",
             self.expected_description(),
-            self.span)
+            self.token_span)
     }
 }
 
 impl<T> Error for UnexpectedTokenError<T> where T: Debug + Display + 'static {}
 
-impl<T> IntoErrorOwned for UnexpectedTokenError<T> where T: Debug + Display + 'static {
+impl<'text, T> ParseError<'text> for UnexpectedTokenError<T>
+    where T: Debug + Display + 'static
+{
+    fn parse_span(&self) -> Option<Span> {
+        Some(self.parse_span)
+    }
+
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
         self
     }
@@ -244,7 +256,7 @@ impl Display for RecoverError {
 
 impl Error for RecoverError {}
 
-impl IntoErrorOwned for RecoverError {
+impl<'text> ParseError<'text> for RecoverError {
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
         self
     }

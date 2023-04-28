@@ -87,7 +87,8 @@ pub fn one<'text, Sc>(token: Sc::Token)
                 Err(Box::new(UnexpectedTokenError {
                     expected: Expected::Token(token.clone()),
                     found: Found::EndOfText,
-                    span: lexer.end_span(),
+                    token_span: lexer.end_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             },
 
@@ -107,7 +108,8 @@ pub fn one<'text, Sc>(token: Sc::Token)
                 Err(Box::new(UnexpectedTokenError {
                     expected: Expected::Token(token.clone()),
                     found: Found::Token(lex),
-                    span: lexer.token_span(),
+                    token_span: lexer.token_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             },
         }
@@ -143,7 +145,8 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 Err(Box::new(UnexpectedTokenError {
                     expected: Expected::any(tokens.iter().cloned()),
                     found: Found::EndOfText,
-                    span: lexer.end_span(),
+                    token_span: lexer.end_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             },
 
@@ -163,7 +166,8 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 Err(Box::new(UnexpectedTokenError {
                     expected: Expected::any(tokens.iter().cloned()),
                     found: Found::Token(lex),
-                    span: lexer.token_span(),
+                    token_span: lexer.token_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             }
         }
@@ -196,7 +200,8 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 Err(Box::new(UnexpectedTokenError {
                     expected: Expected::any(tokens.iter().cloned()),
                     found: Found::EndOfText,
-                    span: lexer.end_span(),
+                    token_span: lexer.end_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             },
 
@@ -216,7 +221,8 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 Err(Box::new(UnexpectedTokenError {
                     expected: Expected::any(tokens.iter().cloned()),
                     found: Found::Token(lex),
-                    span: lexer.token_span(),
+                    token_span: lexer.token_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             }
         }
@@ -292,7 +298,8 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 None => return Err(Box::new(UnexpectedTokenError {
                     expected: Expected::Token(token.clone()),
                     found: Found::EndOfText,
-                    span: lexer.end_span(),
+                    token_span: lexer.end_span(),
+                    parse_span: lexer.parse_span(),
                 })),
 
                 // Matching token.
@@ -302,7 +309,8 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 Some(lex) => return Err(Box::new(UnexpectedTokenError {
                     expected: Expected::Token(token.clone()),
                     found: Found::Token(lex),
-                    span: lexer.token_span(),
+                    token_span: lexer.token_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             }
         }
@@ -343,7 +351,7 @@ pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
             match lexer.peek() {
                 // Unrecognized token.
                 None => return Err(Box::new(UnrecognizedTokenError {
-                    pos: lexer.end_pos()
+                    parse_span: lexer.parse_span()
                 })),
 
                 // Matching token.
@@ -393,7 +401,8 @@ pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
                     expected: Expected::<Sc::Token>::Other(
                         format!("{:?}", pred)),
                     found: Found::EndOfText,
-                    span: lexer.end_span(),
+                    token_span: lexer.end_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             },
 
@@ -414,7 +423,8 @@ pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
                 Err(Box::new(UnexpectedTokenError {
                     expected: Expected::Other(format!("{:?}", pred)),
                     found: Found::Token(lex),
-                    span: lexer.token_span(),
+                    token_span: lexer.token_span(),
+                    parse_span: lexer.parse_span(),
                 }))
             },
         }
@@ -463,7 +473,8 @@ pub fn end_of_text<'text, Sc>(
         Err(Box::new(UnexpectedTokenError {
             expected: Expected::EndOfText,
             found: Found::Token(lex),
-            span: lexer.end_span(),
+            token_span: lexer.end_span(),
+            parse_span: lexer.parse_span(),
         }))
     }
 }
@@ -472,7 +483,7 @@ pub fn end_of_text<'text, Sc>(
 ////////////////////////////////////////////////////////////////////////////////
 // fail
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: Make this more general by taking a ParseError instead?
+// TODO: Make this more general by taking a ParseError<'text> instead?
 /// Parses any token and fails. Useful for failing if a peeked token doesn't
 /// match any expected tokens.
 ///
@@ -492,7 +503,7 @@ pub fn fail<'text, Sc, V>(
             event!(Level::TRACE, "success converted to failure");
             todo!()
             // Err(Failure::new(
-            //     ParseError::unexpected_token(
+            //     ParseError<'text>::unexpected_token(
             //         lexer.source_text(),
             //         lexer.token_span(),
             //         &token),
@@ -503,7 +514,7 @@ pub fn fail<'text, Sc, V>(
             event!(Level::TRACE, "no tokens");
             todo!()
             // Err(Failure::new(
-            //     ParseError::unexpected_end_of_text(
+            //     ParseError<'text>::unexpected_end_of_text(
             //         lexer.source_text(),
             //         lexer.end_span()),
             //     lexer
