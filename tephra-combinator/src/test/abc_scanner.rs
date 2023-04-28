@@ -26,7 +26,6 @@ use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
-use tephra::Span;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
@@ -200,21 +199,19 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     }
 
     // Setup error context.
-    let mut initial_lexer = lexer.clone();
-    let start_pos = initial_lexer.start_pos();
-    let _ = initial_lexer.take_filter();
     let source_text = lexer.source_text();
     let ctx = ctx.push(std::rc::Rc::new(move |e| {
-        let mut lexer = initial_lexer.clone();
-        lexer.advance_up_to(|tok| *tok != AbcToken::Ws);
-        lexer.advance_up_to(|tok| !tok.is_pattern_token());
-        
-        Box::new(SourceError::new(source_text, "expected pattern")
-            .with_span_display(SpanDisplay::new_error_highlight(
-                source_text,
-                Span::new_enclosing(start_pos, lexer.cursor_pos()),
-                "expected 'ABC', 'BXX', or 'XYC' pattern"))
-            .with_cause(e.into_owned()))
+        let se = SourceError::new(source_text, "expected pattern");
+        let se = match e.parse_span() {
+            None => se.with_cause(e.into_owned()),
+            Some(span) => se
+                .with_span_display(SpanDisplay::new_error_highlight(
+                    source_text,
+                    span,
+                    "expected 'ABC', 'BXX', or 'XYC' pattern"))
+                .with_cause(e.into_owned())
+        };
+        Box::new(se)
     }));
 
     spanned(text(xyc))
@@ -236,33 +233,28 @@ pub fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
-
-    let (c, succ) = one(B)
+    let ((x, y), succ) = both(
+            one(B),
+            any(&[A, B, C, D]))
         (lexer, ctx.clone())?
         .take_value();
 
-    let (x1, succ) = any(&[A, B, C, D])
-        (succ.lexer, ctx.clone())?
-        .take_value();
-
-    one(x1)
+    one(y)
         (succ.lexer, ctx)
-        .map_value(|x2| (c, x1, x2))
+        .map_value(|z| (x, y, z))
 }
 
 pub fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
-    let ((x, y), succ) = both(
+    both(
+        both(
             any(&[A, B, C, D]),
-            any(&[A, B, C, D]))
-        (lexer, ctx.clone())?
-        .take_value();
-
-    one(C)
-        (succ.lexer, ctx)
-        .map_value(|b| (x, y, b))
+            any(&[A, B, C, D])),
+        one(C))
+        (lexer, ctx)
+        .map_value(|((x, y), z)| (x, y, z))
 }
 
 

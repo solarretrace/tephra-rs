@@ -7,32 +7,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Parse error.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(missing_docs)]
-
-// Internal library imports.
-use crate::common::SourceError;
 
 // External library imports.
 use tephra_span::Span;
-use tephra_span::SourceText;
-
-// Standard library imports.
-use std::error::Error;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Error traits.
+// ParseError
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Provides a method to convert an error into an owned error.
+/// Provides common methods for parse errors.
 pub trait ParseError<'text>: std::error::Error + 'text {
     /// Returns the span of the current parse when the failure occurred, if
     /// available.
-    fn parse_span(&self) -> Option<Span> {
-        None
-    }
+    fn parse_span(&self) -> Option<Span> { None }
 
     /// Converts a ParseError<'text> into an owned error.
     fn into_owned(self: Box<Self>) -> Box<dyn std::error::Error + 'static>;

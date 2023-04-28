@@ -221,11 +221,8 @@ error: expected pattern
  --> (0:0-0:7, bytes 0-7)
   | 
 0 | abc ddd
-  | ^^^^^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+  |     ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
-    // NOTE: This error message is odd, but it is due to a poorly written parser
-    // composition. Since there is no sublex between the patterns, the whole
-    // parse fails or succeeds together.
 }
 
 /// Test failed `right` combinator with `raw` wrapper. Ensure error is not
@@ -325,12 +322,8 @@ error: expected pattern
  --> (0:0-0:4, bytes 0-4)
   | 
 0 | [ab]
-  | ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+  |  ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
-    // NOTE: This error message is odd, but it is due to a poorly written parser
-    // composition. The error context for this parse should know that there's a
-    // bracket prefix and a better error message should be written. (Or a
-    // bracket combinator should be used.)
 }
 
 /// Test failed `center` combinator with error recovery, with a delayed close
@@ -371,10 +364,6 @@ error: expected pattern
  --> (0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb] 
-  | ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+  |  ^^^^^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
-    // NOTE: This error message is odd, but it is due to a poorly written parser
-    // composition. The error context for this parse should know that there's a
-    // bracket prefix and a better error message should be written. (Or a
-    // bracket combinator should be used.)
 }

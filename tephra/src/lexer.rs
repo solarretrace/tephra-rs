@@ -165,10 +165,12 @@ impl<'text, Sc> Lexer<'text, Sc>
         self.cursor
     }
 
-    /// Consumes the text from the `parse_start` of the current parse up to the
-    /// current position. This ends the 'current parse' and prevents further
-    /// spans from including any previously lexed text.
+    /// Consumes the text from the `parse_start` of the current parse past any
+    /// filtered tokens after the current position. This ends the 'current
+    /// parse' and prevents further spans from including any previously lexed
+    /// text.
     pub fn end_current_parse(&mut self) {
+        self.scan_to_buffer();
         self.token_start = self.cursor;
         self.parse_start = self.cursor;
         self.end = self.cursor;
@@ -179,14 +181,6 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn into_sublexer(mut self) -> Self {
         self.end_current_parse();
         self
-    }
-
-    /// Returns an iterator over the lexer tokens together with their spans.
-    pub fn iter_with_spans<'l>(&'l mut self)
-        -> IterWithSpans<'text, 'l, Sc>
-        where Sc: Scanner
-    {
-        IterWithSpans { lexer: self }
     }
 
     /// Sets the token filter to the given function. Any token for which the
@@ -281,7 +275,6 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
     }
 
-
     /// Extends the receiver lexer to include the current parse span of the
     /// given lexer. (The given lexer's Scanner state will be discarded.)
     pub fn join(mut self, other: Self) -> Self {
@@ -323,7 +316,6 @@ impl<'text, Sc> Lexer<'text, Sc>
                 .map(|(_tok, span)| *span)
         }
     }
-    
 
     /// Returns the span (excluding filtered text) from the start of the parse
     /// to the current position.
@@ -351,6 +343,14 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns the span at the lexer cursor.
     pub fn cursor_span(&self) -> Span {
         Span::new_at(self.cursor)
+    }
+
+    /// Returns an iterator over the lexer tokens together with their spans.
+    pub fn iter_with_spans<'l>(&'l mut self)
+        -> IterWithSpans<'text, 'l, Sc>
+        where Sc: Scanner
+    {
+        IterWithSpans { lexer: self }
     }
 
     /// Returns the recover state used to indicate a token to advance to when a

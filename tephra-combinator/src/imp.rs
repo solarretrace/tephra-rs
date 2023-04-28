@@ -10,7 +10,6 @@
 
 
 // Internal library imports.
-use crate::fail;
 use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResult;
@@ -76,7 +75,8 @@ pub fn cond<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
             parser(lexer, ctx)
                 .trace_result(Level::TRACE, "true branch")
         } else {
-            fail(lexer, ctx)
+            // fail(lexer, ctx)
+            todo!()
         }
     }
 }
