@@ -42,7 +42,7 @@ use std::iter::IntoIterator;
 /// An error generated when a token is unrecognized.
 #[derive(Debug, Clone)]
 pub struct UnrecognizedTokenError {
-    /// The span of the parse up to the unrecognized token.
+    /// The span of the parse up to the start of the unrecognized token.
     pub parse_span: Span,
 }
 
@@ -183,14 +183,14 @@ impl<T> Display for Found<T> where T: Debug + Display + 'static {
 /// An error generated when a token is unexpected.
 #[derive(Debug, Clone)]
 pub struct UnexpectedTokenError<T> where T: Debug + Display + 'static {
+    /// The span of the parse up to the start of the unexpected token.
+    pub parse_span: Span,
+    /// The span of the found token.
+    pub token_span: Span,
     /// The expected tokens.
     pub expected: Expected<T>,
     /// The found token.
     pub found: Found<T>,
-    /// The span of the found token.
-    pub token_span: Span,
-    /// The span of the parse up to the end of the found token.
-    pub parse_span: Span,
 }
 
 impl<T> UnexpectedTokenError<T> where T: Debug + Display {

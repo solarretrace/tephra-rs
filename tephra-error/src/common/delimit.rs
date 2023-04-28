@@ -223,7 +223,7 @@ impl<'text> ParseError<'text> for MatchBracketError {
 /// of times.
 #[derive(Debug, Clone)]
 pub struct RepeatCountError {
-    /// The span of the parse up to the end of the valid count.
+    /// The span of the parse up to the start of the invalid count.
     pub parse_span: Span,
     /// The number of parsed items found.
     pub found: usize,

@@ -322,7 +322,7 @@ error: expected pattern
  --> (0:0-0:4, bytes 0-4)
   | 
 0 | [ab]
-  |  ^^^ expected 'ABC', 'BXX', or 'XYC' pattern
+  |  ^^ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 

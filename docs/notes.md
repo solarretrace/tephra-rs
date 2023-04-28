@@ -257,3 +257,9 @@ Three important aspects of nice parsing:
     * Error recovery on|off
 
     
+# Doc sections
+
++ Arguments
++ Error recovery
++ Errors
++ Panics

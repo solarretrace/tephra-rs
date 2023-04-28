@@ -30,6 +30,8 @@ use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
 use tephra::common::SourceError;
+use tephra::common::UnexpectedTokenError;
+use tephra::common::Found;
 use tephra::SpanDisplay;
 use tephra::Spanned;
 use tephra::Success;
@@ -201,15 +203,25 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     // Setup error context.
     let source_text = lexer.source_text();
     let ctx = ctx.push(std::rc::Rc::new(move |e| {
+        let parse_span = e.parse_span();
+        let e = e.into_owned();
+        let token_span = e
+            .downcast_ref::<UnexpectedTokenError<AbcToken>>()
+            .and_then(|e| match e.found {
+                Found::Token(t) if t.is_pattern_token()
+                    => Some(e.token_span),
+                _   => None,
+            });
+
         let se = SourceError::new(source_text, "expected pattern");
-        let se = match e.parse_span() {
-            None => se.with_cause(e.into_owned()),
+        let se = match parse_span {
+            None => se.with_cause(e),
             Some(span) => se
                 .with_span_display(SpanDisplay::new_error_highlight(
                     source_text,
-                    span,
+                    token_span.map(|t| span.enclose(t)).unwrap_or(span),
                     "expected 'ABC', 'BXX', or 'XYC' pattern"))
-                .with_cause(e.into_owned())
+                .with_cause(e)
         };
         Box::new(se)
     }));
