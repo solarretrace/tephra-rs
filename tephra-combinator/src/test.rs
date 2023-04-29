@@ -11,6 +11,7 @@
 
 // Internal modules.
 mod abc_bracket;
+mod abc_cond;
 mod abc_list;
 mod abc_join;
 mod abc_scanner;

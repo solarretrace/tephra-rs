@@ -205,6 +205,8 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     let ctx = ctx.push(std::rc::Rc::new(move |e| {
         let parse_span = e.parse_span();
         let e = e.into_owned();
+        // Collect the token span so that we can include it in the final span.
+        // Non-pattern tokens are excluded.
         let token_span = e
             .downcast_ref::<UnexpectedTokenError<AbcToken>>()
             .and_then(|e| match e.found {

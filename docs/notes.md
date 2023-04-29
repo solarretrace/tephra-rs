@@ -259,6 +259,7 @@ Three important aspects of nice parsing:
     
 # Doc sections
 
++ Similar combinators
 + Arguments
 + Error recovery
 + Errors

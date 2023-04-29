@@ -105,9 +105,9 @@
 
 // Internal modules.
 mod alt;
+mod cond;
 mod control;
 mod delimit;
-mod imp;
 mod join;
 mod primitive;
 mod repeat;
@@ -116,9 +116,9 @@ mod test;
 
 // Exports.
 pub use alt::*;
+pub use cond::*;
 pub use control::*;
 pub use delimit::*;
-pub use imp::*;
 pub use join::*;
 pub use primitive::*;
 pub use repeat::*;
