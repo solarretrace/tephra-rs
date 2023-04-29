@@ -59,7 +59,6 @@ pub fn empty<'text, Sc>(lexer: Lexer<'text, Sc>, _ctx: Context<'text, Sc>)
 
 // TODO: Make a version of this to consume filtered tokens? any_filtered
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // one
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,9 +73,8 @@ pub fn one<'text, Sc>(token: Sc::Token)
         -> ParseResult<'text, Sc, Sc::Token>
     where Sc: Scanner,
 {
-
     move |mut lexer, _ctx| {
-        let _span = span!(Level::DEBUG, "one", expected = ?token).entered();
+        // let _span = span!(Level::DEBUG, "one", expected = ?token).entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
         let parse_span = lexer.parse_span();
@@ -394,7 +392,7 @@ pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
 {
     let pred = DnfVec::from(expr.map(Token));
     move |mut lexer, _ctx| {
-        let _span = span!(Level::DEBUG, "one", expected = ?token).entered();
+        let _span = span!(Level::DEBUG, "pred").entered();
 
         event!(Level::TRACE, "before parse:\n{}", lexer);
         let parse_span = lexer.parse_span();
