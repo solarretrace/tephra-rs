@@ -12,7 +12,7 @@
 use tephra_error::Highlight;
 use tephra_error::CodeDisplay;
 use tephra_error::SpanDisplay;
-use tephra_error::common::RecoverError;
+use tephra_error::error::RecoverError;
 use tephra_span::ColumnMetrics;
 use tephra_span::LineEnding;
 use tephra_span::Pos;

@@ -105,10 +105,11 @@
 
 // Internal modules.
 mod alt;
+mod bracket;
 mod cond;
 mod control;
-mod delimit;
 mod join;
+mod list;
 mod primitive;
 mod repeat;
 #[cfg(test)]
@@ -116,10 +117,11 @@ mod test;
 
 // Exports.
 pub use alt::*;
+pub use bracket::*;
 pub use cond::*;
 pub use control::*;
-pub use delimit::*;
 pub use join::*;
+pub use list::*;
 pub use primitive::*;
 pub use repeat::*;
 pub use simple_predicates::Expr;

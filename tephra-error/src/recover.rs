@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
-use crate::common::RecoverError;
+use crate::error::RecoverError;
 
 // Standard library imports.
 use std::rc::Rc;

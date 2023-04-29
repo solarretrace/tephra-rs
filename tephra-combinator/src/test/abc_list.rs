@@ -28,7 +28,7 @@ use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
 use tephra::Span;
-use tephra::common::SourceError;
+use tephra::error::SourceError;
 use tephra::Spanned;
 use test_log::test;
 use ntest::timeout;

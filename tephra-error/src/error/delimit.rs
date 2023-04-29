@@ -18,7 +18,7 @@ use crate::Note;
 use crate::SpanDisplay;
 use crate::CodeDisplay;
 use crate::Highlight;
-use crate::common::SourceError;
+use crate::error::SourceError;
 
 // External library imports.
 use tephra_span::SourceText;

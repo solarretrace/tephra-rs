@@ -58,35 +58,35 @@ impl<'text> SourceError<'text> {
         where T: Debug + Display + 'static,
     {
         error = match error
-            .downcast::<crate::common::UnexpectedTokenError<T>>()
+            .downcast::<crate::error::UnexpectedTokenError<T>>()
         {
             Ok(e)  => { return Ok(e.into_source_error(source_text)); }
             Err(e) => e,
         };
 
         error = match error
-            .downcast::<crate::common::UnrecognizedTokenError>()
+            .downcast::<crate::error::UnrecognizedTokenError>()
         {
             Ok(e)  => { return Ok(e.into_source_error(source_text)); }
             Err(e) => e,
         };
 
         error = match error
-            .downcast::<crate::common::ParseBoundaryError>()
+            .downcast::<crate::error::ParseBoundaryError>()
         {
             Ok(e)  => { return Ok(e.into_source_error(source_text)); }
             Err(e) => e,
         };
 
         error = match error
-            .downcast::<crate::common::MatchBracketError>()
+            .downcast::<crate::error::MatchBracketError>()
         {
             Ok(e)  => { return Ok(e.into_source_error(source_text)); }
             Err(e) => e,
         };
 
         error = match error
-            .downcast::<crate::common::RepeatCountError>()
+            .downcast::<crate::error::RepeatCountError>()
         {
             Ok(e)  => { return Ok(e.into_source_error(source_text)); }
             Err(e) => e,

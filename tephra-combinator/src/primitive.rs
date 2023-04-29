@@ -19,10 +19,10 @@ use tephra::Success;
 use simple_predicates::DnfVec;
 use simple_predicates::Eval;
 use simple_predicates::Expr;
-use tephra::common::UnexpectedTokenError;
-use tephra::common::UnrecognizedTokenError;
-use tephra::common::Expected;
-use tephra::common::Found;
+use tephra::error::UnexpectedTokenError;
+use tephra::error::UnrecognizedTokenError;
+use tephra::error::Expected;
+use tephra::error::Found;
 use tephra_tracing::event;
 use tephra_tracing::Level;
 use tephra_tracing::span;
@@ -280,7 +280,7 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
     // NOTE: We could just preconstruct the result here, since if `seq` succeeds
     // then the result is the input. However, it is possible that `PartialEq` on
     // the tokens allows two tokens to match when they are different, so there
-    // is potential value in constructing the result incrementally like this.
+    // is potential value in constructing the result incrementally as we do.
 
     let cap = tokens.len();
     move |mut lexer, _ctx| {

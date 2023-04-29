@@ -26,7 +26,7 @@ use tephra::Context;
 use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
-use tephra::common::SourceError;
+use tephra::error::SourceError;
 use tephra::Span;
 use tephra::Spanned;
 // use tephra::recover_before;

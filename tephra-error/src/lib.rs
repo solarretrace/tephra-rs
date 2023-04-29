@@ -108,17 +108,16 @@
 
 // Internal modules.
 mod display;
-mod error;
 mod highlight;
 mod message;
 mod note;
 mod recover;
 
-pub mod common;
+pub mod error;
 
 // Exports.
+pub use error::ParseError;
 pub use display::*;
-pub use error::*;
 pub use highlight::*;
 pub use message::*;
 pub use note::*;
