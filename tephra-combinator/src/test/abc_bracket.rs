@@ -61,7 +61,7 @@ fn recover_missing() {
     let actual = bracket(
             &[OpenBracket],
             pattern,
-            &[CloseBracket], &[])
+            &[CloseBracket], |_| false)
         (lexer.clone(), ctx)
         .map_err(|e| SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
@@ -95,7 +95,7 @@ fn recover_unmatched_open() {
     let actual = bracket(
             &[OpenBracket],
             pattern,
-            &[CloseBracket], &[])
+            &[CloseBracket], |_| false)
         (lexer.clone(), ctx)
         .map_err(|e|
             SourceError::convert::<AbcToken>(e.into_owned(), source))
@@ -128,7 +128,7 @@ fn recover_unmatched_closed() {
     let actual = bracket(
             &[OpenBracket],
             pattern,
-            &[CloseBracket], &[])
+            &[CloseBracket], |_| false)
         (lexer.clone(), ctx)
         .map_err(|e| SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
@@ -160,7 +160,7 @@ fn recover_mismatched() {
     let actual = bracket(
             &[OpenBracket, OpenBracket],
             pattern,
-            &[CloseBracket, Comma], &[])
+            &[CloseBracket, Comma], |_| false)
         (lexer.clone(), ctx)
         .map_err(|e| SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
@@ -194,7 +194,7 @@ fn recover_unmatched_raw() {
     let actual = raw(bracket(
             &[OpenBracket],
             pattern,
-            &[CloseBracket], &[]))
+            &[CloseBracket], |_| false))
         (lexer.clone(), ctx)
         .map_err(|e| SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
@@ -227,7 +227,7 @@ fn recover_unmatched_unrecoverable() {
     let actual = unrecoverable(bracket(
             &[OpenBracket],
             pattern,
-            &[CloseBracket], &[]))
+            &[CloseBracket], |_| false))
         (lexer.clone(), ctx)
         .map_err(|e| SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();
@@ -258,7 +258,7 @@ fn comma_bracket() {
             &[A],
             one(Comma),
             &[B],
-            &[]))
+            |_| false))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -291,12 +291,12 @@ fn matching_both() {
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
-                &[]),
+                |_| false),
             bracket(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
-                &[]))
+                |_| false))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -334,12 +334,12 @@ fn matching_both_first_fail() {
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
-                &[]),
+                |_| false),
             bracket(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
-                &[]))
+                |_| false))
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -385,12 +385,12 @@ fn matching_both_mismatch() {
                 &[OpenBracket, OpenBracket],
                 pattern,
                 &[CloseBracket, Comma],
-                &[]),
+                |_| false),
             bracket(
                 &[OpenBracket, OpenBracket],
                 pattern,
                 &[CloseBracket, Comma],
-                &[]))
+                |_| false))
         (lexer.clone(), ctx)
         .map_err(|e| SourceError::convert::<AbcToken>(e.into_owned(), source))
         .unwrap_err();

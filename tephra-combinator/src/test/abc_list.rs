@@ -59,7 +59,7 @@ fn list_empty() {
     let (value, succ) = delimited_list(
             pattern,
             Comma,
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -89,7 +89,7 @@ fn list_one() {
     let (value, succ) = delimited_list(
             pattern,
             Comma,
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -125,9 +125,9 @@ fn bracket_list_one() {
             delimited_list(
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -161,7 +161,7 @@ fn list_two() {
     let (value, succ) = delimited_list(
             pattern,
             Comma,
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -200,9 +200,9 @@ fn bracket_list_two() {
             delimited_list(
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -241,7 +241,7 @@ fn list_one_failed() {
             1, None,
             pattern,
             Comma,
-            &[]))
+            |_| false))
         (lexer.clone(), ctx)
         .map_err(|e|
             SourceError::convert::<AbcToken>(e.into_owned(), source))
@@ -275,9 +275,9 @@ fn bracket_list_zero() {
             delimited_list(
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .unwrap()
         .take_value();
@@ -308,9 +308,9 @@ fn bracket_list_one_failed() {
                 1, None,
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .map_err(|e|
             SourceError::convert::<AbcToken>(e.into_owned(), source))
@@ -349,9 +349,9 @@ fn bracket_list_one_recovered() {
                 1, None,
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -396,9 +396,9 @@ fn bracket_list_two_recovered_first() {
             delimited_list(
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -448,9 +448,9 @@ fn bracket_list_two_recovered_second() {
             delimited_list(
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -501,9 +501,9 @@ fn bracket_list_missing_delimiter() {
             delimited_list(
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -550,13 +550,13 @@ fn bracket_list_nested() {
                     delimited_list(
                         pattern,
                         Comma,
-                        &[CloseBracket]),
+                        |tok| *tok == CloseBracket),
                     &[CloseBracket],
-                    &[]),
+                    |_| false),
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -610,9 +610,9 @@ fn bracket_list_commas() {
                 1, None,
                 pattern,
                 Comma,
-                &[CloseBracket]),
+                |tok| *tok == CloseBracket),
             &[CloseBracket],
-            &[])
+            |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();

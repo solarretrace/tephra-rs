@@ -150,9 +150,9 @@ fn pattern_implies_list() {
                 delimited_list(
                     pattern,
                     Comma,
-                    &[CloseBracket]),
+                    |tok| *tok == CloseBracket),
                 &[CloseBracket],
-                &[CloseBracket]))
+                |_| false))
         (lexer, ctx)
         .expect("successful parse")
         .take_value();

@@ -407,7 +407,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
     pub fn advance_up_to<P>(&mut self, mut pred: P) -> bool
-        where P: FnMut(&Sc::Token) -> bool
+        where P: Fn(&Sc::Token) -> bool
     {
         let _span = span!(Level::TRACE, "advance_to").entered();
         while let Some(tok) = self.peek() {
@@ -424,7 +424,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
     pub fn advance_to<P>(&mut self, mut pred: P) -> bool
-        where P: FnMut(&Sc::Token) -> bool
+        where P: Fn(&Sc::Token) -> bool
     {
         let _span = span!(Level::TRACE, "advance_past").entered();
         while let Some(tok) = self.next() {
@@ -439,7 +439,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
     pub fn advance_up_to_unfiltered<P>(&mut self, pred: P) -> bool
-        where P: FnMut(&Sc::Token) -> bool
+        where P: Fn(&Sc::Token) -> bool
     {
         let filter = self.take_filter();
         let res = self.advance_up_to(pred);
@@ -453,7 +453,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
     pub fn advance_to_unfiltered<P>(&mut self, pred: P) -> bool
-        where P: FnMut(&Sc::Token) -> bool
+        where P: Fn(&Sc::Token) -> bool
     {
         let filter = self.take_filter();
         let res = self.advance_to(pred);

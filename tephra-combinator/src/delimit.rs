@@ -40,32 +40,33 @@ use std::sync::RwLock;
 /// Returns a parser which requires the given parser to produce a value by
 /// consuming up to one of the given tokens.
 ///
-/// If the given parser is successful, but doesn't terminate on one of the
-/// `abort_tokens`, then an error is returned.
+/// If the given parser is successful, but doesn't terminate on a token
+/// satisfying `abort_pred`, then an error is returned.
 ///
 /// ## Error recovery
 ///
 /// No error recovery is attempted.
-pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a>(
+pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a, A>(
     mut parser: F,
-    abort_tokens: &'a [Sc::Token])
+    abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, X> + 'a
     where
         Sc: Scanner + 'a,
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, X> + 'a,
+        A: Fn(&Sc::Token) -> bool + 'a + Clone,
 {
     move |lexer, ctx| { 
         let mut succ = (parser)(lexer, ctx)?;
 
         match succ.lexer.peek() {
-            None                                     => Ok(succ),
-            Some(tok) if abort_tokens.contains(&tok) => Ok(succ),
+            None                          => Ok(succ),
+            Some(tok) if (abort_pred)(&tok) => Ok(succ),
             _ => {
                 let parse_span = succ.lexer.parse_span();
                 // Advance lexer to the expected token.
-                succ.lexer.advance_to(|tok| abort_tokens.contains(tok));
+                succ.lexer.advance_to(&abort_pred);
 
                 Err(Box::new(ParseBoundaryError {
                     parse_span,
@@ -89,26 +90,27 @@ pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a>(
 /// `close_tokens`. Each slice must be the same length, and must not contain any
 /// shared tokens.
 ///
-/// The `abort_tokens` argument can be used to limit the search for open
-/// brackets by failing if any of the abort tokens is encountered before an open
-/// token. If a valid open token is guaranteed to be found, this can be empty.
+/// The `abort_pred` argument can be used to limit the search for open
+/// brackets by failing if any of the encountered tokens satisfies the predicate
+/// before any open token is found.
 ///
 /// ## Error recovery
 ///
 /// Attempts error recovery if the given parser fails by scanning for the right
 /// token. If the right token is not found, an unmatched delimiter error will
 /// be emitted, and a `None` value will be returned.
-pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a>(
+pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a, A>(
     open_tokens: &'a [Sc::Token],
     mut center: F,
     close_tokens: &'a [Sc::Token],
-    abort_tokens: &'a [Sc::Token])
+    abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, (Option<X>, usize)> + 'a
     where
         Sc: Scanner + 'a,
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, X> + 'a,
+        A: Fn(&Sc::Token) -> bool + 'a + Clone,
 { 
     let option_center = move |lexer, ctx| {
         (center)
@@ -116,7 +118,7 @@ pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a>(
             .map_value(Some)
     };
 
-    bracket_default(open_tokens, option_center, close_tokens, abort_tokens)
+    bracket_default(open_tokens, option_center, close_tokens, abort_pred)
 }
 
 /// Returns a parser which brackets the given parser in a any of a given pair of
@@ -126,20 +128,20 @@ pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a>(
 /// `close_tokens`. Each slice must be the same length, and must not contain any
 /// shared tokens.
 ///
-/// The `abort_tokens` argument can be used to limit the search for open
-/// brackets by failing if any of the abort tokens is encountered before an open
-/// token. If a valid open token is guaranteed to be found, this can be empty.
+/// The `abort_pred` argument can be used to limit the search for open
+/// brackets by failing if any of the encountered tokens satisfies the predicate
+/// before any open token is found.
 ///
 /// ## Error recovery
 ///
 /// Attempts error recovery if the given parser fails by scanning for the right
 /// token. If the right token is not found, an unmatched delimiter error will
 /// be emitted, and a default value will be returned.
-pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
+pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     open_tokens: &'a [Sc::Token],
     mut center: F,
     close_tokens: &'a [Sc::Token],
-    abort_tokens: &'a [Sc::Token])
+    abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, (X, usize)> + 'a
     where
@@ -147,6 +149,7 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, X> + 'a,
         X: Default,
+        A: Fn(&Sc::Token) -> bool + 'a + Clone,
 {
     if open_tokens.is_empty() || close_tokens.is_empty() {
         panic!("invalid argument to bracket: empty token slice");
@@ -165,10 +168,11 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
     move |lexer, ctx| {
         let _span = span!(Level::DEBUG, "bracket").entered();
 
-        match match_nested_brackets(lexer.clone(),
+        match match_nested_brackets(
+            lexer.clone(),
             open_tokens,
             close_tokens,
-            abort_tokens)
+            &abort_pred)
         {
             Err(bracket_error) => Err(Box::new(bracket_error)),
 
@@ -213,16 +217,18 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a>(
 /// `close_tokens`. Each slice must be the same length, and must not contain any
 /// shared tokens.
 ///
-/// The `abort_tokens` argument can be used to limit the search for open
+/// The `abort_pred` argument can be used to limit the search for open
 /// brackets by failing if any of the abort tokens is encountered before an open
 /// token. If a valid open token is guaranteed to be found, this can be empty.
-fn match_nested_brackets<'text: 'a, 'a, Sc>(
+fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
     mut lexer: Lexer<'text, Sc>,
     open_tokens: &'a [Sc::Token],
     close_tokens: &'a [Sc::Token],
-    abort_tokens: &'a [Sc::Token])
+    abort_pred: A)
     -> Result<BracketMatch<'text, Sc>, MatchBracketError>
-    where Sc: Scanner
+    where
+        Sc: Scanner,
+        A: Fn(&Sc::Token) -> bool + 'a + Clone,
 {
     use MatchBracketError::*;
     let start_span = lexer.start_span();
@@ -275,7 +281,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc>(
                 },
                 Some(_) => unreachable!(),
             }
-        } else if abort_tokens.contains(&tok) && open_lexer.is_none() {
+        } else if abort_pred(&tok) && open_lexer.is_none() {
             // Abort search if no open tokens found before abort token.
             return Err(NoneFound {
                 expected_start: lexer.peek_token_span().unwrap(),
@@ -316,31 +322,33 @@ struct BracketMatch<'text, Sc> where Sc: Scanner {
 // List combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn delimited_list<'text: 'a, 'a, Sc, F, X: 'a>(
+pub fn delimited_list<'text: 'a, 'a, Sc, F, X: 'a, A>(
     parser: F,
     sep_token: Sc::Token,
-    abort_tokens: &'a [Sc::Token])
+    abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<Option<X>>> + 'a
     where
         Sc: Scanner + 'a,
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, X> + 'a,
+        A: Fn(&Sc::Token) -> bool + 'static + Clone,
 {
-    delimited_list_bounded(0, None, parser, sep_token, abort_tokens)
+    delimited_list_bounded(0, None, parser, sep_token, abort_pred)
 }
 
 
-pub fn delimited_list_bounded<'text: 'a, 'a, Sc, F, X: 'a>(
+pub fn delimited_list_bounded<'text: 'a, 'a, Sc, F, X: 'a, A>(
     low: usize,
     high: Option<usize>,
     mut parser: F,
     sep_token: Sc::Token,
-    abort_tokens: &'a [Sc::Token])
+    abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<Option<X>>> + 'a
     where
         Sc: Scanner + 'a,
+        A: Fn(&Sc::Token) -> bool + 'static + Clone,
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, X> + 'a,
 {
@@ -355,14 +363,14 @@ pub fn delimited_list_bounded<'text: 'a, 'a, Sc, F, X: 'a>(
         high,
         option_parser,
         sep_token,
-        abort_tokens)
+        abort_pred)
 }
 
 
-pub fn delimited_list_default<'text: 'a, 'a, Sc, F, X: 'a>(
+pub fn delimited_list_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     parser: F,
     sep_token: Sc::Token,
-    abort_tokens: &'a [Sc::Token])
+    abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<X>> + 'a
     where
@@ -370,17 +378,18 @@ pub fn delimited_list_default<'text: 'a, 'a, Sc, F, X: 'a>(
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, X> + 'a,
         X: Default,
+        A: Fn(&Sc::Token) -> bool + 'static + Clone,
 {
-    delimited_list_bounded_default(0, None, parser, sep_token, abort_tokens)
+    delimited_list_bounded_default(0, None, parser, sep_token, abort_pred)
 }
 
 
-pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
+pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     low: usize,
     high: Option<usize>,
     mut parser: F,
     sep_token: Sc::Token,
-    abort_tokens: &'a [Sc::Token])
+    abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Vec<X>> + 'a
     where
@@ -388,14 +397,18 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, X> + 'a,
         X: Default,
+        A: Fn(&Sc::Token) -> bool + 'static + Clone,
 {
-    let mut sep_or_abort_tokens = Vec::with_capacity(abort_tokens.len() + 1);
-    sep_or_abort_tokens.push(sep_token.clone());
-    sep_or_abort_tokens.extend_from_slice(abort_tokens);
+    let move_token = sep_token.clone();
+    let move_pred = abort_pred.clone();
+    let sep_or_abort_pred = move |tok: &Sc::Token| {
+        tok == &move_token || (move_pred)(tok)
+    };
 
-    let recover_abort_tokens = sep_or_abort_tokens.to_owned();
-    let recover_pat = Rc::new(RwLock::new(move |tok| {
-        Ok(recover_abort_tokens.contains(&tok))
+    let rec_token = sep_token.clone();
+    let rec_pred = abort_pred.clone();
+    let recover_pat = Rc::new(RwLock::new(move |tok: Sc::Token| {
+        Ok(tok == rec_token || rec_pred(&tok))
     }));
 
     move |mut lexer, ctx| {
@@ -418,7 +431,7 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
             // End loop if no remaining text.
             match lexer.peek() {
                 None => { break; }
-                Some(tok) if abort_tokens.contains(&tok) => {
+                Some(tok) if (abort_pred)(&tok) => {
                     if vals.is_empty() { break; }
                     aborting = true;
                 }
@@ -428,7 +441,7 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
 
             // Try to parse value.
             let res = stabilize(recover_default(
-                    up_to(&mut parser, &sep_or_abort_tokens),
+                    up_to(&mut parser, &sep_or_abort_pred),
                     recover_pat.clone()))
                 (lexer.clone(), ctx.clone());
 
@@ -446,7 +459,7 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a>(
             // End loop if no remaining text.
             match lexer.peek() {
                 None => { break; }
-                Some(tok) if abort_tokens.contains(&tok) => { break; }
+                Some(tok) if (abort_pred)(&tok) => { break; }
                 _ => (),
             }
             if lexer.is_empty() { break; }
