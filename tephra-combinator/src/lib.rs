@@ -110,6 +110,7 @@ mod cond;
 mod control;
 mod join;
 mod list;
+mod misc;
 mod primitive;
 mod repeat;
 #[cfg(test)]
@@ -122,6 +123,7 @@ pub use cond::*;
 pub use control::*;
 pub use join::*;
 pub use list::*;
+pub use misc::*;
 pub use primitive::*;
 pub use repeat::*;
 pub use simple_predicates::Expr;

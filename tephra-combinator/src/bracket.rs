@@ -8,6 +8,9 @@
 //! Parser combinators for delimitted brackets and lists.
 ////////////////////////////////////////////////////////////////////////////////
 
+// Internal library imports.
+use crate::map;
+
 // External library imports.
 use tephra::error::MatchBracketError;
 use tephra::Context;
@@ -21,10 +24,45 @@ use tephra_tracing::span;
 use smallvec::SmallVec;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Bracket combinators.
 ////////////////////////////////////////////////////////////////////////////////
+
+pub fn bracket_inner<'text: 'a, 'a, Sc, F, X: 'a, A>(
+    open_tokens: &'a [Sc::Token],
+    inner: F,
+    close_tokens: &'a [Sc::Token],
+    abort_pred: A)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+        -> ParseResult<'text, Sc, Option<X>> + 'a
+    where
+        Sc: Scanner + 'a,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, X> + 'a,
+        A: Fn(&Sc::Token) -> bool + 'a + Clone,
+{ 
+    map(bracket(open_tokens, inner, close_tokens, abort_pred),
+        |(v, _)| v)
+}
+
+
+pub fn bracket_default_inner<'text: 'a, 'a, Sc, F, X: 'a, A>(
+    open_tokens: &'a [Sc::Token],
+    inner: F,
+    close_tokens: &'a [Sc::Token],
+    abort_pred: A)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+        -> ParseResult<'text, Sc, X> + 'a
+    where
+        Sc: Scanner + 'a,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, X> + 'a,
+        X: Default,
+        A: Fn(&Sc::Token) -> bool + 'a + Clone,
+{ 
+    map(bracket_default(open_tokens, inner, close_tokens, abort_pred),
+        |(v, _)| v)
+}
 
 
 /// Returns a parser which brackets the given parser in a any of a given pair of
@@ -45,7 +83,7 @@ use smallvec::SmallVec;
 /// be emitted, and a `None` value will be returned.
 pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a, A>(
     open_tokens: &'a [Sc::Token],
-    mut center: F,
+    mut inner: F,
     close_tokens: &'a [Sc::Token],
     abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
@@ -56,14 +94,15 @@ pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a, A>(
             -> ParseResult<'text, Sc, X> + 'a,
         A: Fn(&Sc::Token) -> bool + 'a + Clone,
 { 
-    let option_center = move |lexer, ctx| {
-        (center)
+    let option_inner = move |lexer, ctx| {
+        (inner)
             (lexer, ctx)
             .map_value(Some)
     };
 
-    bracket_default(open_tokens, option_center, close_tokens, abort_pred)
+    bracket_default(open_tokens, option_inner, close_tokens, abort_pred)
 }
+
 
 /// Returns a parser which brackets the given parser in a any of a given pair of
 /// matching tokens. Uses `Default` values for recoverable errors.
@@ -83,7 +122,7 @@ pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a, A>(
 /// be emitted, and a default value will be returned.
 pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     open_tokens: &'a [Sc::Token],
-    mut center: F,
+    mut inner: F,
     close_tokens: &'a [Sc::Token],
     abort_pred: A)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
@@ -123,15 +162,15 @@ pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
             Ok(BracketMatch {mut open, mut close, index }) => {
                 // Prepare the sublexers.
                 let _ = open.next();
-                let center_lexer = open.into_sublexer();
+                let inner_lexer = open.into_sublexer();
                 let _ = close.next();
 
                 // NOTE: We will do manual error recovery here: we don't want to
                 // advance to a token, because they're potentially nested. We
                 // instead substitute the close, which is already pointing
                 // to the proper recovery position.
-                match (center)
-                    (center_lexer, ctx.clone())
+                match (inner)
+                    (inner_lexer, ctx.clone())
                     .map_value(|v| (v, index))
                 {
                     Ok(succ) => Ok(Success {
