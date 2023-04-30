@@ -38,7 +38,8 @@ pub trait ParseResultExt<'text, Sc, V>
 {
     /// Converts the ParseResult into a Result containing the parsed value,
     /// discarding any associated spans or lexer state.
-    fn finish(self) -> Result<V, Box<dyn std::error::Error + 'static>>;
+    fn finish(self)
+        -> Result<V, Box<dyn std::error::Error + Send + Sync + 'static>>;
 
     /// Converts `ParseResult<'_, _, _, V>` into a `ParseResult<'_, _, _, U>` by
     /// applying the given closure.
@@ -60,7 +61,9 @@ pub trait ParseResultExt<'text, Sc, V>
 impl<'text, Sc, V> ParseResultExt<'text, Sc, V> for ParseResult<'text, Sc, V>
     where Sc: Scanner,
 {
-    fn finish(self) -> Result<V, Box<dyn std::error::Error + 'static>> {
+    fn finish(self)
+        -> Result<V, Box<dyn std::error::Error + Send + Sync + 'static>>
+    {
         self
             .map(Success::into_value)
             .map_err(|e| e.into_owned())

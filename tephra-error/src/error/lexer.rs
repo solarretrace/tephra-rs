@@ -75,7 +75,7 @@ impl<'text> ParseError<'text> for UnrecognizedTokenError {
         Some(self.parse_span)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }
@@ -182,7 +182,9 @@ impl<T> Display for Found<T> where T: Debug + Display + 'static {
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when a token is unexpected.
 #[derive(Debug, Clone)]
-pub struct UnexpectedTokenError<T> where T: Debug + Display + 'static {
+pub struct UnexpectedTokenError<T>
+    where T: Debug + Display + Send + Sync + 'static
+{
     /// The span of the parse up to the start of the unexpected token.
     pub parse_span: Span,
     /// The span of the found token.
@@ -193,7 +195,7 @@ pub struct UnexpectedTokenError<T> where T: Debug + Display + 'static {
     pub found: Found<T>,
 }
 
-impl<T> UnexpectedTokenError<T> where T: Debug + Display {
+impl<T> UnexpectedTokenError<T> where T: Debug + Display + Send + Sync {
 
     /// Constructs a string describing the expected and found tokens.
     fn expected_description(&self) -> String {
@@ -218,7 +220,9 @@ impl<T> UnexpectedTokenError<T> where T: Debug + Display {
     }
 }
 
-impl<T> Display for UnexpectedTokenError<T> where T: Debug + Display + 'static {
+impl<T> Display for UnexpectedTokenError<T>
+    where T: Debug + Display + Send + Sync + 'static
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}",
             self.expected_description(),
@@ -226,16 +230,17 @@ impl<T> Display for UnexpectedTokenError<T> where T: Debug + Display + 'static {
     }
 }
 
-impl<T> Error for UnexpectedTokenError<T> where T: Debug + Display + 'static {}
+impl<T> Error for UnexpectedTokenError<T>
+    where T: Debug + Display + Send + Sync + 'static {}
 
 impl<'text, T> ParseError<'text> for UnexpectedTokenError<T>
-    where T: Debug + Display + 'static
+    where T: Debug + Display + Send + Sync + 'static
 {
     fn parse_span(&self) -> Option<Span> {
         Some(self.parse_span)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }
@@ -257,7 +262,7 @@ impl Display for RecoverError {
 impl Error for RecoverError {}
 
 impl<'text> ParseError<'text> for RecoverError {
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }

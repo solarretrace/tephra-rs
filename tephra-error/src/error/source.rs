@@ -42,7 +42,7 @@ pub struct SourceError<'text> {
     /// The `CodeDisplay` used to format the error output.
     code_display: CodeDisplay,
     /// The underlying cause of the error.
-    cause: Option<Box<dyn Error + 'static>>,
+    cause: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
 impl<'text> SourceError<'text> {
@@ -52,10 +52,10 @@ impl<'text> SourceError<'text> {
     /// If the conversion fails, the error will be returned. The method is
     /// generic over the `Scanner`'s token type.
     pub fn try_from<T>(
-        mut error: Box<dyn Error + 'static>,
+        mut error: Box<dyn Error + Send + Sync + 'static>,
         source_text: SourceText<'text>)
-        -> Result<Self, Box<dyn Error + 'static>>
-        where T: Debug + Display + 'static,
+        -> Result<Self, Box<dyn Error + Send + Sync + 'static>>
+        where T: Debug + Display + Send + Sync + 'static,
     {
         error = match error
             .downcast::<crate::error::UnexpectedTokenError<T>>()
@@ -101,10 +101,10 @@ impl<'text> SourceError<'text> {
     /// If the conversion fails, the error will be returned unchanged. The
     /// method is generic over the `Scanner`'s token type.
     pub fn convert<T>(
-        error: Box<dyn Error + 'static>,
+        error: Box<dyn Error + Send + Sync + 'static>,
         source_text: SourceText<'text>)
-        -> Box<dyn Error + 'static>
-        where T: Debug + Display + 'static,
+        -> Box<dyn Error + Send + Sync + 'static>
+        where T: Debug + Display + Send + Sync + 'static,
     {
         match Self::try_from::<T>(error, source_text) {
             Ok(e) => Box::new(e).into_owned(),
@@ -127,7 +127,7 @@ impl<'text> SourceError<'text> {
     }
 
     /// Returns the given `SourceError` with the given error cause.
-    pub fn with_cause(mut self, cause: Box<dyn Error + 'static>)
+    pub fn with_cause(mut self, cause: Box<dyn Error + Send + Sync + 'static>)
         -> Self
     {
         self.cause = Some(cause);
@@ -184,12 +184,14 @@ impl<'text> Display for SourceError<'text> {
 
 impl<'text> Error for SourceError<'text> {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        self.cause.as_deref()
+        self.cause
+            .as_deref()
+            .map(|e| e as &(dyn Error + 'static))
     }
 }
 
 impl<'text> ParseError<'text> for SourceError<'text> {
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         Box::new(SourceErrorOwned {
             source_text: self.source_text.to_owned(),
             code_display: self.code_display,
@@ -207,7 +209,7 @@ impl<'text> ParseError<'text> for SourceError<'text> {
 pub struct SourceErrorOwned {
     source_text: SourceTextOwned,
     code_display: CodeDisplay,
-    cause: Option<Box<dyn Error + 'static>>,
+    cause: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
 
@@ -225,7 +227,7 @@ impl SourceErrorOwned {
     }
 
     /// Returns the given `SourceErrorOwned` with the given error cause.
-    pub fn with_cause(mut self, cause: Box<dyn Error + 'static>)
+    pub fn with_cause(mut self, cause: Box<dyn Error + Send + Sync + 'static>)
         -> Self
     {
         self.cause = Some(cause);
@@ -283,12 +285,14 @@ impl Display for SourceErrorOwned {
 
 impl Error for SourceErrorOwned {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        self.cause.as_deref()
+        self.cause
+            .as_deref()
+            .map(|e| e as &(dyn Error + 'static))
     }
 }
 
 impl<'text> ParseError<'text> for SourceErrorOwned {
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }

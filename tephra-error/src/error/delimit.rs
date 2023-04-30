@@ -94,7 +94,7 @@ impl<'text> ParseError<'text> for ParseBoundaryError {
         Some(self.parse_span)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }
@@ -211,7 +211,7 @@ impl Display for MatchBracketError {
 impl Error for MatchBracketError {}
 
 impl<'text> ParseError<'text> for MatchBracketError {
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }
@@ -288,7 +288,7 @@ impl<'text> ParseError<'text> for RepeatCountError {
         Some(self.parse_span)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + 'static> {
+    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }

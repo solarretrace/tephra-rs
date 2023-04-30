@@ -28,12 +28,13 @@ use tephra_span::Span;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Provides common methods for parse errors.
-pub trait ParseError<'text>: std::error::Error + 'text {
+pub trait ParseError<'text>: std::error::Error + Send + Sync + 'text {
     /// Returns the span of the current parse when the failure occurred, if
     /// available.
     fn parse_span(&self) -> Option<Span> { None }
 
     /// Converts a ParseError<'text> into an owned error.
-    fn into_owned(self: Box<Self>) -> Box<dyn std::error::Error + 'static>;
+    fn into_owned(self: Box<Self>)
+        -> Box<dyn std::error::Error + Send + Sync + 'static>;
 }
 

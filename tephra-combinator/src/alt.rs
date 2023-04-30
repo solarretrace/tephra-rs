@@ -5,7 +5,7 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Conditional and alternative combinators.
+//! Alternative and conditional combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -118,6 +118,43 @@ pub fn maybe_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// cond
+////////////////////////////////////////////////////////////////////////////////
+/// Returns a parser which attempts `parser` only if the predicate `pred` is
+/// satisfied.
+///
+/// # Similar combinators
+///
+/// This combinator is similar to `maybe(P)` except that the predicate can be
+/// used force a `Some` or `None` result value.
+pub fn cond<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+        -> ParseResult<'text, Sc, Option<V>>
+    where
+        Sc: Scanner,
+        P: FnMut() -> bool,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, V>,
+{
+    move |lexer, ctx| {
+        let _span = span!(Level::DEBUG, "cond").entered();
+
+        if pred() {
+            parser(lexer, ctx)
+                .trace_result(Level::TRACE, "true branch")
+                .map_value(Some)
+        } else {
+            Ok(Success {
+                value: None,
+                lexer,
+            })
+        }
+    }
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // implies
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,44 +244,6 @@ pub fn consequent<'text, Sc, L, R, X, Y>(left: L, right: R)
         |v| v.map(|(_, r)| r))
 }
 
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-// cond
-////////////////////////////////////////////////////////////////////////////////
-/// Returns a parser which attempts a parse only if the given predicate is true.
-///
-///
-/// # Similar combinators
-///
-/// This combinator is similar to `maybe(P)` except that the predicate can be
-/// used force a `Some` or `None` result value.
-pub fn cond<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
-        -> ParseResult<'text, Sc, Option<V>>
-    where
-        Sc: Scanner,
-        P: FnMut() -> bool,
-        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
-            -> ParseResult<'text, Sc, V>,
-{
-    move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "cond").entered();
-
-        if pred() {
-            parser(lexer, ctx)
-                .trace_result(Level::TRACE, "true branch")
-                .map_value(Some)
-        } else {
-            Ok(Success {
-                value: None,
-                lexer,
-            })
-        }
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // cond_implies
