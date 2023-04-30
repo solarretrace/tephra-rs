@@ -11,6 +11,7 @@
 
 // Internal library imports.
 use crate::maybe;
+use crate::map;
 use tephra::Context;
 use tephra::Lexer;
 use tephra::Success;
@@ -33,11 +34,10 @@ use tephra_tracing::span;
 /// result value is `None`, otherwise the result value is an (`Option`-wrapped)
 /// tuple of the respective parsers' results.
 ///
-///
 /// # Similar combinators
 ///
 /// This combinator is similar to `maybe(both(L, R))` except that `implies`
-/// will return an error if the `right` parse fails.
+/// will return an error if the R parse fails.
 pub fn implies<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Option<(X, Y)>>
@@ -65,6 +65,57 @@ pub fn implies<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         }
     }
 }
+
+/// Returns a parser which attempts a `left` parse followed by an attempted
+/// `right` parse only if `left` succeeded. If the `left` parse fails, the
+/// result value is `None`, otherwise the `left` result value is returned.
+///
+/// # Similar combinators
+///
+/// This combinator is similar to `maybe(left(L, R))` except that `antecedent`
+/// will return an error if the R parse fails.
+pub fn antecedent<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+        -> ParseResult<'text, Sc, Option<Y>>
+    where
+        Sc: Scanner,
+        L: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, Y>,
+{
+    map(
+        implies(left, right),
+        |v| v.map(|(l, _)| l))
+}
+
+
+/// Returns a parser which attempts a `left` parse followed by an attempted
+/// `right` parse only if `left` succeeded. If the `left` parse fails, the
+/// result value is `None`, otherwise the `right` result value is returned.
+///
+///
+/// # Similar combinators
+///
+/// This combinator is similar to `maybe(right(L, R))` except that `consequent`
+/// will return an error if the R parse fails.
+pub fn consequent<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+        -> ParseResult<'text, Sc, Option<Y>>
+    where
+        Sc: Scanner,
+        L: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, X>,
+        R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, Y>,
+{
+    map(
+        implies(left, right),
+        |v| v.map(|(_, r)| r))
+}
+
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////

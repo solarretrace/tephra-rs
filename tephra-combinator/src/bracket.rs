@@ -111,9 +111,10 @@ pub fn bracket_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
 /// `close_tokens`. Each slice must be the same length, and must not contain any
 /// shared tokens.
 ///
-/// The `abort_pred` argument can be used to limit the search for open
-/// brackets by failing if any of the encountered tokens satisfies the predicate
-/// before any open token is found.
+/// The `abort_pred` argument can be used to limit the search space for brackets
+/// on invalid inputs. If the `abort_pred` returns `true` for any token
+/// encountered before the first open bracket, the search is aborted. (If a
+/// `close_token` is encountered first, an error will be always be emitted.)
 ///
 /// ## Error recovery
 ///
@@ -200,9 +201,10 @@ pub fn bracket_default_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
 /// `close_tokens`. Each slice must be the same length, and must not contain any
 /// shared tokens.
 ///
-/// The `abort_pred` argument can be used to limit the search for open
-/// brackets by failing if any of the abort tokens is encountered before an open
-/// token. If a valid open token is guaranteed to be found, this can be empty.
+/// The `abort_pred` argument can be used to limit the search space for brackets
+/// on invalid inputs. If the `abort_pred` returns `true` for any token
+/// encountered before the first open bracket, the search is aborted. (If a
+/// `close_token` is encountered first, an error will be always be emitted.)
 fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
     mut lexer: Lexer<'text, Sc>,
     open_tokens: &'a [Sc::Token],
