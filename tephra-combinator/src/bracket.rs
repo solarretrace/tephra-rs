@@ -28,7 +28,7 @@ use smallvec::SmallVec;
 // Bracket combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn bracket_inner<'text: 'a, 'a, Sc, F, X: 'a, A>(
+pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a, A>(
     open_tokens: &'a [Sc::Token],
     inner: F,
     close_tokens: &'a [Sc::Token],
@@ -41,12 +41,12 @@ pub fn bracket_inner<'text: 'a, 'a, Sc, F, X: 'a, A>(
             -> ParseResult<'text, Sc, X> + 'a,
         A: Fn(&Sc::Token) -> bool + 'a + Clone,
 { 
-    map(bracket(open_tokens, inner, close_tokens, abort_pred),
+    map(bracket_index(open_tokens, inner, close_tokens, abort_pred),
         |(v, _)| v)
 }
 
 
-pub fn bracket_default_inner<'text: 'a, 'a, Sc, F, X: 'a, A>(
+pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     open_tokens: &'a [Sc::Token],
     inner: F,
     close_tokens: &'a [Sc::Token],
@@ -60,7 +60,7 @@ pub fn bracket_default_inner<'text: 'a, 'a, Sc, F, X: 'a, A>(
         X: Default,
         A: Fn(&Sc::Token) -> bool + 'a + Clone,
 { 
-    map(bracket_default(open_tokens, inner, close_tokens, abort_pred),
+    map(bracket_default_index(open_tokens, inner, close_tokens, abort_pred),
         |(v, _)| v)
 }
 
@@ -81,7 +81,7 @@ pub fn bracket_default_inner<'text: 'a, 'a, Sc, F, X: 'a, A>(
 /// Attempts error recovery if the given parser fails by scanning for the right
 /// token. If the right token is not found, an unmatched delimiter error will
 /// be emitted, and a `None` value will be returned.
-pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a, A>(
+pub fn bracket_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
     open_tokens: &'a [Sc::Token],
     mut inner: F,
     close_tokens: &'a [Sc::Token],
@@ -100,7 +100,7 @@ pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a, A>(
             .map_value(Some)
     };
 
-    bracket_default(open_tokens, option_inner, close_tokens, abort_pred)
+    bracket_default_index(open_tokens, option_inner, close_tokens, abort_pred)
 }
 
 
@@ -120,7 +120,7 @@ pub fn bracket<'text: 'a, 'a, Sc, F, X: 'a, A>(
 /// Attempts error recovery if the given parser fails by scanning for the right
 /// token. If the right token is not found, an unmatched delimiter error will
 /// be emitted, and a default value will be returned.
-pub fn bracket_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
+pub fn bracket_default_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
     open_tokens: &'a [Sc::Token],
     mut inner: F,
     close_tokens: &'a [Sc::Token],

@@ -13,7 +13,7 @@
 
 // Internal library imports.
 use crate::both;
-use crate::bracket;
+use crate::bracket_index;
 use crate::one;
 use crate::raw;
 use crate::spanned;
@@ -58,7 +58,7 @@ fn recover_missing() {
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket(
+    let actual = bracket_index(
             &[OpenBracket],
             pattern,
             &[CloseBracket], |_| false)
@@ -92,7 +92,7 @@ fn recover_unmatched_open() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket(
+    let actual = bracket_index(
             &[OpenBracket],
             pattern,
             &[CloseBracket], |_| false)
@@ -125,7 +125,7 @@ fn recover_unmatched_closed() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket(
+    let actual = bracket_index(
             &[OpenBracket],
             pattern,
             &[CloseBracket], |_| false)
@@ -157,7 +157,7 @@ fn recover_mismatched() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket(
+    let actual = bracket_index(
             &[OpenBracket, OpenBracket],
             pattern,
             &[CloseBracket, Comma], |_| false)
@@ -191,7 +191,7 @@ fn recover_unmatched_raw() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = raw(bracket(
+    let actual = raw(bracket_index(
             &[OpenBracket],
             pattern,
             &[CloseBracket], |_| false))
@@ -224,7 +224,7 @@ fn recover_unmatched_unrecoverable() {
     let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source)))));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = unrecoverable(bracket(
+    let actual = unrecoverable(bracket_index(
             &[OpenBracket],
             pattern,
             &[CloseBracket], |_| false))
@@ -244,7 +244,7 @@ error: unmatched open bracket
 /// Test successful `bracket` combinator.
 #[test]
 #[tracing::instrument]
-fn comma_bracket() {
+fn comma_bracket_index() {
     colored::control::set_override(false);
 
     use AbcToken::*;
@@ -254,7 +254,7 @@ fn comma_bracket() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = spanned(bracket(
+    let (value, succ) = spanned(bracket_index(
             &[A],
             one(Comma),
             &[B],
@@ -287,12 +287,12 @@ fn matching_both() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(
-            bracket(
+            bracket_index(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
                 |_| false),
-            bracket(
+            bracket_index(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
@@ -330,12 +330,12 @@ fn matching_both_first_fail() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(
-            bracket(
+            bracket_index(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
                 |_| false),
-            bracket(
+            bracket_index(
                 &[OpenBracket],
                 pattern,
                 &[CloseBracket],
@@ -381,12 +381,12 @@ fn matching_both_mismatch() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = both(
-            bracket(
+            bracket_index(
                 &[OpenBracket, OpenBracket],
                 pattern,
                 &[CloseBracket, Comma],
                 |_| false),
-            bracket(
+            bracket_index(
                 &[OpenBracket, OpenBracket],
                 pattern,
                 &[CloseBracket, Comma],

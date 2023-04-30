@@ -164,7 +164,7 @@ fn pattern_implies_list() {
             value: "abc",
             span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
         }),
-        (Some(vec![
+        Some(vec![
             Some(Pattern::Bxx(Spanned {
                 value: "bdd",
                 span: Span::new_enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
@@ -173,7 +173,7 @@ fn pattern_implies_list() {
                 value: "abc",
                 span: Span::new_enclosing(Pos::new(9, 0, 9), Pos::new(12, 0, 12)),
             })),
-        ]), 0)
+        ]),
     ));
 
     assert_eq!(actual, expected);

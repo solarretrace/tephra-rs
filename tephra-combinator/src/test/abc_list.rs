@@ -15,7 +15,7 @@
 use crate::delimited_list;
 use crate::delimited_list_bounded;
 use crate::sub;
-use crate::bracket_default;
+use crate::bracket_default_index;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
@@ -120,7 +120,7 @@ fn bracket_list_one() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket_default(
+    let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list(
                 pattern,
@@ -195,7 +195,7 @@ fn bracket_list_two() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket_default(
+    let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list(
                 pattern,
@@ -270,7 +270,7 @@ fn bracket_list_zero() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, _succ) = bracket_default(
+    let (value, _succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list(
                 pattern,
@@ -302,7 +302,7 @@ fn bracket_list_one_failed() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket_default(
+    let actual = bracket_default_index(
             &[OpenBracket],
             delimited_list_bounded(
                 1, None,
@@ -343,7 +343,7 @@ fn bracket_list_one_recovered() {
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket_default(
+    let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list_bounded(
                 1, None,
@@ -391,7 +391,7 @@ fn bracket_list_two_recovered_first() {
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket_default(
+    let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list(
                 pattern,
@@ -443,7 +443,7 @@ fn bracket_list_two_recovered_second() {
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket_default(
+    let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list(
                 pattern,
@@ -496,7 +496,7 @@ fn bracket_list_missing_delimiter() {
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket_default(
+    let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list(
                 pattern,
@@ -542,10 +542,10 @@ fn bracket_list_nested() {
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket_default(
+    let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list(
-                bracket_default(
+                bracket_default_index(
                     &[OpenBracket],
                     delimited_list(
                         pattern,
@@ -604,7 +604,7 @@ fn bracket_list_commas() {
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let (value, succ) = bracket_default(
+    let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list_bounded(
                 1, None,
