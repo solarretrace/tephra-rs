@@ -106,7 +106,6 @@
 // Internal modules.
 mod alt;
 mod bracket;
-mod cond;
 mod control;
 mod join;
 mod list;
@@ -119,7 +118,6 @@ mod test;
 // Exports.
 pub use alt::*;
 pub use bracket::*;
-pub use cond::*;
 pub use control::*;
 pub use join::*;
 pub use list::*;

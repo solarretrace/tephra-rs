@@ -18,7 +18,6 @@ use crate::one;
 use crate::seq;
 use crate::spanned;
 use crate::text;
-use crate::maybe;
 
 // External library imports.
 use pretty_assertions::assert_eq;
@@ -34,7 +33,6 @@ use tephra::error::UnexpectedTokenError;
 use tephra::error::Found;
 use tephra::SpanDisplay;
 use tephra::Spanned;
-use tephra::Success;
 use test_log::test;
 
 
@@ -182,21 +180,19 @@ pub enum Pattern<'text> {
 pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
-    match maybe(spanned(text(abc)))
+    match spanned(text(abc))
         (lexer.clone(), ctx.clone())
+        .map_value(Pattern::Abc)
     {
-        Ok(Success { value: Some(sp), lexer }) => {
-            return Ok(Success { value: Pattern::Abc(sp), lexer });
-        },
+        Ok(succ) => { return Ok(succ); },
         _ => (),
     }
 
-    match maybe(spanned(text(bxx)))
+    match spanned(text(bxx))
         (lexer.clone(), ctx.clone())
+        .map_value(Pattern::Bxx)
     {
-        Ok(Success { value: Some(sp), lexer }) => {
-            return Ok(Success { value: Pattern::Bxx(sp), lexer });
-        },
+        Ok(succ) => { return Ok(succ); },
         _ => (),
     }
 

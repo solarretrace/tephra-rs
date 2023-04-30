@@ -17,6 +17,7 @@ use crate::bracket_index;
 use crate::one;
 use crate::raw;
 use crate::spanned;
+use crate::bracket;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
@@ -260,7 +261,7 @@ fn comma_bracket_index() {
             &[B],
             |_| false))
         (lexer.clone(), ctx)
-        .expect("successful parse")
+        .expect("perform successful parse")
         .take_value();
 
     let actual = value;
@@ -298,7 +299,7 @@ fn matching_both() {
                 &[CloseBracket],
                 |_| false))
         (lexer.clone(), ctx)
-        .expect("successful parse")
+        .expect("perform successful parse")
         .take_value();
 
     let actual = value;
@@ -330,27 +331,25 @@ fn matching_both_first_fail() {
     lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(
-            bracket_index(
+            bracket(
                 &[OpenBracket],
                 pattern,
-                &[CloseBracket],
-                |_| false),
-            bracket_index(
+                &[CloseBracket], |_| false),
+            bracket(
                 &[OpenBracket],
                 pattern,
-                &[CloseBracket],
-                |_| false))
+                &[CloseBracket], |_| false))
         (lexer.clone(), ctx)
-        .expect("successful parse")
+        .expect("perform successful parse")
         .take_value();
 
     let actual = value;
     let expected = (
-        (None, 0), 
-        (Some(Pattern::Xyc(Spanned {
+        None, 
+        Some(Pattern::Xyc(Spanned {
             value: "aac",
             span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
-        })), 0));
+        })));
 
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
