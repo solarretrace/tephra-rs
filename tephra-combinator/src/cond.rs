@@ -74,9 +74,9 @@ pub fn implies<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
 ///
 /// This combinator is similar to `maybe(left(L, R))` except that `antecedent`
 /// will return an error if the R parse fails.
-pub fn antecedent<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
+pub fn antecedent<'text, Sc, L, R, X, Y>(left: L, right: R)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
-        -> ParseResult<'text, Sc, Option<Y>>
+        -> ParseResult<'text, Sc, Option<X>>
     where
         Sc: Scanner,
         L: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
@@ -99,7 +99,7 @@ pub fn antecedent<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
 ///
 /// This combinator is similar to `maybe(right(L, R))` except that `consequent`
 /// will return an error if the R parse fails.
-pub fn consequent<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
+pub fn consequent<'text, Sc, L, R, X, Y>(left: L, right: R)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Option<Y>>
     where
