@@ -26,7 +26,6 @@ use tephra::Context;
 use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
-use tephra::error::SourceError;
 use tephra::Span;
 use tephra::Spanned;
 // use tephra::recover_before;
@@ -117,8 +116,7 @@ fn pattern_implies_failed_right() {
 
     let actual = implies(pattern, pattern)
         (lexer, ctx)
-        .map_err(|e|
-            SourceError::convert::<AbcToken>(e.into_owned(), source))
+        .map_err(|e| e.into_source_error(source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\

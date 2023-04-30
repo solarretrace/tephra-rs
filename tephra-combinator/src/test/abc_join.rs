@@ -31,7 +31,6 @@ use tephra::Context;
 use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
-use tephra::error::SourceError;
 use tephra::Span;
 use tephra::Spanned;
 use tephra::recover_before;
@@ -90,8 +89,7 @@ fn simple_not_failed() {
 
     let actual = pred(Expr::Not(Box::new(Expr::Var(D))))
         (lexer.clone(), ctx)
-        .map_err(|e|
-            SourceError::convert::<AbcToken>(e.into_owned(), source))
+        .map_err(|e| e.into_source_error(source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -212,8 +210,7 @@ fn pattern_right_failed() {
 
     let actual = right(pattern, pattern)
         (lexer.clone(), ctx)
-        .map_err(|e|
-            SourceError::convert::<AbcToken>(e.into_owned(), source))
+        .map_err(|e| e.into_source_error(source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -242,8 +239,7 @@ fn pattern_right_failed_raw() {
 
     let actual = raw(right(pattern, pattern))
         (lexer.clone(), ctx)
-        .map_err(|e|
-            SourceError::convert::<AbcToken>(e.into_owned(), source))
+        .map_err(|e| e.into_source_error(source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
@@ -298,7 +294,7 @@ fn pattern_center_recover() {
     let mut lexer = Lexer::new(Abc::new(), source);
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx = Context::new(Some(Box::new(|e| 
-        errors.write().unwrap().push(SourceError::convert::<AbcToken>(e.into_owned(), source))
+        errors.write().unwrap().push(e.into_source_error(source))
     )));
     lexer.set_filter_fn(|tok| *tok != Ws);
 
@@ -340,7 +336,7 @@ fn pattern_center_recover_delayed() {
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx = Context::new(Some(Box::new(|e|
         errors.write().unwrap()
-            .push(SourceError::convert::<AbcToken>(e.into_owned(), source)))
+            .push(e.into_source_error(source)))
     ));
     lexer.set_filter_fn(|tok| *tok != Ws);
 

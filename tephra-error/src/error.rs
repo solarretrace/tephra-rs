@@ -17,9 +17,10 @@ pub use delimit::*;
 pub use lexer::*;
 pub use source::*;
 
+
 // External library imports.
 use tephra_span::Span;
-
+use tephra_span::SourceText;
 
 
 
@@ -33,7 +34,15 @@ pub trait ParseError<'text>: std::error::Error + Send + Sync + 'text {
     /// available.
     fn parse_span(&self) -> Option<Span> { None }
 
-    /// Converts a ParseError<'text> into an owned error.
+    /// Converts a `ParseError<'text>` into a `SourceError<'text>`.
+    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
+        -> SourceError<'text>
+    {
+        SourceError::new(source_text, format!("{self}"))
+            .with_cause(self.into_owned())
+    }
+
+    /// Converts a `ParseError<'text>` into an owned error.
     fn into_owned(self: Box<Self>)
         -> Box<dyn std::error::Error + Send + Sync + 'static>;
 }

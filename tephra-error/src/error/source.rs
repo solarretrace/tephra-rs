@@ -46,72 +46,6 @@ pub struct SourceError<'text> {
 }
 
 impl<'text> SourceError<'text> {
-    /// Attempt to convert an error into a `SourceError`. Works on common error
-    /// types defined in the `tephra-error` crate.
-    ///
-    /// If the conversion fails, the error will be returned. The method is
-    /// generic over the `Scanner`'s token type.
-    pub fn try_from<T>(
-        mut error: Box<dyn Error + Send + Sync + 'static>,
-        source_text: SourceText<'text>)
-        -> Result<Self, Box<dyn Error + Send + Sync + 'static>>
-        where T: Debug + Display + Send + Sync + 'static,
-    {
-        error = match error
-            .downcast::<crate::error::UnexpectedTokenError<T>>()
-        {
-            Ok(e)  => { return Ok(e.into_source_error(source_text)); }
-            Err(e) => e,
-        };
-
-        error = match error
-            .downcast::<crate::error::UnrecognizedTokenError>()
-        {
-            Ok(e)  => { return Ok(e.into_source_error(source_text)); }
-            Err(e) => e,
-        };
-
-        error = match error
-            .downcast::<crate::error::ParseBoundaryError>()
-        {
-            Ok(e)  => { return Ok(e.into_source_error(source_text)); }
-            Err(e) => e,
-        };
-
-        error = match error
-            .downcast::<crate::error::MatchBracketError>()
-        {
-            Ok(e)  => { return Ok(e.into_source_error(source_text)); }
-            Err(e) => e,
-        };
-
-        error = match error
-            .downcast::<crate::error::RepeatCountError>()
-        {
-            Ok(e)  => { return Ok(e.into_source_error(source_text)); }
-            Err(e) => e,
-        };
-
-        Err(error)
-    }
-
-    /// Attempts to convert an error into a `SourceError` via
-    /// `SourceError::try_from`, and returns it as an owned `dyn Error`.
-    ///
-    /// If the conversion fails, the error will be returned unchanged. The
-    /// method is generic over the `Scanner`'s token type.
-    pub fn convert<T>(
-        error: Box<dyn Error + Send + Sync + 'static>,
-        source_text: SourceText<'text>)
-        -> Box<dyn Error + Send + Sync + 'static>
-        where T: Debug + Display + Send + Sync + 'static,
-    {
-        match Self::try_from::<T>(error, source_text) {
-            Ok(e) => Box::new(e).into_owned(),
-            Err(e) => e,
-        }
-    }
-
     /// Constructs a new `SourceError` with the given `SourceText` and
     /// message.
     pub fn new<'a, M>(source_text: SourceText<'a>, message: M)
@@ -190,7 +124,17 @@ impl<'text> Error for SourceError<'text> {
     }
 }
 
-impl<'text> ParseError<'text> for SourceError<'text> {
+impl<'text> ParseError<'text> for SourceError<'text> { 
+    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
+        -> SourceError<'text>
+    {
+        SourceError {
+            source_text,
+            code_display: self.code_display,
+            cause: self.cause,
+        }
+    }
+
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         Box::new(SourceErrorOwned {
             source_text: self.source_text.to_owned(),
@@ -291,7 +235,17 @@ impl Error for SourceErrorOwned {
     }
 }
 
-impl<'text> ParseError<'text> for SourceErrorOwned {
+impl<'text> ParseError<'text> for SourceErrorOwned {    
+    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
+        -> SourceError<'text>
+    {
+        SourceError {
+            source_text,
+            code_display: self.code_display,
+            cause: self.cause,
+        }
+    }
+
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }

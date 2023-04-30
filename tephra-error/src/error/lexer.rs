@@ -74,6 +74,12 @@ impl<'text> ParseError<'text> for UnrecognizedTokenError {
     fn parse_span(&self) -> Option<Span> {
         Some(self.parse_span)
     }
+    
+    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
+        -> SourceError<'text>
+    {
+        Self::into_source_error(*self, source_text)
+    }
 
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
@@ -238,6 +244,12 @@ impl<'text, T> ParseError<'text> for UnexpectedTokenError<T>
 {
     fn parse_span(&self) -> Option<Span> {
         Some(self.parse_span)
+    }
+    
+    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
+        -> SourceError<'text>
+    {
+        Self::into_source_error(*self, source_text)
     }
 
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {

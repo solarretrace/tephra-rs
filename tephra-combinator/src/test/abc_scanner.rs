@@ -401,8 +401,7 @@ fn initial_newline_ws_skip() {
 
     let actual = pattern
         (lexer.clone(), ctx)
-        .map_err(|e|
-            SourceError::convert::<AbcToken>(e.into_owned(), source))
+        .map_err(|e| e.into_source_error(source))
         .unwrap_err();
 
     assert_eq!(format!("{actual}"), "\
