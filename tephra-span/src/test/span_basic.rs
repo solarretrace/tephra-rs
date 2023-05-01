@@ -35,7 +35,7 @@ fn span_basic_empty() {
     let span = Span::new();
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "";
     assert_eq!(actual.as_ref(), expected);
 
@@ -54,7 +54,7 @@ fn source_text_basic_full_span() {
     let span = source.full_span();
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = " \n  abcd  \n ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -76,7 +76,7 @@ fn span_basic_widen_to_line() {
         .widen_to_line(source);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "  abcd  ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -96,7 +96,7 @@ fn span_basic_empty_widen_to_line() {
         .widen_to_line(source);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "  abcd  ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -118,7 +118,7 @@ fn span_basic_line_widen_to_line() {
         .widen_to_line(source);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "  abcd  ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -138,7 +138,7 @@ fn span_basic_full_widen_to_line() {
         .widen_to_line(source);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = " \n  abcd  \n ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -159,7 +159,7 @@ fn span_basic_split_lines() {
 
     let actual = span
         .split_lines(source)
-        .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
+        .map(|sp| format!("{:?} ({})", source.clipped(sp).as_ref(), sp))
         .collect::<Vec<_>>();
     let expected = vec![
         "\"\" (0:0, byte 0)".to_owned(),
@@ -186,7 +186,7 @@ fn span_basic_no_breaks_split_line() {
 
     let actual = span
         .split_lines(source)
-        .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
+        .map(|sp| format!("{:?} ({})", source.clipped(sp).as_ref(), sp))
         .collect::<Vec<_>>();
     let expected = vec![
         "\"abcd\" (0:0-0:4, bytes 0-4)".to_owned(),
@@ -212,7 +212,7 @@ fn span_basic_enclose() {
     let span = a.enclose(b);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "\n \nabcd\n def \nghi";
     assert_eq!(actual.as_ref(), expected);
 
@@ -238,7 +238,7 @@ fn span_basic_union() {
     let span = a.union(b).next().unwrap();
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "\n \nabcd\n def \nghi";
     assert_eq!(actual.as_ref(), expected);
 
@@ -264,7 +264,7 @@ fn span_basic_intersect() {
     let span = a.intersect(b).unwrap();
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "\nabcd";
     assert_eq!(actual.as_ref(), expected);
 
@@ -290,7 +290,7 @@ fn span_basic_minus() {
     let span = a.minus(b).next().unwrap();
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "\n ";
     assert_eq!(actual.as_ref(), expected);
 

@@ -223,7 +223,7 @@ impl SourceErrorOwned {
 
 impl Display for SourceErrorOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.code_display.write(f, self.source_text.as_borrowed())
+        self.code_display.write(f, self.source_text.borrow())
     }
 }
 

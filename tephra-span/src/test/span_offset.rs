@@ -37,7 +37,7 @@ fn span_offset_oob_empty() {
     let span = Span::new();
 
     // Clipping outside of the text should panic.
-    source.clip(span);
+    source.clipped(span);
 }
 
 /// Tests `Span::new`.
@@ -50,7 +50,7 @@ fn span_offset_within_empty() {
     let span = Span::new_at(Pos::new(100, 10, 10));
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "";
     assert_eq!(actual.as_ref(), expected);
 
@@ -71,7 +71,7 @@ fn source_text_offset_full_span() {
     println!("{:?}", span);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = " \n  abcd  \n ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -94,7 +94,7 @@ fn span_offset_widen_to_line() {
         .widen_to_line(source);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "  abcd  ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -115,7 +115,7 @@ fn span_offset_empty_widen_to_line() {
         .widen_to_line(source);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "  abcd  ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -138,7 +138,7 @@ fn span_offset_line_widen_to_line() {
         .widen_to_line(source);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "  abcd  ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -159,7 +159,7 @@ fn span_offset_full_widen_to_line() {
         .widen_to_line(source);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = " \n  abcd  \n ";
     assert_eq!(actual.as_ref(), expected);
 
@@ -181,7 +181,7 @@ fn span_offset_split_lines() {
 
     let actual = span
         .split_lines(source)
-        .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
+        .map(|sp| format!("{:?} ({})", source.clipped(sp).as_ref(), sp))
         .collect::<Vec<_>>();
     let expected = vec![
         "\"\" (10:10, byte 100)".to_owned(),
@@ -209,7 +209,7 @@ fn span_offset_no_breaks_split_line() {
 
     let actual = span
         .split_lines(source)
-        .map(|sp| format!("{:?} ({})", source.clip(sp).as_ref(), sp))
+        .map(|sp| format!("{:?} ({})", source.clipped(sp).as_ref(), sp))
         .collect::<Vec<_>>();
     let expected = vec![
         "\"abcd\" (10:10-10:14, bytes 100-104)".to_owned(),
@@ -236,7 +236,7 @@ fn span_offset_enclose() {
     let span = a.enclose(b);
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "\n \nabcd\n def \nghi";
     assert_eq!(actual.as_ref(), expected);
 
@@ -263,7 +263,7 @@ fn span_offset_union() {
     let span = a.union(b).next().unwrap();
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "\n \nabcd\n def \nghi";
     assert_eq!(actual.as_ref(), expected);
 
@@ -290,7 +290,7 @@ fn span_offset_intersect() {
     let span = a.intersect(b).unwrap();
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "\nabcd";
     assert_eq!(actual.as_ref(), expected);
 
@@ -317,7 +317,7 @@ fn span_offset_minus() {
     let span = a.minus(b).next().unwrap();
 
     // Check text clip.
-    let actual = source.clip(span);
+    let actual = source.clipped(span);
     let expected = "\n ";
     assert_eq!(actual.as_ref(), expected);
 

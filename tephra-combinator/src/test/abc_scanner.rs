@@ -288,7 +288,7 @@ fn abc_tokens() {
         .iter_with_spans()
         .map(|lex| (
             lex.0,
-            format!("{:?} ({})", source.clip(lex.1).as_str(), lex.1)))
+            format!("{:?} ({})", source.clipped(lex.1).as_str(), lex.1)))
         .collect::<Vec<_>>();
 
     let expected = vec![

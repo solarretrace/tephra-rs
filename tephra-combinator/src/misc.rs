@@ -87,7 +87,7 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
         {
             Ok(succ) => {
                 let end = succ.lexer.end_pos().byte;
-                let value = &succ.lexer.source_text().as_str()[start..end];
+                let value = &succ.lexer.source_text().text()[start..end];
 
                 Ok(Success {
                     lexer: succ.lexer,

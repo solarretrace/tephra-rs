@@ -183,7 +183,7 @@ fn simple_iter() {
             .iter_with_spans()
             .map(|lex| (
                 lex.0,
-                format!("{:?} ({})", source.clip(lex.1).as_str(), lex.1)))
+                format!("{:?} ({})", source.clipped(lex.1).as_str(), lex.1)))
             .collect::<Vec<_>>(),
         vec![
             (Aa, "\"aa\" (0:0-0:2, bytes 0-2)".to_string()),
@@ -217,7 +217,7 @@ fn auto_filter() {
         .iter_with_spans()
         .map(|lex| (
             lex.0,
-            format!("{:?} ({})", source.clip(lex.1).as_str(), lex.1)))
+            format!("{:?} ({})", source.clipped(lex.1).as_str(), lex.1)))
         .collect::<Vec<_>>();
 
     let expected = vec![
@@ -251,7 +251,7 @@ fn whitespace_filter() {
         .iter_with_spans()
         .map(|lex| (
             lex.0,
-            format!("{:?} ({})", source.clip(lex.1).as_str(), lex.1)))
+            format!("{:?} ({})", source.clipped(lex.1).as_str(), lex.1)))
         .collect::<Vec<_>>();
 
     let expected = vec![
