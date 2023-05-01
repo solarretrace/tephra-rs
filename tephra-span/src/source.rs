@@ -28,7 +28,7 @@ pub const SOURCE_TEXT_DEBUG_LEN: usize = 12;
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceText<'text> {
     /// The source text.
-    source: &'text str,
+    text: &'text str,
     /// The source text name.
     name: Option<&'text str>,
     /// The column metrics of the source text.
@@ -44,9 +44,9 @@ impl<'text> SourceText<'text> {
 
     /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
-    pub fn new(source: &'text str) -> Self {
+    pub fn new(text: &'text str) -> Self {
         SourceText {
-            source,
+            text,
             name: None,
             offset: Pos::ZERO,
             metrics: ColumnMetrics::default(),
@@ -69,11 +69,11 @@ impl<'text> SourceText<'text> {
     }
 
     pub fn len(&self) -> usize {
-        self.source.len()
+        self.text.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.source.is_empty()
+        self.text.is_empty()
     }
 
     pub fn name(&self) -> Option<&'text str> {
@@ -81,7 +81,7 @@ impl<'text> SourceText<'text> {
     }
 
     pub fn as_str(&self) -> &'text str {
-        &self.source
+        &self.text
     }
 
     #[inline(always)]
@@ -93,7 +93,7 @@ impl<'text> SourceText<'text> {
             && pos.page <= end.page 
     }
 
-    pub fn clip(&self, span: Span) -> Self {
+    pub fn clipped(&self, span: Span) -> Self {
         debug_assert!(self.pos_in_bounds(span.start()),
             "start of span is out of source text bounds");
         debug_assert!(self.pos_in_bounds(span.end()),
@@ -102,7 +102,7 @@ impl<'text> SourceText<'text> {
         let s = span.start().byte - self.offset.byte;
         let e = span.end().byte - self.offset.byte;
         SourceText {
-            source: &self.source[s..e],
+            text: &self.text[s..e],
             name: self.name,
             metrics: self.metrics,
             offset: span.start(),
@@ -130,7 +130,7 @@ impl<'text> SourceText<'text> {
 
     /// Returns the end position of the text.
     pub fn end_position(&self) -> Pos {
-        let end = self.metrics.end_position(&self.source, Pos::ZERO);
+        let end = self.metrics.end_position(&self.text, Pos::ZERO);
         self.offset.shifted(end)
     }
 
@@ -139,7 +139,7 @@ impl<'text> SourceText<'text> {
     /// within the text.
     pub fn next_position(&self, base: Pos) -> Option<Pos> {
         base.with_byte_offset(self.offset.byte,
-            |b| self.metrics.next_position(self.source, b))
+            |b| self.metrics.next_position(self.text, b))
     }
 
     /// Returns the previous column-aligned position before the given base
@@ -147,7 +147,7 @@ impl<'text> SourceText<'text> {
     /// is not within the text.
     pub fn previous_position(&self, base: Pos) -> Option<Pos> {
         base.with_byte_offset(self.offset.byte,
-            |b| self.metrics.previous_position(self.source, b))
+            |b| self.metrics.previous_position(self.text, b))
     }
 
     /// Returns true if a line break is positioned at the given byte position in
@@ -155,14 +155,14 @@ impl<'text> SourceText<'text> {
     pub fn is_line_break(&self, byte: usize) -> bool {
         debug_assert!(byte > self.offset.byte,
             "byte is out of source text bounds");
-        self.metrics.is_line_break(self.source, byte - self.offset.byte)
+        self.metrics.is_line_break(self.text, byte - self.offset.byte)
     }
 
     /// Returns the position of the end of line containing the given base
     /// position.
     pub fn line_end_position(&self, base: Pos) -> Pos {
         base.with_byte_offset(self.offset.byte,
-                |b| Some(self.metrics.line_end_position(self.source, b)))
+                |b| Some(self.metrics.line_end_position(self.text, b)))
             .unwrap()
     }
 
@@ -170,7 +170,7 @@ impl<'text> SourceText<'text> {
     /// position.
     pub fn line_start_position(&self, base: Pos) -> Pos {
         base.with_byte_offset(self.offset.byte,
-                |b| Some(self.metrics.line_start_position(self.source, b)))
+                |b| Some(self.metrics.line_start_position(self.text, b)))
             .unwrap()
     }
 
@@ -178,14 +178,14 @@ impl<'text> SourceText<'text> {
     /// position.
     pub fn previous_line_end_position(&self, base: Pos) -> Option<Pos> {
         base.with_byte_offset(self.offset.byte,
-            |b| self.metrics.previous_line_end_position(self.source, b))
+            |b| self.metrics.previous_line_end_position(self.text, b))
     }
 
     /// Returns the position at the start of the next line after the given base
     /// position.
     pub fn next_line_start_position(&self, base: Pos) -> Option<Pos> {
         base.with_byte_offset(self.offset.byte,
-            |b| self.metrics.next_line_start_position(self.source, b))
+            |b| self.metrics.next_line_start_position(self.text, b))
     }
 
     /// Returns the position after the given pattern string, given its start
@@ -194,7 +194,7 @@ impl<'text> SourceText<'text> {
         -> Option<Pos>
     {
         start.with_byte_offset(self.offset.byte,
-            |s| self.metrics.position_after_str(self.source, s, pattern))
+            |s| self.metrics.position_after_str(self.text, s, pattern))
     }
 
     /// Returns the position after any `char`s matching a closure, given its
@@ -204,7 +204,7 @@ impl<'text> SourceText<'text> {
         where F: FnMut(char) -> bool
     {
         start.with_byte_offset(self.offset.byte,
-            |s| self.metrics.position_after_chars_matching(self.source, s, f))
+            |s| self.metrics.position_after_chars_matching(self.text, s, f))
     }
 
     /// Returns the next position after `char`s matching a closure, given its
@@ -215,13 +215,13 @@ impl<'text> SourceText<'text> {
     {
         start.with_byte_offset(self.offset.byte, |s| self
             .metrics
-            .next_position_after_chars_matching(self.source, s, f))
+            .next_position_after_chars_matching(self.text, s, f))
     }
 
     /// Returns an iterator over the display columns of the source text.
     pub fn iter_columns(&self, base: Pos) -> IterColumns<'text> {
         IterColumns {
-            source: self.source,
+            text: self.text,
             metrics: self.metrics,
             offset: self.offset,
             base: Some(base),
@@ -232,7 +232,7 @@ impl<'text> SourceText<'text> {
     /// backing text buffer.
     pub fn to_owned(&self) -> SourceTextOwned {
         SourceTextOwned {
-            source: self.source.into(),
+            text: self.text.into(),
             name: self.name.map(|s| s.into()),
             offset: self.offset,
             metrics: self.metrics,
@@ -242,16 +242,16 @@ impl<'text> SourceText<'text> {
 
 impl<'text> AsRef<str> for SourceText<'text> {
     fn as_ref(&self) -> &str {
-        &self.source
+        &self.text
     }
 }
 
 impl<'text> std::fmt::Display for SourceText<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.source.len() > SOURCE_TEXT_DISPLAY_LEN {
-            write!(f, "{}...", &self.source[0..SOURCE_TEXT_DISPLAY_LEN])?;
+        if self.text.len() > SOURCE_TEXT_DISPLAY_LEN {
+            write!(f, "{}...", &self.text[0..SOURCE_TEXT_DISPLAY_LEN])?;
         } else {
-            write!(f, "{}", &self.source[..])?;
+            write!(f, "{}", &self.text[..])?;
         };
 
         write!(f, " ({}, {:?})", self.offset, self.metrics)
@@ -260,13 +260,13 @@ impl<'text> std::fmt::Display for SourceText<'text> {
 
 impl<'text> std::fmt::Debug for SourceText<'text> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let src = if self.source.len() > SOURCE_TEXT_DEBUG_LEN {
-            format!("{}...", &self.source[0..SOURCE_TEXT_DEBUG_LEN])
+        let src = if self.text.len() > SOURCE_TEXT_DEBUG_LEN {
+            format!("{}...", &self.text[0..SOURCE_TEXT_DEBUG_LEN])
         } else {
-            format!("{}", &self.source[..])
+            format!("{}", &self.text[..])
         };
         f.debug_struct("SourceText")
-            .field("source", &src)
+            .field("text", &src)
             .field("name", &self.name)
             .field("offset", &self.offset)
             .field("metrics", &self.metrics)
@@ -281,7 +281,7 @@ impl<'text> std::fmt::Debug for SourceText<'text> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SourceTextOwned {
     /// The source text.
-    source: Box<str>,
+    text: Box<str>,
     /// Then source text name.
     name: Option<Box<str>>,
     /// The column metrics of the source text.
@@ -297,9 +297,9 @@ impl SourceTextOwned {
 
     /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
-    pub fn new(source: &str) -> Self {
+    pub fn new(text: &str) -> Self {
         SourceTextOwned {
-            source: source.into(),
+            text: text.into(),
             name: None,
             offset: Pos::ZERO,
             metrics: ColumnMetrics::default(),
@@ -332,11 +332,11 @@ impl SourceTextOwned {
     }
 
     pub fn len(&self) -> usize {
-        self.source.len()
+        self.text.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.source.is_empty()
+        self.text.is_empty()
     }
 
     pub fn name(&self) -> Option<&str> {
@@ -344,11 +344,11 @@ impl SourceTextOwned {
     }
 
     pub fn as_str(&self) -> &str {
-        &self.source
+        &self.text
     }
 
-    pub fn clip<'text>(&'text self, span: Span) -> SourceText<'text> {
-        self.as_borrowed().clip(span)
+    pub fn clipped<'text>(&'text self, span: Span) -> SourceText<'text> {
+        self.as_borrowed().clipped(span)
     }
 
     /// Returns the full span of the text.
@@ -364,7 +364,7 @@ impl SourceTextOwned {
 
     /// Returns the end position of the text.
     pub fn end_position(&self) -> Pos {
-        let end = self.metrics.end_position(&self.source, Pos::ZERO);
+        let end = self.metrics.end_position(&self.text, Pos::ZERO);
         self.offset.shifted(end)
     }
 
@@ -373,7 +373,7 @@ impl SourceTextOwned {
     /// within the text.
     pub fn next_position(&self, base: Pos) -> Option<Pos> {
         base.with_byte_offset(self.offset.byte,
-            |b| self.metrics.next_position(&self.source, b))
+            |b| self.metrics.next_position(&self.text, b))
     }
 
     /// Returns the previous column-aligned position before the given base
@@ -381,7 +381,7 @@ impl SourceTextOwned {
     /// is not within the text.
     pub fn previous_position(&self, base: Pos) -> Option<Pos> {
         base.with_byte_offset(self.offset.byte,
-            |b| self.metrics.previous_position(&self.source, b))
+            |b| self.metrics.previous_position(&self.text, b))
     }
 
     /// Returns true if a line break is positioned at the given byte position in
@@ -389,14 +389,14 @@ impl SourceTextOwned {
     pub fn is_line_break(&self, byte: usize) -> bool {
         debug_assert!(byte > self.offset.byte,
             "byte is out of source text bounds");
-        self.metrics.is_line_break(&self.source, byte - self.offset.byte)
+        self.metrics.is_line_break(&self.text, byte - self.offset.byte)
     }
 
     /// Returns the position of the end of line containing the given base
     /// position.
     pub fn line_end_position(&self, base: Pos) -> Pos {
         base.with_byte_offset(self.offset.byte,
-                |b| Some(self.metrics.line_end_position(&self.source, b)))
+                |b| Some(self.metrics.line_end_position(&self.text, b)))
             .unwrap()
     }
 
@@ -404,7 +404,7 @@ impl SourceTextOwned {
     /// position.
     pub fn line_start_position(&self, base: Pos) -> Pos {
         base.with_byte_offset(self.offset.byte,
-                |b| Some(self.metrics.line_start_position(&self.source, b)))
+                |b| Some(self.metrics.line_start_position(&self.text, b)))
             .unwrap()
     }
 
@@ -412,14 +412,14 @@ impl SourceTextOwned {
     /// position.
     pub fn previous_line_end_position(&self, base: Pos) -> Option<Pos> {
         base.with_byte_offset(self.offset.byte,
-            |b| self.metrics.previous_line_end_position(&self.source, b))
+            |b| self.metrics.previous_line_end_position(&self.text, b))
     }
 
     /// Returns the position at the start of the next line after the given base
     /// position.
     pub fn next_line_start_position(&self, base: Pos) -> Option<Pos> {
         base.with_byte_offset(self.offset.byte,
-            |b| self.metrics.next_line_start_position(&self.source, b))
+            |b| self.metrics.next_line_start_position(&self.text, b))
     }
 
     /// Returns the position after the given pattern string, given its start
@@ -428,7 +428,7 @@ impl SourceTextOwned {
         -> Option<Pos>
     {
         start.with_byte_offset(self.offset.byte,
-            |s| self.metrics.position_after_str(&self.source, s, pattern))
+            |s| self.metrics.position_after_str(&self.text, s, pattern))
     }
 
     /// Returns the position after any `char`s matching a closure, given its
@@ -438,7 +438,7 @@ impl SourceTextOwned {
         where F: FnMut(char) -> bool
     {
         start.with_byte_offset(self.offset.byte,
-            |s| self.metrics.position_after_chars_matching(&self.source, s, f))
+            |s| self.metrics.position_after_chars_matching(&self.text, s, f))
     }
 
     /// Returns the next position after `char`s matching a closure, given its
@@ -449,13 +449,13 @@ impl SourceTextOwned {
     {
         start.with_byte_offset(self.offset.byte, |s| self
             .metrics
-            .next_position_after_chars_matching(&self.source, s, f))
+            .next_position_after_chars_matching(&self.text, s, f))
     }
 
     /// Returns an iterator over the display columns of the source text.
     pub fn iter_columns<'text>(&'text self, base: Pos) -> IterColumns<'text> {
         IterColumns {
-            source: &self.source,
+            text: &self.text,
             metrics: self.metrics,
             offset: self.offset,
             base: Some(base),
@@ -465,7 +465,7 @@ impl SourceTextOwned {
     /// Returns a `SourceText` that borrows from the `SourceTextOwned`.
     pub fn as_borrowed<'text>(&'text self) -> SourceText<'text> {
         SourceText {
-            source: &self.source,
+            text: &self.text,
             name: self.name.as_deref(),
             offset: self.offset,
             metrics: self.metrics,
@@ -475,7 +475,7 @@ impl SourceTextOwned {
 
 impl AsRef<str> for SourceTextOwned {
     fn as_ref(&self) -> &str {
-        &self.source
+        &self.text
     }
 }
 
@@ -501,7 +501,7 @@ impl std::fmt::Debug for SourceTextOwned {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IterColumns<'text> {
     /// The source text.
-    source: &'text str,
+    text: &'text str,
     /// The column metrics of the source text.
     metrics: ColumnMetrics,
     /// The position of the start of the source text.
@@ -518,10 +518,10 @@ impl<'text> Iterator for IterColumns<'text> {
 
         // TODO: handle offsets.
         let end = self.base
-            .and_then(|start| self.metrics.next_position(self.source, start));
+            .and_then(|start| self.metrics.next_position(self.text, start));
 
         let res = match (self.base, end) {
-            (Some(s), Some(e)) => Some((&self.source[s.byte..e.byte], e)),
+            (Some(s), Some(e)) => Some((&self.text[s.byte..e.byte], e)),
             _                  => None,
         };
 

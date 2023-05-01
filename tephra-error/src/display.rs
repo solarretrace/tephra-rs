@@ -423,7 +423,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
             if multiline_highlights_present { write!(out, " "); }
 
             // Write source text.
-            writeln!(out, "{}", source.clip(span).as_ref())?;
+            writeln!(out, "{}", source.clipped(span).as_ref())?;
 
             for (message_idx, message_hl) in self.highlights.iter().enumerate()
             {
