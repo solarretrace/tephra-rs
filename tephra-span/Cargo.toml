@@ -1,6 +1,6 @@
 [package]
 name = "tephra-span"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"

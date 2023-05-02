@@ -88,26 +88,6 @@ impl<T> SourceTextInner<T> {
     }
 }
 
-
-impl<'text, T> SourceTextInner<T> where T: AsRef<str> + From<&'text str> + 'text
-{
-    pub fn clipped(&'text self, span: Span) -> Self {
-        debug_assert!(self.pos_in_bounds(span.start()),
-            "start of span is out of source text bounds");
-        debug_assert!(self.pos_in_bounds(span.end()),
-            "start of span is out of source text bounds");
-
-        let s = span.start().byte - self.offset.byte;
-        let e = span.end().byte - self.offset.byte;
-        SourceTextInner {
-            text: T::from(&self.as_str()[s..e]),
-            name: self.name.as_ref().map(|n| T::from(n.as_ref())),
-            metrics: self.metrics,
-            offset: span.start(),
-        }
-    }
-}
-
 impl<T> SourceTextInner<T> where T: AsRef<str> {
     pub fn as_str(&self) -> &'_ str {
         self.text.as_ref()
@@ -245,8 +225,6 @@ impl<T> SourceTextInner<T> where T: AsRef<str> {
         }
     }
 
-    /// Converts the `SourceTextInner` into a `SourceTextOwned` by cloning the
-    /// backing text buffer.
     pub fn borrow(&self) -> SourceText<'_> {
         SourceTextInner {
             text: self.text.as_ref(),
@@ -267,6 +245,27 @@ impl<T> SourceTextInner<T> where T: AsRef<str> {
         }
     }
 }
+
+impl<'text, T> SourceTextInner<T>
+    where T: AsRef<str> + From<&'text str> + 'text
+{
+    pub fn clipped(&'text self, span: Span) -> Self {
+        debug_assert!(self.pos_in_bounds(span.start()),
+            "start of span is out of source text bounds");
+        debug_assert!(self.pos_in_bounds(span.end()),
+            "start of span is out of source text bounds");
+
+        let s = span.start().byte - self.offset.byte;
+        let e = span.end().byte - self.offset.byte;
+        SourceTextInner {
+            text: T::from(&self.as_str()[s..e]),
+            name: self.name.as_ref().map(|n| T::from(n.as_ref())),
+            metrics: self.metrics,
+            offset: span.start(),
+        }
+    }
+}
+
 
 impl<T> AsRef<str> for SourceTextInner<T> where T: AsRef<str> {
     fn as_ref(&self) -> &str {

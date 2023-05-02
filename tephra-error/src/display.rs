@@ -230,14 +230,14 @@ pub struct SpanDisplay {
 
 impl SpanDisplay {
     /// Constructs a new SpanDisplay with the given span.
-    pub fn new(source: SourceText<'_>, span: Span) -> Self {
+    pub fn new(source_text: SourceText<'_>, span: Span) -> Self {
         let gutter_width = std::cmp::max(
             (span.end().page.line as f32).log10().ceil() as u8, 1);
 
         SpanDisplay {
-            source_name: source.name().map(String::from),
-            metrics: source.column_metrics(),
-            span: span.widen_to_line(source),
+            source_name: source_text.name().map(String::from),
+            metrics: source_text.column_metrics(),
+            span: span.widen_to_line(source_text),
             highlights: Vec::with_capacity(2),
             notes: Vec::new(),
             allow_omissions: true,
@@ -247,13 +247,13 @@ impl SpanDisplay {
 
     /// Constructs a new SpanDisplay with the given span and highlight message.
     pub fn new_error_highlight<M>(
-        source: SourceText<'_>, 
+        source_text: SourceText<'_>, 
         span: Span,
         message: M)
         -> Self
         where M: Into<String>,
     {
-        SpanDisplay::new(source, span)
+        SpanDisplay::new(source_text, span)
             .with_highlight(Highlight::new(span, message)
                 .with_error_type())
     }
@@ -281,7 +281,7 @@ impl SpanDisplay {
     pub(in crate) fn write_with_color_enablement<W>(
         &self,
         out: &mut W,
-        source: SourceText<'_>,
+        source_text: SourceText<'_>,
         color_enabled: bool)
         -> std::fmt::Result
         where W: Write
@@ -311,11 +311,11 @@ impl SpanDisplay {
         }
 
         MultiSplitLines::new(
-                source,
+                source_text,
                 self.span,
                 &self.highlights[..],
                 self.gutter_width)
-            .write_with_color_enablement(out, source, color_enabled)?;
+            .write_with_color_enablement(out, source_text, color_enabled)?;
 
         for note in &self.notes {
             write!(out, "{:width$} = ", "", width=self.gutter_width as usize)?;
@@ -349,7 +349,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
     /// Constructs a new MultiSplitLines from the given source span and
     /// highlights.
     pub(in crate) fn new(
-        source: SourceText<'text>,
+        source_text: SourceText<'text>,
         span_display: Span,
         highlights: &'hl [Highlight],
         gutter_width: u8)
@@ -365,7 +365,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
             .expect("riser width < 255");
         event!(Level::TRACE, "riser_width = {riser_width}");
 
-        let source_lines = span_display.split_lines(source);
+        let source_lines = span_display.split_lines(source_text);
 
         MultiSplitLines {
             source_lines,
@@ -379,7 +379,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
     pub(in crate) fn write_with_color_enablement<W>(
         mut self,
         out: &mut W,
-        source: SourceText<'text>,
+        source_text: SourceText<'text>,
         color_enabled: bool)
         -> std::fmt::Result
         where W: Write
@@ -423,7 +423,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
             if multiline_highlights_present { write!(out, " "); }
 
             // Write source text.
-            writeln!(out, "{}", source.clipped(span).as_ref())?;
+            writeln!(out, "{}", source_text.clipped(span).as_ref())?;
 
             for (message_idx, message_hl) in self.highlights.iter().enumerate()
             {
