@@ -28,6 +28,7 @@ use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
+use tephra::SourceTextRef;
 use tephra::error::SourceError;
 use tephra::error::UnexpectedTokenError;
 use tephra::error::Found;
@@ -94,7 +95,7 @@ impl std::fmt::Display for AbcToken {
 impl Scanner for Abc {
     type Token = AbcToken;
 
-    fn scan<'text>(&mut self, source: SourceText<'text>, base: Pos)
+    fn scan<'text>(&mut self, source: SourceTextRef<'text>, base: Pos)
         -> Option<(Self::Token, Pos)>
     {
         let text = &source.as_ref()[base.byte..];

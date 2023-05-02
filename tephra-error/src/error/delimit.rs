@@ -18,10 +18,11 @@ use crate::Note;
 use crate::SpanDisplay;
 use crate::CodeDisplay;
 use crate::Highlight;
+use crate::error::SourceErrorRef;
 use crate::error::SourceError;
 
 // External library imports.
-use tephra_span::SourceText;
+use tephra_span::SourceTextRef;
 use tephra_span::Span;
 use tephra_span::Pos;
 
@@ -65,8 +66,8 @@ impl ParseBoundaryError {
 
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         SourceError::new(source_text, "incomplete parse")
             .with_span_display(SpanDisplay::new(
@@ -94,8 +95,8 @@ impl<'text> ParseError<'text> for ParseBoundaryError {
         Some(self.parse_span)
     }
 
-    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
     }
@@ -144,8 +145,8 @@ impl MatchBracketError {
 
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         use MatchBracketError::*;
         let mut source_error = match self {
@@ -217,8 +218,8 @@ impl Display for MatchBracketError {
 impl Error for MatchBracketError {}
 
 impl<'text> ParseError<'text> for MatchBracketError {
-    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
     }
@@ -271,8 +272,8 @@ impl RepeatCountError {
 
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         SourceError::new(source_text, "invalid item count")
             .with_span_display(SpanDisplay::new(
@@ -300,8 +301,8 @@ impl<'text> ParseError<'text> for RepeatCountError {
         Some(self.parse_span)
     }
 
-    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
     }

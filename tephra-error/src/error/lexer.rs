@@ -17,10 +17,11 @@ use crate::ParseError;
 use crate::Note;
 use crate::SpanDisplay;
 use crate::CodeDisplay;
+use crate::error::SourceErrorRef;
 use crate::error::SourceError;
 
 // External library imports.
-use tephra_span::SourceText;
+use tephra_span::SourceTextRef;
 use tephra_span::Span;
 use tephra_span::Pos;
 use simple_predicates::Expr;
@@ -49,8 +50,8 @@ pub struct UnrecognizedTokenError {
 impl UnrecognizedTokenError {
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         SourceError::new(source_text, "unrecognized token")
             .with_span_display(SpanDisplay::new(
@@ -75,8 +76,8 @@ impl<'text> ParseError<'text> for UnrecognizedTokenError {
         Some(self.parse_span)
     }
     
-    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
     }
@@ -214,8 +215,8 @@ impl<T> UnexpectedTokenError<T> where T: Debug + Display + Send + Sync {
 
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         SourceError::new(source_text, "unexpected token")
             .with_span_display(SpanDisplay::new_error_highlight(
@@ -246,8 +247,8 @@ impl<'text, T> ParseError<'text> for UnexpectedTokenError<T>
         Some(self.parse_span)
     }
     
-    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
     }

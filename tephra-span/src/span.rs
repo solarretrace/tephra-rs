@@ -11,7 +11,7 @@
 // Internal library imports.
 use crate::Page;
 use crate::Pos;
-use crate::SourceText;
+use crate::SourceTextRef;
 
 // External library imports.
 use few::Few;
@@ -73,7 +73,7 @@ impl Span {
     }
 
     /// Returns true if the span covers the entire source text.
-    pub fn is_full<'text>(&self, source: SourceText<'text>) -> bool {
+    pub fn is_full<'text>(&self, source: SourceTextRef<'text>) -> bool {
         (self.byte.end - self.byte.start) == source.len()
     }
 
@@ -115,7 +115,7 @@ impl Span {
     }
 
     /// Widens the span on the left and right to the nearest newline.
-    pub fn widen_to_line<'text>(&self, source: SourceText<'text>) -> Self {
+    pub fn widen_to_line<'text>(&self, source: SourceTextRef<'text>) -> Self {
         let _span = span!(Level::TRACE, "widen_to_line").entered();
         if self.is_full(source) {
             event!(Level::TRACE, "span is full and cannot be widened");
@@ -234,7 +234,7 @@ impl Span {
     }
 
     /// Returns an iterator over the lines of the span.
-    pub fn split_lines<'text>(&self, source: SourceText<'text>)
+    pub fn split_lines<'text>(&self, source: SourceTextRef<'text>)
         -> SplitLines<'text>
     {
         SplitLines {
@@ -343,7 +343,7 @@ impl std::fmt::Display for PageSpan {
 #[derive(Debug, Clone)]
 pub struct SplitLines<'text> {
     /// The source text to split.
-    source: SourceText<'text>,
+    source: SourceTextRef<'text>,
     /// The position to start the split within the source text.
     start: Pos,
     /// The position to end the split within the source text.

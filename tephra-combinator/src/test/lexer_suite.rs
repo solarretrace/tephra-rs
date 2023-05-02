@@ -24,6 +24,7 @@ use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
+use tephra::SourceTextRef;
 use test_log::test;
 
 
@@ -65,7 +66,7 @@ impl Test {
 impl Scanner for Test {
     type Token = TestToken;
 
-    fn scan<'text>(&mut self, source: SourceText<'text>, base: Pos)
+    fn scan<'text>(&mut self, source: SourceTextRef<'text>, base: Pos)
         -> Option<(Self::Token, Pos)>
     {
         let text = &source.as_ref()[base.byte..];

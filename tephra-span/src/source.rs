@@ -22,16 +22,16 @@ pub const SOURCE_TEXT_DISPLAY_LEN: usize = 12;
 pub const SOURCE_TEXT_DEBUG_LEN: usize = 12;
 
 ////////////////////////////////////////////////////////////////////////////////
-// SourceTextInner
+// SourceText
 ////////////////////////////////////////////////////////////////////////////////
 
-pub type SourceText<'text> = SourceTextInner<&'text str>;
-pub type SourceTextOwned = SourceTextInner<Box<str>>;
+pub type SourceTextRef<'text> = SourceText<&'text str>;
+pub type SourceTextOwned = SourceText<Box<str>>;
 
 
 /// A positioned section of source text.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SourceTextInner<T> {
+pub struct SourceText<T> {
     /// The source text.
     text: T,
     /// The source text name.
@@ -42,17 +42,17 @@ pub struct SourceTextInner<T> {
     offset: Pos,
 }
 
-impl<T> SourceTextInner<T> where T: Default {
-    pub fn empty() -> SourceTextInner<T>{
-        SourceTextInner::new(T::default())
+impl<T> SourceText<T> where T: Default {
+    pub fn empty() -> SourceText<T>{
+        SourceText::new(T::default())
     }
 }
 
-impl<T> SourceTextInner<T> {
-    /// Constructs a new `SourceTextInner` with the given offset `Pos` and
+impl<T> SourceText<T> {
+    /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
     pub fn new(text: T) -> Self {
-        SourceTextInner {
+        SourceText {
             text,
             name: None,
             offset: Pos::ZERO,
@@ -88,7 +88,7 @@ impl<T> SourceTextInner<T> {
     }
 }
 
-impl<T> SourceTextInner<T> where T: AsRef<str> {
+impl<T> SourceText<T> where T: AsRef<str> {
     pub fn as_str(&self) -> &'_ str {
         self.text.as_ref()
     }
@@ -225,8 +225,8 @@ impl<T> SourceTextInner<T> where T: AsRef<str> {
         }
     }
 
-    pub fn borrow(&self) -> SourceText<'_> {
-        SourceTextInner {
+    pub fn borrow(&self) -> SourceTextRef<'_> {
+        SourceText {
             text: self.text.as_ref(),
             name: self.name(),
             offset: self.offset,
@@ -234,10 +234,10 @@ impl<T> SourceTextInner<T> where T: AsRef<str> {
         }
     }
 
-    /// Converts the `SourceTextInner` into a `SourceTextOwned` by cloning the
+    /// Converts the `SourceText` into a `SourceTextOwned` by cloning the
     /// backing text buffer.
     pub fn to_owned(&self) -> SourceTextOwned {
-        SourceTextInner {
+        SourceText {
             text: self.as_str().into(),
             name: self.name.as_ref().map(|s| s.as_ref().into()),
             offset: self.offset,
@@ -246,7 +246,7 @@ impl<T> SourceTextInner<T> where T: AsRef<str> {
     }
 }
 
-impl<'text, T> SourceTextInner<T>
+impl<'text, T> SourceText<T>
     where T: AsRef<str> + From<&'text str> + 'text
 {
     pub fn clipped(&'text self, span: Span) -> Self {
@@ -257,7 +257,7 @@ impl<'text, T> SourceTextInner<T>
 
         let s = span.start().byte - self.offset.byte;
         let e = span.end().byte - self.offset.byte;
-        SourceTextInner {
+        SourceText {
             text: T::from(&self.as_str()[s..e]),
             name: self.name.as_ref().map(|n| T::from(n.as_ref())),
             metrics: self.metrics,
@@ -267,14 +267,14 @@ impl<'text, T> SourceTextInner<T>
 }
 
 
-impl<T> AsRef<str> for SourceTextInner<T> where T: AsRef<str> {
+impl<T> AsRef<str> for SourceText<T> where T: AsRef<str> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
 
-impl<T> std::fmt::Display for SourceTextInner<T> where T: AsRef<str> {
+impl<T> std::fmt::Display for SourceText<T> where T: AsRef<str> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = self.as_str();
 
@@ -288,7 +288,7 @@ impl<T> std::fmt::Display for SourceTextInner<T> where T: AsRef<str> {
     }
 }
 
-impl<T> std::fmt::Debug for SourceTextInner<T>  where T: AsRef<str> {
+impl<T> std::fmt::Debug for SourceText<T>  where T: AsRef<str> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = self.as_str();
         let src = if text.len() > SOURCE_TEXT_DEBUG_LEN {
@@ -297,7 +297,7 @@ impl<T> std::fmt::Debug for SourceTextInner<T>  where T: AsRef<str> {
             format!("{}", &text[..])
         };
 
-        f.debug_struct("SourceTextInner")
+        f.debug_struct("SourceText")
             .field("text", &src)
             .field("name", &self.name.as_ref().map(|n| n.as_ref()))
             .field("offset", &self.offset)

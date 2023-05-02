@@ -22,7 +22,7 @@ use crate::Note;
 use colored::Color;
 use colored::Colorize as _;
 use tephra_span::ColumnMetrics;
-use tephra_span::SourceText;
+use tephra_span::SourceTextRef;
 use tephra_span::Span;
 use tephra_span::SplitLines;
 use tephra_tracing::event;
@@ -165,7 +165,7 @@ impl CodeDisplay {
     pub fn write<W>(
         &self,
         out: &mut W,
-        source: SourceText<'_>)
+        source: SourceTextRef<'_>)
         -> std::fmt::Result
         where W: Write
     {
@@ -175,7 +175,7 @@ impl CodeDisplay {
     pub(in crate) fn write_with_color_enablement<W>(
         &self,
         out: &mut W,
-        source: SourceText<'_>,
+        source: SourceTextRef<'_>,
         color_enabled: bool)
         -> std::fmt::Result
         where W: Write
@@ -230,7 +230,7 @@ pub struct SpanDisplay {
 
 impl SpanDisplay {
     /// Constructs a new SpanDisplay with the given span.
-    pub fn new(source_text: SourceText<'_>, span: Span) -> Self {
+    pub fn new(source_text: SourceTextRef<'_>, span: Span) -> Self {
         let gutter_width = std::cmp::max(
             (span.end().page.line as f32).log10().ceil() as u8, 1);
 
@@ -247,7 +247,7 @@ impl SpanDisplay {
 
     /// Constructs a new SpanDisplay with the given span and highlight message.
     pub fn new_error_highlight<M>(
-        source_text: SourceText<'_>, 
+        source_text: SourceTextRef<'_>, 
         span: Span,
         message: M)
         -> Self
@@ -281,7 +281,7 @@ impl SpanDisplay {
     pub(in crate) fn write_with_color_enablement<W>(
         &self,
         out: &mut W,
-        source_text: SourceText<'_>,
+        source_text: SourceTextRef<'_>,
         color_enabled: bool)
         -> std::fmt::Result
         where W: Write
@@ -349,7 +349,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
     /// Constructs a new MultiSplitLines from the given source span and
     /// highlights.
     pub(in crate) fn new(
-        source_text: SourceText<'text>,
+        source_text: SourceTextRef<'text>,
         span_display: Span,
         highlights: &'hl [Highlight],
         gutter_width: u8)
@@ -379,7 +379,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
     pub(in crate) fn write_with_color_enablement<W>(
         mut self,
         out: &mut W,
-        source_text: SourceText<'text>,
+        source_text: SourceTextRef<'text>,
         color_enabled: bool)
         -> std::fmt::Result
         where W: Write

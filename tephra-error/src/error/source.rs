@@ -20,7 +20,7 @@ use crate::CodeDisplay;
 
 // External library imports.
 use tephra_span::SourceText;
-use tephra_span::SourceTextInner;
+use tephra_span::SourceTextRef;
 use tephra_span::SourceTextOwned;
 use tephra_span::Span;
 
@@ -32,31 +32,31 @@ use std::fmt::Debug;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// SourceErrorInner
+// SourceError
 ////////////////////////////////////////////////////////////////////////////////
-pub type SourceError<'text> = SourceErrorInner<&'text str>;
-pub type SourceErrorOwned = SourceErrorInner<Box<str>>;
+pub type SourceErrorRef<'text> = SourceError<&'text str>;
+pub type SourceErrorOwned = SourceError<Box<str>>;
 
 
 /// A general-purpose error supporting formatted source text display.
 #[derive(Debug)]
-pub struct SourceErrorInner<T> where T: AsRef<str> {
+pub struct SourceError<T> where T: AsRef<str> {
     /// The source text.
-    source_text: SourceTextInner<T>,
+    source_text: SourceText<T>,
     /// The `CodeDisplay` used to format the error output.
     code_display: CodeDisplay,
     /// The underlying cause of the error.
     cause: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
-impl<T> SourceErrorInner<T> where T: AsRef<str> {
-    /// Constructs a new `SourceErrorInner` with the given `SourceText` and
+impl<T> SourceError<T> where T: AsRef<str> {
+    /// Constructs a new `SourceError` with the given `SourceText` and
     /// message.
-    pub fn new<M>(source_text: SourceTextInner<T>, message: M)
-        -> SourceErrorInner<T>
+    pub fn new<M>(source_text: SourceText<T>, message: M)
+        -> SourceError<T>
         where M: Into<String>,
     {
-        SourceErrorInner {
+        SourceError {
             source_text,
             code_display: CodeDisplay::new(message)
                 .with_error_type(),
@@ -64,7 +64,7 @@ impl<T> SourceErrorInner<T> where T: AsRef<str> {
         }
     }
 
-    /// Returns the given `SourceErrorInner` with the given error cause.
+    /// Returns the given `SourceError` with the given error cause.
     pub fn with_cause(mut self, cause: Box<dyn Error + Send + Sync + 'static>)
         -> Self
     {
@@ -72,13 +72,13 @@ impl<T> SourceErrorInner<T> where T: AsRef<str> {
         self
     }
 
-    /// Returns the given `SourceErrorInner` with the given color enablement.
+    /// Returns the given `SourceError` with the given color enablement.
     pub fn with_color(mut self, color_enabled: bool) -> Self {
         self.code_display.color_enabled = color_enabled;
         self
     }
 
-    /// Returns the given `SourceErrorInner` with the given note attachment.
+    /// Returns the given `SourceError` with the given note attachment.
     pub fn with_note<N>(mut self, note: N) -> Self
         where N: Into<Note>
     {
@@ -86,14 +86,14 @@ impl<T> SourceErrorInner<T> where T: AsRef<str> {
         self
     }
 
-    /// Returns the given `SourceErrorInner` with the given note attachment.
+    /// Returns the given `SourceError` with the given note attachment.
     pub fn push_note<N>(&mut self, note: N)
         where N: Into<Note>
     {
         self.code_display.notes.push(note.into());
     }
 
-    /// Returns the given `SourceErrorInner` with the given `SpanDisplay` attachment.
+    /// Returns the given `SourceError` with the given `SpanDisplay` attachment.
     pub fn with_span_display<S>(mut self, span_display: S) -> Self
         where S: Into<SpanDisplay>
     {
@@ -101,21 +101,21 @@ impl<T> SourceErrorInner<T> where T: AsRef<str> {
         self
     }
 
-    /// Appends the given `SpanDisplay` to the `SourceErrorInner`.
+    /// Appends the given `SpanDisplay` to the `SourceError`.
     pub fn push_span_display<S>(&mut self, span_display: S)
         where S: Into<SpanDisplay>
     {
         self.code_display.span_displays.push(span_display.into());
     }
 
-    /// Returns the `SourceErrorInner`'s message.
+    /// Returns the `SourceError`'s message.
     pub fn message(&self) -> &str {
         self.code_display.message.as_str()
     }
 
 
     pub fn into_owned(self) -> SourceErrorOwned {
-        SourceErrorInner {
+        SourceError {
             source_text: self.source_text.to_owned(),
             code_display: self.code_display,
             cause: self.cause,
@@ -123,13 +123,13 @@ impl<T> SourceErrorInner<T> where T: AsRef<str> {
     }
 }
 
-impl<T> Display for SourceErrorInner<T> where T: AsRef<str> + Display {
+impl<T> Display for SourceError<T> where T: AsRef<str> + Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.code_display.write(f, self.source_text.borrow())
     }
 }
 
-impl<T> Error for SourceErrorInner<T> where T: AsRef<str> + Debug + Display {
+impl<T> Error for SourceError<T> where T: AsRef<str> + Debug + Display {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.cause
             .as_deref()
@@ -139,14 +139,14 @@ impl<T> Error for SourceErrorInner<T> where T: AsRef<str> + Debug + Display {
 
 
 
-impl<'text> ParseError<'text> for SourceError<'text> {
-    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
-        -> SourceError<'text>
+impl<'text> ParseError<'text> for SourceErrorRef<'text> {
+    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         *self
     }
 
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
-        Box::new(SourceErrorInner::into_owned(*self))
+        Box::new(SourceError::into_owned(*self))
     }
 }

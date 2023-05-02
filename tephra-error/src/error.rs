@@ -20,7 +20,7 @@ pub use source::*;
 
 // External library imports.
 use tephra_span::Span;
-use tephra_span::SourceText;
+use tephra_span::SourceTextRef;
 
 
 
@@ -34,9 +34,9 @@ pub trait ParseError<'text>: std::error::Error + Send + Sync + 'text {
     /// available.
     fn parse_span(&self) -> Option<Span> { None }
 
-    /// Converts a `ParseError<'text>` into a `SourceError<'text>`.
-    fn into_source_error(self: Box<Self>, source_text: SourceText<'text>)
-        -> SourceError<'text>
+    /// Converts a `ParseError<'text>` into a `SourceErrorRef<'text>`.
+    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
     {
         SourceError::new(source_text, format!("{self}"))
             .with_cause(self.into_owned())

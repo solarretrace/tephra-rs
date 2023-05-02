@@ -12,9 +12,9 @@
 
 
 // Internal library imports.
-use crate::Span;
 use crate::Pos;
 use crate::SourceText;
+use crate::Span;
 
 // External library imports.
 use pretty_assertions::assert_eq;

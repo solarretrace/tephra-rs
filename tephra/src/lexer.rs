@@ -17,7 +17,7 @@ use tephra_span::ColumnMetrics;
 use tephra_span::LineEnding;
 use tephra_span::Pos;
 use tephra_span::Span;
-use tephra_span::SourceText;
+use tephra_span::SourceTextRef;
 use tephra_error::Recover;
 
 // External library imports.
@@ -43,7 +43,7 @@ pub trait Scanner: Debug + Clone + PartialEq {
     type Token: Display + Debug + Clone + PartialEq + Send + Sync + 'static;
 
     /// Parses a token from the given source text.
-    fn scan<'text>(&mut self, source: SourceText<'text>, base: Pos)
+    fn scan<'text>(&mut self, source: SourceTextRef<'text>, base: Pos)
         -> Option<(Self::Token, Pos)>;
 }
 
@@ -55,7 +55,7 @@ pub trait Scanner: Debug + Clone + PartialEq {
 #[derive(Clone)]
 pub struct Lexer<'text, Sc> where Sc: Scanner {
     /// The source text to tokenize.
-    source_text: SourceText<'text>,
+    source_text: SourceTextRef<'text>,
     /// The token inclusion filter. Any token for which this returns false will
     /// be skipped automatically.
     filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>,
@@ -82,7 +82,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     where Sc: Scanner,
 {
     /// Constructs a new Lexer for the given text.
-    pub fn new(scanner: Sc, source_text: SourceText<'text>) -> Self {
+    pub fn new(scanner: Sc, source_text: SourceTextRef<'text>) -> Self {
         Lexer {
             source_text,
             filter: None,
@@ -115,7 +115,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Returns the underlying source text.
-    pub fn source_text(&self) -> SourceText<'text> {
+    pub fn source_text(&self) -> SourceTextRef<'text> {
         self.source_text
     }
 
