@@ -20,7 +20,6 @@ use crate::text;
 use pretty_assertions::assert_eq;
 use tephra::Context;
 use tephra::Lexer;
-use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
@@ -287,12 +286,12 @@ fn both_whitespace_filter() {
     let ctx = Context::empty();
     lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = both(
+    let (actual, _) = both(
             text(one(Aa)),
             text(one(B)))
         (lexer, ctx)
-        .finish()
-        .unwrap();
+        .unwrap()
+        .take_value();
 
     let expected = ("aa", "b");
 
