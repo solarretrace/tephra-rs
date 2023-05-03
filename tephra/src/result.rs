@@ -26,7 +26,7 @@ use tephra_tracing::event;
 ////////////////////////////////////////////////////////////////////////////////
 /// The result of a parse attempt.
 pub type ParseResult<'text, Sc, V> 
-        = Result<Success<'text, Sc, V>, Box<dyn ParseError<'text>>>;
+        = Result<Success<'text, Sc, V>, Box<dyn ParseError>>;
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -154,8 +154,8 @@ SpanDisplay (highlight, span)
 SpanDisplayOwned
 CodeDisplay (span_display)
 CodeDisplayOwned
-ParseError<'text>
-ParseError<'text>Owned
+ParseError
+ParseErrorOwned
 
 # Tephra Parse Errors
 

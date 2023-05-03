@@ -71,12 +71,12 @@ impl Display for UnrecognizedTokenError {
 
 impl Error for UnrecognizedTokenError {}
 
-impl<'text> ParseError<'text> for UnrecognizedTokenError {
+impl ParseError for UnrecognizedTokenError {
     fn parse_span(&self) -> Option<Span> {
         Some(self.parse_span)
     }
     
-    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
@@ -240,14 +240,14 @@ impl<T> Display for UnexpectedTokenError<T>
 impl<T> Error for UnexpectedTokenError<T>
     where T: Debug + Display + Send + Sync + 'static {}
 
-impl<'text, T> ParseError<'text> for UnexpectedTokenError<T>
+impl<T> ParseError for UnexpectedTokenError<T>
     where T: Debug + Display + Send + Sync + 'static
 {
     fn parse_span(&self) -> Option<Span> {
         Some(self.parse_span)
     }
     
-    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
@@ -274,7 +274,7 @@ impl Display for RecoverError {
 
 impl Error for RecoverError {}
 
-impl<'text> ParseError<'text> for RecoverError {
+impl ParseError for RecoverError {
     fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }

@@ -137,16 +137,3 @@ impl<T> Error for SourceError<T> where T: AsRef<str> + Debug + Display {
     }
 }
 
-
-
-impl<'text> ParseError<'text> for SourceErrorRef<'text> {
-    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
-    {
-        *self
-    }
-
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
-        Box::new(SourceError::into_owned(*self))
-    }
-}

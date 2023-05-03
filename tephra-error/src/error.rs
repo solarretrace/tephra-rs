@@ -29,20 +29,20 @@ use tephra_span::SourceTextRef;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Provides common methods for parse errors.
-pub trait ParseError<'text>: std::error::Error + Send + Sync + 'text {
+pub trait ParseError: std::error::Error + Send + Sync {
     /// Returns the span of the current parse when the failure occurred, if
     /// available.
     fn parse_span(&self) -> Option<Span> { None }
 
-    /// Converts a `ParseError<'text>` into a `SourceErrorRef<'text>`.
-    fn into_source_error(self: Box<Self>, source_text: SourceTextRef<'text>)
+    /// Converts a `ParseError` into a `SourceErrorRef<'text>`.
+    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         SourceError::new(source_text, format!("{self}"))
             .with_cause(self.into_owned())
     }
 
-    /// Converts a `ParseError<'text>` into an owned error.
+    /// Converts a `ParseError` into an owned error.
     fn into_owned(self: Box<Self>)
         -> Box<dyn std::error::Error + Send + Sync + 'static>;
 }

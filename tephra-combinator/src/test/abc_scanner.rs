@@ -28,8 +28,11 @@ use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
+use tephra::Span;
+use tephra::ParseError;
 use tephra::SourceTextRef;
 use tephra::error::SourceError;
+use tephra::error::SourceErrorRef;
 use tephra::error::UnexpectedTokenError;
 use tephra::error::Found;
 use tephra::SpanDisplay;
@@ -198,7 +201,6 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     }
 
     // Setup error context.
-    let source_text = lexer.source_text();
     let ctx = ctx.push(std::rc::Rc::new(move |e| {
         let parse_span = e.parse_span();
         let e = e.into_owned();
@@ -212,17 +214,7 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
                 _   => None,
             });
 
-        let se = SourceError::new(source_text, "expected pattern");
-        let se = match parse_span {
-            None => se.with_cause(e),
-            Some(span) => se
-                .with_span_display(SpanDisplay::new_error_highlight(
-                    source_text,
-                    token_span.map(|t| span.enclose(t)).unwrap_or(span),
-                    "expected 'ABC', 'BXX', or 'XYC' pattern"))
-                .with_cause(e)
-        };
-        Box::new(se)
+        Box::new(ParsePatternError { parse_span, token_span })
     }));
 
     spanned(text(xyc))
@@ -266,6 +258,60 @@ pub fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
         one(C))
         (lexer, ctx)
         .map_value(|((x, y), z)| (x, y, z))
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// ParsePatternError
+////////////////////////////////////////////////////////////////////////////////
+/// An error generated when a successful parse does not consume as much text as
+/// required.
+#[derive(Debug, Clone)]
+pub struct ParsePatternError {
+    pub parse_span: Option<Span>,
+    pub token_span: Option<Span>,
+}
+
+impl ParsePatternError {
+    /// Converts the error into a `SourceError` attached to the given
+    /// `SourceText`.
+    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
+    {
+        let mut se = SourceError::new(source_text, "expected pattern");
+        if let Some(span) = self.parse_span {
+            se = se
+                .with_span_display(SpanDisplay::new_error_highlight(
+                    source_text,
+                    self.token_span.map(|t| span.enclose(t)).unwrap_or(span),
+                    "expected 'ABC', 'BXX', or 'XYC' pattern"))
+        };
+        se.with_cause(Box::new(self))
+    }
+}
+
+impl std::fmt::Display for ParsePatternError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "expected pattern")
+    }
+}
+
+impl std::error::Error for ParsePatternError {}
+
+impl ParseError for ParsePatternError {
+    fn parse_span(&self) -> Option<Span> {
+        self.parse_span
+    }
+
+    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
+    {
+        Self::into_source_error(*self, source_text)
+    }
+
+    fn into_owned(self: Box<Self> ) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+        self
+    }
 }
 
 
