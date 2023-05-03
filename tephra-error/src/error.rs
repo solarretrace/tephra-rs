@@ -49,3 +49,13 @@ pub trait ParseError: std::error::Error + Send + Sync {
         -> Box<dyn std::error::Error + Send + Sync + 'static>;
 }
 
+
+impl<E> ParseError for Box<E>
+    where E: std::error::Error + Send + Sync + 'static
+{
+    fn into_owned(self: Box<Self>)
+        -> Box<dyn std::error::Error + Send + Sync + 'static>
+    {
+        self
+    }
+}
