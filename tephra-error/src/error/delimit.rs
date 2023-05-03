@@ -95,7 +95,9 @@ impl ParseError for ParseBoundaryError {
         Some(self.parse_span)
     }
 
-    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(
+        self: Box<Self>,
+        source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
@@ -218,7 +220,9 @@ impl Display for MatchBracketError {
 impl Error for MatchBracketError {}
 
 impl ParseError for MatchBracketError {
-    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(
+        self: Box<Self>,
+        source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
@@ -301,7 +305,9 @@ impl ParseError for RepeatCountError {
         Some(self.parse_span)
     }
 
-    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(
+        self: Box<Self>,
+        source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)

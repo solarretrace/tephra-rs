@@ -76,7 +76,9 @@ impl ParseError for UnrecognizedTokenError {
         Some(self.parse_span)
     }
     
-    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(
+        self: Box<Self>,
+        source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
@@ -247,7 +249,9 @@ impl<T> ParseError for UnexpectedTokenError<T>
         Some(self.parse_span)
     }
     
-    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(
+        self: Box<Self>,
+        source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)

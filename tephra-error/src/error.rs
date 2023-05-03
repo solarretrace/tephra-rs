@@ -35,7 +35,9 @@ pub trait ParseError: std::error::Error + Send + Sync {
     fn parse_span(&self) -> Option<Span> { None }
 
     /// Converts a `ParseError` into a `SourceErrorRef<'text>`.
-    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(
+        self: Box<Self>,
+        source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         SourceError::new(source_text, format!("{self}"))
