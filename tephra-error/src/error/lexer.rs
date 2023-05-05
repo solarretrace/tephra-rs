@@ -205,7 +205,6 @@ pub struct UnexpectedTokenError<T>
 }
 
 impl<T> UnexpectedTokenError<T> where T: Debug + Display + Send + Sync {
-
     /// Constructs a string describing the expected and found tokens.
     fn expected_description(&self) -> String {
         if self.expected.is_empty() {

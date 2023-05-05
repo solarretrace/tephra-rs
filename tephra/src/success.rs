@@ -90,7 +90,7 @@ impl<'text, Sc, V> Debug for Success<'text, Sc, V>
 // Spanned
 ////////////////////////////////////////////////////////////////////////////////
 /// A parsed value with its span.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Spanned<T> {
     /// The span of the value's source text.
     pub span: Span,
