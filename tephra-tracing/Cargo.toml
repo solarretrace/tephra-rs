@@ -1,17 +1,16 @@
 [package]
 name = "tephra-tracing"
-version = "0.0.164"
-authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
-edition = "2021"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/solarretrace/tephra-rs"
-homepage = "https://github.com/solarretrace/tephra-rs"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Tephra tracing interface library"
-readme = "readme.md"
-keywords = []
-categories = []
-documentation = ""
-exclude = []
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
 
 [lib]
 name = "tephra_tracing"

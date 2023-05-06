@@ -7,6 +7,21 @@ members = [
 	"tephra-tracing",
 ]
 
+[workspace.package]
+version = "0.0.210"
+authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
+description = "Tephra parser combinator library"
+homepage = "https://github.com/solarretrace/tephra-rs"
+repository = "https://github.com/solarretrace/tephra-rs"
+license = "MIT or Apache-2.0"
+readme = "readme.md"
+edition = "2021"
+keywords = ["tephra"]
+categories = []
+exclude = [
+    "*.sublime-project",
+    "*.sublime-workspace",
+    ".trace"]
 
 
 # The development profile, used for `cargo build`

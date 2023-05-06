@@ -1,17 +1,16 @@
 [package]
 name = "tephra"
-version = "0.0.209"
-authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
-edition = "2021"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/solarretrace/tephra-rs"
-homepage = "https://github.com/solarretrace/tephra-rs"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Tephra parser library"
-readme = "readme.md"
+readme.workspace = true
 keywords = ["lexer", "scanner", "parser", "combinator"]
-categories = []
-documentation = ""
-exclude = []
+categories.workspace = true
+exclude.workspace = true
 
 [lib]
 name = "tephra"

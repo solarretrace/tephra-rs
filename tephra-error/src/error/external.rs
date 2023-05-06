@@ -5,56 +5,58 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Parse error.
+//! General-purpose errors supporting formatted source text display.
 ////////////////////////////////////////////////////////////////////////////////
 
-
-mod delimit;
-mod external;
-mod lexer;
-mod source;
-
-pub use delimit::*;
-pub use external::*;
-pub use lexer::*;
-pub use source::*;
-
+// Internal library imports.
+use crate::ParseError;
+use crate::error::SourceErrorRef;
 
 // External library imports.
-use tephra_span::Span;
 use tephra_span::SourceTextRef;
 
 
+// Standard library imports.
+use std::num::ParseIntError;
+use std::num::ParseFloatError;
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
-// ParseError
+// std::num::ParseIntError
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Provides common methods for parse errors.
-pub trait ParseError: std::error::Error + Send + Sync {
-    /// Returns the span of the current parse when the failure occurred, if
-    /// available.
-    fn parse_span(&self) -> Option<Span> { None }
-
-    /// Converts a `ParseError` into a `SourceErrorRef<'text>`.
+impl ParseError for ParseIntError {
     fn into_source_error<'text>(
         self: Box<Self>,
         source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
-        SourceError::new(source_text, format!("{self}"))
-            .with_cause(self.into_owned())
+        SourceErrorRef::new(source_text, format!("{self}"))
     }
 
-    /// Converts a `ParseError` into an owned error.
     fn into_owned(self: Box<Self>)
-        -> Box<dyn std::error::Error + Send + Sync + 'static>;
+        -> Box<dyn std::error::Error + Send + Sync + 'static>
+    {
+        self
+    }
 }
 
 
-impl<E> ParseError for Box<E>
-    where E: std::error::Error + Send + Sync + 'static
-{
+////////////////////////////////////////////////////////////////////////////////
+// std::num::ParseFloatError
+////////////////////////////////////////////////////////////////////////////////
+
+impl ParseError for ParseFloatError {
+    fn into_source_error<'text>(
+        self: Box<Self>,
+        source_text: SourceTextRef<'text>)
+        -> SourceErrorRef<'text>
+    {
+        SourceErrorRef::new(source_text, format!("{self}"))
+    }
+
     fn into_owned(self: Box<Self>)
         -> Box<dyn std::error::Error + Send + Sync + 'static>
     {
