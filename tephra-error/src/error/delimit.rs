@@ -220,6 +220,10 @@ impl Display for MatchBracketError {
 impl Error for MatchBracketError {}
 
 impl ParseError for MatchBracketError {
+    fn parse_span(&self) -> Option<Span> {
+        Some(self.full_span())
+    }
+
     fn into_source_error<'text>(
         self: Box<Self>,
         source_text: SourceTextRef<'text>)
