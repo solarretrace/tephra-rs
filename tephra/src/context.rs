@@ -171,7 +171,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
 
     /// Constructs a new `Context` by wrapping a new `ErrorTransform` around the
     /// given `Context`.
-    pub fn push(self, error_transform: ErrorTransform<'text>) -> Self {
+    pub fn pushed(self, error_transform: ErrorTransform<'text>) -> Self {
         if !self.locked {
             Context {
                 shared: self.shared.clone(),
@@ -183,6 +183,17 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
             }
         } else {
             self
+        }
+    }
+
+    /// Constructs a new `Context` by wrapping a new `ErrorTransform` around the
+    /// given `Context`.
+    pub fn push(&mut self, error_transform: ErrorTransform<'text>) {
+        if !self.locked {
+            self.local = Rc::new(RwLock::new(LocalContext {
+                parent: Some(self.local.clone()),
+                error_transform: Some(error_transform),
+            }));
         }
     }
 
