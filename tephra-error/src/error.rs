@@ -31,7 +31,9 @@ use tephra_span::SourceTextRef;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Provides common methods for parse errors.
-pub trait ParseError: std::error::Error + AsError + Send + Sync {
+pub trait ParseError: std::error::Error + Send + Sync 
+    + AsError<dyn std::error::Error + Send + Sync>
+{
     /// Returns the span of the current parse when the failure occurred, if
     /// available.
     fn parse_span(&self) -> Option<Span> { None }
@@ -88,18 +90,21 @@ impl<'a, T> AsErrorFrom<T> for dyn std::error::Error + Send + Sync + 'a
 }
 
 /// Provides methods to upcast trait objects into `std::error::Error`.
-pub trait AsError {
-    fn as_error(&self) -> &(dyn std::error::Error + Send + Sync);
-    fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync);
+pub trait AsError<E: ?Sized> {
+    fn as_error(&self) -> &E;
+    fn as_error_mut(&mut self) -> &mut E;
 }
 
-impl<T> AsError for T
-    where T: std::error::Error + Send + Sync
+impl<'a, T> AsError<dyn std::error::Error + Send + Sync + 'a> for T
+    where T: std::error::Error + Send + Sync + 'a
 {
-    fn as_error(&self) -> &(dyn std::error::Error + Send + Sync) {
+    fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'a) {
         AsErrorFrom::as_error_from(self)
     }
-    fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync) {
+    
+    fn as_error_mut(&mut self)
+        -> &mut (dyn std::error::Error + Send + Sync + 'a)
+    {
         AsErrorFrom::as_error_from_mut(self)
     }
 }
