@@ -12,16 +12,14 @@
 use crate::map;
 
 // External library imports.
-use tephra::error::MatchBracketError;
+use smallvec::SmallVec;
 use tephra::Context;
+use tephra::error::MatchBracketError;
 use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Success;
-use tephra_tracing::Level;
-use tephra_tracing::span;
-use smallvec::SmallVec;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,8 +148,6 @@ pub fn bracket_default_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
     }
 
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "bracket").entered();
-
         match match_nested_brackets(
             lexer.clone(),
             open_tokens,
@@ -217,7 +213,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
 {
     use MatchBracketError::*;
     let start_span = lexer.start_span();
-    let mut open_lexer: Option<Lexer<Sc>> = None;
+    let mut open_lexer: Option<Lexer<'_, Sc>> = None;
     // Detected open tokens as (index, count) pairs.
     let mut opened: SmallVec<[(usize, usize); DEFAULT_TOKEN_VEC_SIZE]>
         = SmallVec::with_capacity(open_tokens.len());

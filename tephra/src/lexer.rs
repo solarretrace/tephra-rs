@@ -20,11 +20,6 @@ use tephra_span::Span;
 use tephra_span::SourceTextRef;
 use tephra_error::Recover;
 
-// External library imports.
-use tephra_tracing::Level;
-use tephra_tracing::event;
-use tephra_tracing::span;
-
 // Standard library imports.
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -211,7 +206,6 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Scans to the next unfiltered token and buffers it. This method is
     /// idempotent.
     fn scan_to_buffer(&mut self) {
-        let _span = span!(Level::TRACE, "scan_to_buffer").entered();
 
         let mut scanner = self.scanner.clone();
         while self.cursor.byte < self.source_text.len() {
@@ -247,7 +241,6 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// without advancing the lexer position, assuming the lexer state is
     /// unchanged by the time `next` is called.
     pub fn peek(&self) -> Option<Sc::Token> {
-        let _span = span!(Level::TRACE, "peek").entered();
         
         if let Some((tok, _, _)) = self.buffer.as_ref() {
             Some(tok.clone())
@@ -259,7 +252,6 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Retrieves the `next` token from the buffer if any token is buffered.
     fn next_buffered(&mut self) -> Option<<Self as Iterator>::Item> {
-        let _span = span!(Level::TRACE, "next_buffered").entered();
 
         match self.buffer.take() {
             None => None,
@@ -278,11 +270,6 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Extends the receiver lexer to include the current parse span of the
     /// given lexer. (The given lexer's Scanner state will be discarded.)
     pub fn join(mut self, other: Self) -> Self {
-        let _span = span!(Level::TRACE, "join").entered();
-
-        // event!(Level::TRACE, "self\n{}", self);
-        // event!(Level::TRACE, "other\n{}", other);
-
         if self.end < other.end {
             self.end = other.end;
             self.token_start = other.token_start;
@@ -294,7 +281,6 @@ impl<'text, Sc> Lexer<'text, Sc>
 
         self.scanner = other.scanner;
         self.buffer = other.buffer;
-        // event!(Level::TRACE, "joined\n{}", self);
         self
     }
     
@@ -409,7 +395,6 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn advance_up_to<P>(&mut self, mut pred: P) -> bool
         where P: Fn(&Sc::Token) -> bool
     {
-        let _span = span!(Level::TRACE, "advance_to").entered();
         while let Some(tok) = self.peek() {
 
             if (&mut pred)(&tok) { return true; }
@@ -426,7 +411,6 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn advance_to<P>(&mut self, mut pred: P) -> bool
         where P: Fn(&Sc::Token) -> bool
     {
-        let _span = span!(Level::TRACE, "advance_past").entered();
         while let Some(tok) = self.next() {
             if (&mut pred)(&tok) { return true; }
         }
@@ -468,11 +452,8 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
     type Item = Sc::Token;
     
     fn next(&mut self) -> Option<Self::Item> {
-        let _span = span!(Level::DEBUG, "next").entered();
-
         while self.cursor.byte < self.source_text.len() {
             if self.buffer.is_some() {
-                event!(Level::TRACE, "buffer {:?}", self.buffer);
                 return self.next_buffered();
             }
 
@@ -487,7 +468,6 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
                 },
 
                 Some((token, adv)) => {
-                    event!(Level::DEBUG, "token {:?}", token);
                     // Parsed a non-filtered token.
                     self.token_start = self.cursor;
                     self.end = adv;
@@ -496,13 +476,11 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
                     if self.filter.is_some() {
                         self.scan_to_buffer();
                     }
-                    event!(Level::TRACE, "lexer {}", self);
                     return Some(token);
                 },
 
                 None => {
                     self.token_start = self.cursor;
-                    event!(Level::DEBUG, "lexer is empty");
                     return None;
                 },
             }

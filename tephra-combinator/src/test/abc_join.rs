@@ -7,9 +7,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
-// NOTE: Run the following command to get tracing output:
-// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
-#![allow(dead_code)]
 
 // Internal library imports.
 use crate::both;
@@ -18,8 +15,8 @@ use crate::left;
 use crate::one;
 use crate::raw;
 use crate::recover;
-use crate::stabilize;
 use crate::right;
+use crate::stabilize;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
@@ -34,7 +31,6 @@ use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
 use tephra::recover_before;
-use test_log::test;
 
 // Standard library imports.
 use std::rc::Rc;
@@ -46,7 +42,6 @@ use std::sync::RwLock;
 
 /// Test successful `pred` combinator.
 #[test]
-#[tracing::instrument]
 fn simple_not() {
     colored::control::set_override(false);
 
@@ -74,7 +69,6 @@ fn simple_not() {
 
 /// Test failed `pred` combinator.
 #[test]
-#[tracing::instrument]
 fn simple_not_failed() {
     colored::control::set_override(false);
 
@@ -103,7 +97,6 @@ error: unexpected token
 
 /// Test successful `both` combinator.
 #[test]
-#[tracing::instrument]
 fn pattern_both() {
     colored::control::set_override(false);
 
@@ -138,7 +131,6 @@ fn pattern_both() {
 
 /// Test successful `left` combinator.
 #[test]
-#[tracing::instrument]
 fn pattern_left() {
     colored::control::set_override(false);
 
@@ -167,7 +159,6 @@ fn pattern_left() {
 
 /// Test successful `right` combinator.
 #[test]
-#[tracing::instrument]
 fn pattern_right() {
     colored::control::set_override(false);
 
@@ -196,7 +187,6 @@ fn pattern_right() {
 
 /// Test `right` combinator failure. Ensure error is properly wrapped.
 #[test]
-#[tracing::instrument]
 fn pattern_right_failed() {
     colored::control::set_override(false);
 
@@ -225,7 +215,6 @@ error: expected pattern
 /// Test failed `right` combinator with `raw` wrapper. Ensure error is not
 /// wrapped.
 #[test]
-#[tracing::instrument]
 fn pattern_right_failed_raw() {
     colored::control::set_override(false);
 
@@ -253,7 +242,6 @@ error: unexpected token
 
 /// Test successful `center` combinator.
 #[test]
-#[tracing::instrument]
 fn pattern_center() {
     colored::control::set_override(false);
 
@@ -284,7 +272,6 @@ fn pattern_center() {
 
 /// Test failed `center` combinator with error recovery.
 #[test]
-#[tracing::instrument]
 fn pattern_center_recover() {
     colored::control::set_override(false);
 
@@ -325,7 +312,6 @@ error: expected pattern
 /// Test failed `center` combinator with error recovery, with a delayed close
 /// center.
 #[test]
-#[tracing::instrument]
 fn pattern_center_recover_delayed() {
     colored::control::set_override(false);
 

@@ -56,12 +56,12 @@ pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a, A>(
         let mut succ = (parser)(lexer, ctx)?;
 
         match succ.lexer.peek() {
-            None                          => Ok(succ),
+            None                            => Ok(succ),
             Some(tok) if (abort_pred)(&tok) => Ok(succ),
             _ => {
                 let parse_span = succ.lexer.parse_span();
                 // Advance lexer to the expected token.
-                succ.lexer.advance_to(&abort_pred);
+                let _ = succ.lexer.advance_to(&abort_pred);
 
                 Err(Box::new(ParseBoundaryError {
                     parse_span,

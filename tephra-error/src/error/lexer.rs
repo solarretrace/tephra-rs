@@ -7,31 +7,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Common lexer errors.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(missing_docs)]
 
 
 // Internal library imports.
-use crate::ParseError;
-use crate::Note;
-use crate::SpanDisplay;
-use crate::CodeDisplay;
-use crate::error::SourceErrorRef;
 use crate::error::SourceError;
+use crate::error::SourceErrorRef;
+use crate::ParseError;
+use crate::SpanDisplay;
 
 // External library imports.
 use tephra_span::SourceTextRef;
 use tephra_span::Span;
-use tephra_span::Pos;
-use simple_predicates::Expr;
-use simple_predicates::DnfVec;
-
 
 // Standard library imports.
 use std::error::Error;
-use std::fmt::Display;
 use std::fmt::Debug;
+use std::fmt::Display;
 use std::fmt::Write;
 use std::iter::IntoIterator;
 
@@ -41,6 +32,7 @@ use std::iter::IntoIterator;
 // UnrecognizedTokenError
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when a token is unrecognized.
+#[allow(missing_copy_implementations)]
 #[derive(Debug, Clone)]
 pub struct UnrecognizedTokenError {
     /// The span of the parse up to the start of the unrecognized token.
@@ -266,6 +258,7 @@ impl<T> ParseError for UnexpectedTokenError<T>
 // RecoverError
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when error recovery fails.
+#[allow(missing_copy_implementations)]
 #[derive(Debug, Clone)]
 pub struct RecoverError;
 

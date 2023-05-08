@@ -7,9 +7,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Span tests.
 ////////////////////////////////////////////////////////////////////////////////
-// NOTE: Run the following command to get tracing output:
-// RUST_LOG=TRACE cargo test --features trace -- --show-output > .trace
-
 
 // Internal library imports.
 use crate::Pos;
@@ -18,8 +15,6 @@ use crate::Span;
 
 // External library imports.
 use pretty_assertions::assert_eq;
-use test_log::test;
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +23,6 @@ use test_log::test;
 
 /// Tests `Span::new`.
 #[test]
-#[tracing::instrument]
 fn span_basic_empty() {
     const TEXT: &'static str = "abcd";
     let source = SourceText::new(TEXT);
@@ -47,7 +41,6 @@ fn span_basic_empty() {
 
 /// Tests `SourceText::full_span`.
 #[test]
-#[tracing::instrument]
 fn source_text_basic_full_span() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
@@ -66,7 +59,6 @@ fn source_text_basic_full_span() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
-#[tracing::instrument]
 fn span_basic_widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
@@ -88,7 +80,6 @@ fn span_basic_widen_to_line() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
-#[tracing::instrument]
 fn span_basic_empty_widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
@@ -108,7 +99,6 @@ fn span_basic_empty_widen_to_line() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
-#[tracing::instrument]
 fn span_basic_line_widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
@@ -130,7 +120,6 @@ fn span_basic_line_widen_to_line() {
 
 /// Tests `Span::widen_to_line`.
 #[test]
-#[tracing::instrument]
 fn span_basic_full_widen_to_line() {
     const TEXT: &'static str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
@@ -151,7 +140,6 @@ fn span_basic_full_widen_to_line() {
 
 /// Tests `Span::split_lines`.
 #[test]
-#[tracing::instrument]
 fn span_basic_split_lines() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
@@ -178,7 +166,6 @@ fn span_basic_split_lines() {
 
 /// Tests `Span::split_lines` with no line breaks.
 #[test]
-#[tracing::instrument]
 fn span_basic_no_breaks_split_line() {
     const TEXT: &'static str = "abcd";
     let source = SourceText::new(TEXT);
@@ -198,7 +185,6 @@ fn span_basic_no_breaks_split_line() {
 
 /// Tests `Span::enclose`.
 #[test]
-#[tracing::instrument]
 fn span_basic_enclose() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
@@ -224,7 +210,6 @@ fn span_basic_enclose() {
 
 /// Tests `Span::union`.
 #[test]
-#[tracing::instrument]
 fn span_basic_union() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
@@ -250,7 +235,6 @@ fn span_basic_union() {
 
 /// Tests `Span::intersect`.
 #[test]
-#[tracing::instrument]
 fn span_basic_intersect() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
@@ -276,7 +260,6 @@ fn span_basic_intersect() {
 
 /// Tests `Span::minus`.
 #[test]
-#[tracing::instrument]
 fn span_basic_minus() {
     const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
@@ -304,7 +287,6 @@ fn span_basic_minus() {
 
 /// Tests `SourceText::iter_columns` for `Lf`.
 #[test]
-#[tracing::instrument]
 fn source_text_lf_iter_columns() {
     const TEXT: &'static str = "abcd";
     let source = SourceText::new(TEXT);

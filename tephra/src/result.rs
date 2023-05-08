@@ -16,8 +16,6 @@ use crate::lexer::Scanner;
 // External library imports.
 use tephra_error::ParseError;
 use tephra_span::Span;
-use tephra_tracing::event;
-use tephra_tracing::Level;
 
 // Standard library imports.
 use std::fmt::Debug;
@@ -49,9 +47,6 @@ pub trait ParseResultExt<'text, Sc, V>
 
     /// Applies any `ErrorTransform`s in the given `Context`.
     fn apply_context(self, ctx: Context<'text, Sc>) -> Self;
-
-    /// Outputs a trace event displaying the parse result.
-    fn trace_result(self, level: Level, label: &'static str) -> Self;
 }
 
 
@@ -84,42 +79,6 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V> for ParseResult<'text, Sc, V>
             Ok(succ)  => Ok(succ),
             Err(fail) => Err(ctx.apply_error_transform_recursive(fail)),
         }
-    }
-
-    #[cfg_attr(not(feature="tracing"),
-        allow(unused_variables),
-        allow(unused_results))]
-    fn trace_result(self, level: Level, label: &'static str) -> Self {
-        match level {
-            Level::ERROR => event!(Level::ERROR,
-                "{} {}",
-                label,
-                if self.is_ok() { "Ok" } else { "Err" }),
-            
-            Level::WARN => event!(Level::WARN,
-                "{} {}",
-                label,
-                if self.is_ok() { "Ok" } else { "Err" }),
-            
-            Level::INFO => event!(Level::INFO,
-                "{} {}",
-                label,
-                if self.is_ok() { "Ok" } else { "Err" }),
-            
-            Level::DEBUG => event!(Level::DEBUG,
-                "{} {}",
-                label,
-                if self.is_ok() { "Ok" } else { "Err" }),
-
-            Level::TRACE => match self.as_ref() {
-                Ok(succ)
-                    => event!(Level::TRACE, "{} Ok\n{}", label, succ.lexer),
-                Err(fail)
-                    => event!(Level::TRACE, "{} Err\n{}", label, fail),
-            }
-        };
-
-        self
     }
 }
 

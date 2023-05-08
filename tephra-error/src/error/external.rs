@@ -8,18 +8,17 @@
 //! General-purpose errors supporting formatted source text display.
 ////////////////////////////////////////////////////////////////////////////////
 
+
 // Internal library imports.
-use crate::ParseError;
 use crate::error::SourceErrorRef;
+use crate::ParseError;
 
 // External library imports.
 use tephra_span::SourceTextRef;
 
-
 // Standard library imports.
-use std::num::ParseIntError;
 use std::num::ParseFloatError;
-
+use std::num::ParseIntError;
 
 
 ////////////////////////////////////////////////////////////////////////////////

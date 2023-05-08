@@ -7,9 +7,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
-// NOTE: Run the following command to get tracing output:
-// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
-
 
 // Internal library imports.
 use crate::both;
@@ -24,7 +21,6 @@ use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
 use tephra::SourceTextRef;
-use test_log::test;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +112,6 @@ impl Scanner for Test {
 
 /// Tests `Lexer::new`.
 #[test]
-#[tracing::instrument]
 fn empty() {
     colored::control::set_override(false);
 
@@ -131,7 +126,6 @@ fn empty() {
 
 /// Tests `Lexer::next`.
 #[test]
-#[tracing::instrument]
 fn simple() {
     colored::control::set_override(false);
 
@@ -148,7 +142,6 @@ fn simple() {
 
 /// Tests `Lexer::peek`.
 #[test]
-#[tracing::instrument]
 fn simple_peek() {
     colored::control::set_override(false);
 
@@ -169,7 +162,6 @@ fn simple_peek() {
 
 /// Tests `Lexer::iter_with_spans`.
 #[test]
-#[tracing::instrument]
 fn simple_iter() {
     colored::control::set_override(false);
 
@@ -195,7 +187,6 @@ fn simple_iter() {
 
 /// Tests `Lexer`'s auto-filtering capability.
 #[test]
-#[tracing::instrument]
 fn auto_filter() {
     colored::control::set_override(false);
 
@@ -237,7 +228,6 @@ fn auto_filter() {
 
 /// Tests `Lexer` with whitespace filter.
 #[test]
-#[tracing::instrument]
 fn whitespace_filter() {
     colored::control::set_override(false);
 
@@ -275,7 +265,6 @@ fn whitespace_filter() {
 
 /// Tests `both` with whitespace filter.
 #[test]
-#[tracing::instrument]
 fn both_whitespace_filter() {
     colored::control::set_override(false);
 
@@ -300,7 +289,6 @@ fn both_whitespace_filter() {
 
 /// Tests `Lexer` display output formatting.
 #[test]
-#[tracing::instrument]
 fn display_formatting() {
     colored::control::set_override(false);
 
@@ -404,11 +392,8 @@ note: lexer state
     assert_eq!(lexer.next(), None);
 }
 
-
-
 /// Tests `Lexer` display output formatting with tabstops.
 #[test]
-#[tracing::instrument]
 fn tabstop_align() {
     colored::control::set_override(false);
 

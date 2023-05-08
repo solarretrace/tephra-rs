@@ -15,9 +15,6 @@ use crate::SourceTextRef;
 
 // External library imports.
 use few::Few;
-use tephra_tracing::event;
-use tephra_tracing::Level;
-use tephra_tracing::span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +50,6 @@ impl Span {
         let byte = ByteSpan { start: pos.byte, end: pos.byte };
         let page = PageSpan { start: pos.page, end: pos.page };
 
-        event!(Level::TRACE, "new span (byte {}, page: {})", byte, page);
         Span { byte, page }
     }
 
@@ -63,7 +59,6 @@ impl Span {
         let byte = ByteSpan { start: a.byte, end: b.byte };
         let page = PageSpan { start: a.page, end: b.page };
 
-        event!(Level::TRACE, "new span (byte {}, page: {})", byte, page);
         Span { byte, page }
     }
 
@@ -116,9 +111,7 @@ impl Span {
 
     /// Widens the span on the left and right to the nearest newline.
     pub fn widen_to_line<'text>(&self, source: SourceTextRef<'text>) -> Self {
-        let _span = span!(Level::TRACE, "widen_to_line").entered();
         if self.is_full(source) {
-            event!(Level::TRACE, "span is full and cannot be widened");
             return self.clone();
         }
 
@@ -153,8 +146,6 @@ impl Span {
     pub fn enclose<S>(&self, other: S) -> Self 
         where S: Into<Self>,
     {
-        let _span = span!(Level::TRACE, "enclose").entered();
-
         let other = other.into();
         let a_start = self.start();
         let b_start = other.start();
@@ -181,8 +172,6 @@ impl Span {
     pub fn intersect<S>(&self, other: S) -> Option<Self>
         where S: Into<Self>,
     {
-        let _span = span!(Level::TRACE, "intersect").entered();
-
         let other = other.into();
         let a_start = self.start();
         let b_start = other.start();
@@ -213,8 +202,6 @@ impl Span {
     pub fn minus<S>(&self, other: S) -> Few<Self> 
         where S: Into<Self>,
     {
-        let _span = span!(Level::TRACE, "minus").entered();
-
         let other = other.into();
         let a_0 = self.start();
         let b_0 = other.start();
@@ -354,15 +341,9 @@ impl<'text> Iterator for SplitLines<'text> {
     type Item = Span;
     
     fn next(&mut self) -> Option<Self::Item> {
-        let _span = span!(Level::TRACE, "SplitLines::next").entered();
-        event!(Level::TRACE, "current state = start: {}, end: {}",
-            self.start, self.end);
-
         if self.start.page.line > self.end.page.line {
-            event!(Level::TRACE, "fused");
             None
         } else if self.start.page.line == self.end.page.line {
-            event!(Level::TRACE, "final line");
             // Last line; no need to advance the start position.
             let res = Some(Span::new_enclosing(
                 self.start,

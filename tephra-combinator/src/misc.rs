@@ -17,9 +17,7 @@ use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Spanned;
 use tephra::Success;
-use tephra_tracing::event;
-use tephra_tracing::Level;
-use tephra_tracing::span;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Result transforming combinators.
@@ -78,12 +76,9 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "text").entered();
-
         let start = lexer.cursor_pos().byte;
         match (parser)
             (lexer, ctx)
-            .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => {
                 let end = succ.lexer.end_pos().byte;
@@ -140,13 +135,8 @@ pub fn spanned<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "spanned").entered();
-
-        event!(Level::TRACE, "before subparse:\n{}", lexer);
-
         match (parser)
             (lexer.clone().into_sublexer(), ctx)
-            .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => {
                 Ok(Success {

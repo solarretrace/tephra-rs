@@ -7,9 +7,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Error display helper functions.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(missing_docs)]
 
 
 // Internal library imports.
@@ -17,21 +14,11 @@ use crate::MessageType;
 use crate::RiserState;
 
 // External library imports.
-use colored::Color;
 use colored::Colorize as _;
-use tephra_span::ColumnMetrics;
 use tephra_span::Span;
-use tephra_span::SplitLines;
-use tephra_tracing::event;
-use tephra_tracing::Level;
-use tephra_tracing::span;
 
 // Standard library imports.
-use std::borrow::Cow;
-use std::borrow::Borrow as _;
-use std::fmt::Display;
 use std::fmt::Write;
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +35,7 @@ pub struct Highlight {
     end_message: Option<String>,
     /// The message type.
     message_type: MessageType,
-    /// Whether to allow line omissions within the highlighted span.
+    // TODO: Whether to allow line omissions within the highlighted span.
     allow_omissions: bool,
 }
 
@@ -130,8 +117,6 @@ impl Highlight {
         -> std::fmt::Result
         where W: Write
     {
-        let _span = span!(Level::TRACE, "write_riser_for_line").entered();
-
         // If the span is not over multiple lines, there is no riser portion.
         if *riser_state == RiserState::Unused { return Ok(()); }
 
@@ -191,11 +176,6 @@ impl Highlight {
         -> std::fmt::Result
         where W: Write
     {
-        let _span = span!(Level::TRACE,
-                "write_message_for_line",
-                color_enabled)
-            .entered();
-
         if self.span.start().page.line == line
             && self.span.end().page.line == line
         {
@@ -210,7 +190,7 @@ impl Highlight {
                     write!(out, "\\")?;
                 }
             } else {
-                let mut underline_count = std::cmp::max(
+                let underline_count = std::cmp::max(
                     self.span.end().page.column
                         .checked_sub(self.span.start().page.column)
                         .unwrap_or(0),
@@ -233,7 +213,7 @@ impl Highlight {
                 } else {
                     writeln!(out, " {}", msg)?
                 },
-                (Some(fst), Some(snd)) => unimplemented!(),
+                (Some(_fst), Some(_snd)) => todo!(),
                 (None,      None)      => writeln!(out, "")?,
             }
 

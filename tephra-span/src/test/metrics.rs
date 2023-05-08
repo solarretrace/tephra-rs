@@ -7,9 +7,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Span tests.
 ////////////////////////////////////////////////////////////////////////////////
-// NOTE: Run the following command to get tracing output:
-// RUST_LOG=TRACE cargo test --features trace -- --show-output > .trace
-
 
 // Internal library imports.
 use crate::ColumnMetrics;
@@ -17,8 +14,6 @@ use crate::Pos;
 
 // External library imports.
 use pretty_assertions::assert_eq;
-use test_log::test;
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,11 +22,9 @@ use test_log::test;
 
 /// Tests `ColumnMetrics::position_after_str` for `Lf`.
 #[test]
-#[tracing::instrument]
 fn lf_position_after_str() {
     let text = "abcd";
     let metrics = ColumnMetrics::new();
-
 
     let actual = metrics.position_after_str(text, Pos::ZERO, "ab");
     let expected = Some(Pos::new(2, 0, 2));
@@ -44,11 +37,9 @@ fn lf_position_after_str() {
 
 /// Tests `ColumnMetrics::position_after_char_matching` for `Lf`.
 #[test]
-#[tracing::instrument]
 fn lf_next_position_after_chars_matching() {
     let text = "    \t\tabcd";
     let metrics = ColumnMetrics::new();
-
 
     let actual = metrics.next_position_after_chars_matching(
         text,
@@ -67,7 +58,6 @@ fn lf_next_position_after_chars_matching() {
 
 /// Tests `ColumnMetrics::position_after_chars_matching` for `Lf`.
 #[test]
-#[tracing::instrument]
 fn lf_position_after_chars_matching() {
     let text = "    \t\tabcd";
     let metrics = ColumnMetrics::new();

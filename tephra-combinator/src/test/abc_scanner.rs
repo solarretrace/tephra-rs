@@ -7,9 +7,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
-// NOTE: Run the following command to get tracing output:
-// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
-#![allow(dead_code)]
 
 // Internal library imports.
 use crate::any;
@@ -22,22 +19,21 @@ use crate::text;
 // External library imports.
 use pretty_assertions::assert_eq;
 use tephra::Context;
+use tephra::error::Found;
+use tephra::error::SourceError;
+use tephra::error::SourceErrorRef;
+use tephra::error::UnexpectedTokenError;
 use tephra::Lexer;
+use tephra::ParseError;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
-use tephra::Span;
-use tephra::ParseError;
 use tephra::SourceTextRef;
-use tephra::error::SourceError;
-use tephra::error::SourceErrorRef;
-use tephra::error::UnexpectedTokenError;
-use tephra::error::Found;
+use tephra::Span;
 use tephra::SpanDisplay;
 use tephra::Spanned;
-use test_log::test;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -321,7 +317,6 @@ impl ParseError for ParsePatternError {
 
 /// Tests Abc token lexing & filtering.
 #[test]
-#[tracing::instrument]
 fn abc_tokens() {
     colored::control::set_override(false);
 
@@ -350,7 +345,6 @@ fn abc_tokens() {
 
 /// Parses a `Pattern::Abc`.
 #[test]
-#[tracing::instrument]
 fn abc_pattern() {
     colored::control::set_override(false);
 
@@ -378,7 +372,6 @@ fn abc_pattern() {
 
 /// Parses a `Pattern::Bxx`.
 #[test]
-#[tracing::instrument]
 fn bxx_pattern() {
     colored::control::set_override(false);
 
@@ -406,7 +399,6 @@ fn bxx_pattern() {
 
 /// Parses a `Pattern::Xyc`.
 #[test]
-#[tracing::instrument]
 fn xyc_pattern() {
     colored::control::set_override(false);
 
@@ -435,7 +427,6 @@ fn xyc_pattern() {
 /// Ensures that a failure encountered after initial newline & whitespace
 /// doesn't include that whitespace in the error message.
 #[test]
-#[tracing::instrument]
 fn initial_newline_ws_skip() {
     colored::control::set_override(false);
 

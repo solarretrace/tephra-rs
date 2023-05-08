@@ -7,26 +7,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Error display helper functions.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(missing_docs)]
-
 
 // External library imports.
 use colored::Color;
 use colored::Colorize as _;
-use tephra_span::ColumnMetrics;
-use tephra_span::Span;
-use tephra_span::SplitLines;
-use tephra_tracing::event;
-use tephra_tracing::Level;
-use tephra_tracing::span;
 
 // Standard library imports.
-use std::borrow::Cow;
-use std::borrow::Borrow as _;
-use std::fmt::Display;
 use std::fmt::Write;
+use std::fmt::Display;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,13 +68,9 @@ impl MessageType {
         -> std::fmt::Result
         where W: Write
     {
-        let _span = span!(Level::TRACE, "MessageType", color_enabled).entered();
-
         use MessageType::*;
         if color_enabled {
             let color = self.color();
-            event!(Level::TRACE, "{self:?}");
-            
             match self {
                 Info    => write!(out, "{}", "info"),
                 Error   => write!(out, "{}", "error".color(color).bold()),

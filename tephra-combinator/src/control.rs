@@ -14,12 +14,9 @@ use tephra::Context;
 use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
+use tephra::Recover;
 use tephra::Scanner;
 use tephra::Success;
-use tephra::Recover;
-use tephra_tracing::event;
-use tephra_tracing::Level;
-use tephra_tracing::span;
 
 
 
@@ -36,15 +33,12 @@ pub fn raw<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "raw").entered();
-
         let mut ctx = ctx.clone()
             .locked(true);
         let _ = ctx.take_local_context();
 
         (parser)
             (lexer, ctx)
-            .trace_result(Level::TRACE, "subparse")
     }
 }
 
@@ -58,14 +52,11 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "unrecoverable").entered();
-
         let mut ctx = ctx.clone();
         let _ = ctx.take_error_sink();
         
         (parser)
             (lexer, ctx)
-            .trace_result(Level::TRACE, "subparse")
     }
 }
 
@@ -83,14 +74,11 @@ pub fn recover_default<'text, Sc, F, V>(
         V: Default
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "recover_default").entered();
-        
         let mut base_lexer = lexer.clone();
         base_lexer.set_recover_state(Some(recover.clone()));
 
         match (parser)
             (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => Ok(succ),
 
@@ -232,14 +220,11 @@ pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
             -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer, ctx| {
-        let _span = span!(Level::DEBUG, "filter").entered();
-
         let old_filter = lexer.take_filter();
         lexer.set_filter_fn(filter_fn.clone());
 
         (parser)
             (lexer, ctx)
-            .trace_result(Level::TRACE, "subparse")
             .map(|mut succ| {
                 succ.lexer.set_filter(old_filter);
                 succ
@@ -265,14 +250,9 @@ pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer, ctx| {
-        let _span = span!(Level::DEBUG, "unfiltered").entered();
-
-        event!(Level::TRACE, "before removing filter:\n{}", lexer);
-
         let filter = lexer.take_filter();
         (parser)
             (lexer, ctx)
-            .trace_result(Level::TRACE, "subparse")
             .map(|mut succ| {
                 succ.lexer.set_filter(filter);
                 succ

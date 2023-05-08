@@ -15,8 +15,6 @@ use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
-use tephra_tracing::Level;
-use tephra_tracing::span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,16 +35,12 @@ pub fn left<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "left").entered();
-
         let (l, succ) = (left)
-            (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left capture")?
+            (lexer, ctx.clone())?
             .take_value();
 
         (right)
             (succ.lexer, ctx)
-            .trace_result(Level::TRACE, "right discard")
             .map_value(|_| l)
     }
 }
@@ -61,15 +55,11 @@ pub fn right<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "right").entered();
-
         let succ = (left)
-            (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left discard")?;
+            (lexer, ctx.clone())?;
 
         (right)
             (succ.lexer, ctx)
-            .trace_result(Level::TRACE, "right capture")
     }
 }
 
@@ -88,16 +78,12 @@ pub fn both<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "both").entered();
-
         let (l, succ) = (left)
-            (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left capture")?
+            (lexer, ctx.clone())?
             .take_value();
 
         (right)
             (succ.lexer, ctx)
-            .trace_result(Level::TRACE, "right capture")
             .map_value(|r| (l, r))
     }
 }
@@ -120,11 +106,8 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Z>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "center").entered();
-
         let succ = match (left)
             (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left discard")
         {
             Ok(succ) => succ,
             Err(fail) => return Err(fail),
@@ -132,7 +115,6 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
 
         let (c, succ) = match (center)
             (succ.lexer, ctx.clone())
-            .trace_result(Level::TRACE, "center capture")
         {
             Ok(succ) => succ.take_value(),
             Err(fail) => return Err(fail),
@@ -140,7 +122,6 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
 
         (right)
             (succ.lexer, ctx)
-            .trace_result(Level::TRACE, "right discard")
             .map_value(|_| c)
     }
 }

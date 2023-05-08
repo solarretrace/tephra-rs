@@ -20,8 +20,6 @@ use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Success;
-use tephra_tracing::Level;
-use tephra_tracing::span;
 
 
 
@@ -39,14 +37,10 @@ pub fn either<'text, Sc, L, R, X>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, X>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "either").entered();
-
         let lexer_start = lexer.clone();
         
         (left)(lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left branch")
-            .or_else(|_| (right)(lexer_start, ctx)
-                .trace_result(Level::TRACE, "right branch"))
+            .or_else(|_| (right)(lexer_start, ctx))
 
         // TODO: Better error handling?
     }
@@ -66,10 +60,7 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "maybe").entered();
-
         match unrecoverable(&mut parser)(lexer.clone(), ctx)
-            .trace_result(Level::TRACE, "subparse")
         {
             Ok(succ) => {
                 Ok(Success {
@@ -103,16 +94,12 @@ pub fn maybe_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "maybe_if").entered();
-
         if pred() {
             parser(lexer, ctx)
-                .trace_result(Level::TRACE, "true branch")
                 .map_value(Some)
         } else {
             maybe(&mut parser)
                 (lexer, ctx)
-                .trace_result(Level::TRACE, "false branch")
         }
     }
 }
@@ -139,11 +126,8 @@ pub fn cond<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
             -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "cond").entered();
-
         if pred() {
             parser(lexer, ctx)
-                .trace_result(Level::TRACE, "true branch")
                 .map_value(Some)
         } else {
             Ok(Success {
@@ -179,18 +163,14 @@ pub fn implies<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
             -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "implies").entered();
-
         let (ante, succ) = maybe(&mut left)
-            (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left capture")?
+            (lexer, ctx.clone())?
             .take_value();
 
         match ante {
             None => Ok(succ.map_value(|_| None)),
             Some(l) => right
                 (succ.lexer, ctx)
-                .trace_result(Level::TRACE, "right capture")
                 .map_value(|r| Some((l, r))),
         }
     }
@@ -277,11 +257,8 @@ pub fn cond_implies<'text, Sc, P, L, R, X, Y>(
             -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
-        let _span = span!(Level::DEBUG, "implies").entered();
-
         let (ante, succ) = maybe(&mut left)
-            (lexer, ctx.clone())
-            .trace_result(Level::TRACE, "left capture")?
+            (lexer, ctx.clone())?
             .take_value();
 
         match ante {
@@ -289,7 +266,6 @@ pub fn cond_implies<'text, Sc, P, L, R, X, Y>(
             Some(l) if (pred)(&l) => {
                 right
                     (succ.lexer, ctx)
-                    .trace_result(Level::TRACE, "right capture")
                     .map_value(|r| Some((l, Some(r))))
             }
             Some(l) => {

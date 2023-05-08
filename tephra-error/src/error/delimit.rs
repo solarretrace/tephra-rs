@@ -7,33 +7,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Common delimitter combinator errors.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(missing_docs)]
 
 
 // Internal library imports.
-use crate::ParseError;
-use crate::Note;
-use crate::SpanDisplay;
-use crate::CodeDisplay;
-use crate::Highlight;
-use crate::error::SourceErrorRef;
 use crate::error::SourceError;
+use crate::error::SourceErrorRef;
+use crate::Highlight;
+use crate::ParseError;
+use crate::SpanDisplay;
 
 // External library imports.
+use tephra_span::Pos;
 use tephra_span::SourceTextRef;
 use tephra_span::Span;
-use tephra_span::Pos;
 
 
 // Standard library imports.
 use std::error::Error;
-use std::fmt::Display;
 use std::fmt::Debug;
-use std::fmt::Write;
-use std::iter::IntoIterator;
-
+use std::fmt::Display;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +33,7 @@ use std::iter::IntoIterator;
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when a successful parse does not consume as much text as
 /// required.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ParseBoundaryError {
     /// The span of the parse up to the expected parse boundary.
     pub parse_span: Span,
@@ -114,7 +106,7 @@ impl ParseError for ParseBoundaryError {
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when a successful parse does not consume as much text as
 /// required.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum MatchBracketError {
     NoneFound {
         expected_start: Span,
@@ -151,7 +143,7 @@ impl MatchBracketError {
         -> SourceErrorRef<'text>
     {
         use MatchBracketError::*;
-        let mut source_error = match self {
+        let source_error = match self {
             NoneFound { expected_start } => SourceError::new(
                     source_text,
                     "expected open bracket")
@@ -242,7 +234,7 @@ impl ParseError for MatchBracketError {
 ////////////////////////////////////////////////////////////////////////////////
 /// An error generated when a repeated parse fails to occur the required number
 /// of times.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct RepeatCountError {
     /// The span of the parse up to the start of the invalid count.
     pub parse_span: Span,

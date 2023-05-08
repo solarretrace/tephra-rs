@@ -9,20 +9,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
+// Internal modules.
 mod delimit;
 mod external;
 mod lexer;
 mod source;
 
+// Exports.
 pub use delimit::*;
-pub use external::*;
 pub use lexer::*;
 pub use source::*;
 
-
 // External library imports.
-use tephra_span::Span;
 use tephra_span::SourceTextRef;
+use tephra_span::Span;
 
 
 

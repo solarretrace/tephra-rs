@@ -7,14 +7,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
-// NOTE: Run the following command to get tracing output:
-// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
-#![allow(dead_code)]
 
 // Internal library imports.
-use crate::implies;
 use crate::bracket;
 use crate::delimited_list;
+use crate::implies;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
@@ -28,12 +25,7 @@ use tephra::Pos;
 use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
-// use tephra::recover_before;
-use test_log::test;
 
-// Standard library imports.
-// use std::rc::Rc;
-// use std::sync::RwLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
@@ -41,7 +33,6 @@ use test_log::test;
 
 /// Test successful `implies` combinator.
 #[test]
-#[tracing::instrument]
 fn pattern_implies() {
     colored::control::set_override(false);
 
@@ -76,7 +67,6 @@ fn pattern_implies() {
 
 /// Test successful `implies` combinator.
 #[test]
-#[tracing::instrument]
 fn pattern_implies_failed_left() {
     colored::control::set_override(false);
 
@@ -102,7 +92,6 @@ fn pattern_implies_failed_left() {
 
 /// Test successful `implies` combinator.
 #[test]
-#[tracing::instrument]
 fn pattern_implies_failed_right() {
     colored::control::set_override(false);
 
@@ -130,7 +119,6 @@ error: expected pattern
 
 /// Test successful `implies` combinator.
 #[test]
-#[tracing::instrument]
 fn pattern_implies_list() {
     colored::control::set_override(false);
 

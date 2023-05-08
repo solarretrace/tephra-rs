@@ -12,9 +12,6 @@
 use crate::Pos;
 
 // External library imports.
-use tephra_tracing::event;
-use tephra_tracing::Level;
-use tephra_tracing::span;
 // TODO: Use the unicode-segmentation crate instead?
 use unicode_width::UnicodeWidthChar;
 
@@ -114,9 +111,6 @@ impl ColumnMetrics {
     pub fn next_position<'text>(&self, text: &'text str, base: Pos)
         -> Option<Pos>
     {
-        let _span = span!(Level::TRACE, "next_position").entered();
-        event!(Level::TRACE, "@ {}", base);
-
         let line_break = self.line_ending.as_str();
 
         if text[base.byte..].starts_with(line_break) {
@@ -124,7 +118,6 @@ impl ColumnMetrics {
                 base.byte + line_break.len(),
                 base.page.line + 1,
                 0);
-            event!(Level::TRACE, ".. found line break, next @ {}", new_pos);
             return Some(new_pos);
         }
 
@@ -138,7 +131,6 @@ impl ColumnMetrics {
                     base.page.line,
                     base.page.column + tab_stop);
 
-                event!(Level::TRACE, ".. found tab, next @ {}", new_pos);
                 Some(new_pos)
             },
 
@@ -147,7 +139,6 @@ impl ColumnMetrics {
                     base.byte + c.len_utf8(),
                     base.page.line,
                     base.page.column + UnicodeWidthChar::width(c).unwrap_or(0));
-                event!(Level::TRACE, ".. found '{}', next at @ {}", c, new_pos);
                 Some(new_pos)
             },
 
@@ -161,8 +152,6 @@ impl ColumnMetrics {
     pub fn previous_position<'text>(&self, text: &'text str, base: Pos)
         -> Option<Pos>
     {
-        let _span = span!(Level::TRACE, "previous_position").entered();
-        
         let line_break = self.line_ending.as_str();
 
         if text[..base.byte].ends_with(line_break) {
@@ -170,7 +159,6 @@ impl ColumnMetrics {
                 base.byte - line_break.len(),
                 base.page.line - 1,
                 0);
-            event!(Level::TRACE, ".. found line break, next @ {}", new_pos);
             return Some(new_pos);
         }
 
@@ -190,7 +178,6 @@ impl ColumnMetrics {
                     if new_pos.byte == base.byte - TAB_LEN_UTF8 { break }
                 }
 
-                event!(Level::TRACE, ".. found tab, next @ {}", new_pos);
                 
                 Some(new_pos)
             },
@@ -200,7 +187,6 @@ impl ColumnMetrics {
                     base.byte - c.len_utf8(),
                     base.page.line,
                     base.page.column - UnicodeWidthChar::width(c).unwrap_or(0));
-                event!(Level::TRACE, ".. found '{}', next at @ {}", c, new_pos);
                 Some(new_pos)
             },
 
@@ -219,12 +205,9 @@ impl ColumnMetrics {
     /// Returns the position of the end of line containing the given base
     /// position.
     pub fn line_end_position<'text>(&self, text: &'text str, base: Pos) -> Pos {
-        let _span = span!(Level::TRACE, "line_end_position").entered();
-
         let mut end = base;
         while end.byte < text.len() {
             if self.is_line_break(text, end.byte) {
-                event!(Level::TRACE, "byte {} is line break", end.byte);
                 break;
             }
             match self.next_position(text, end) {
@@ -240,24 +223,18 @@ impl ColumnMetrics {
     pub fn line_start_position<'text>(&self, text: &'text str, base: Pos)
         -> Pos
     {
-        let _span = span!(Level::TRACE, "line_start_position").entered();
-
         let mut start_byte = base.byte;
         while start_byte > 0 {
             while !text.is_char_boundary(start_byte - 1) {
-                event!(Level::TRACE, "byte {} is not char boundary",
-                    start_byte - 1);
                 start_byte -= 1;
             }
             if self.is_line_break(text, start_byte - 1) {
-                event!(Level::TRACE, "byte {} is line break", start_byte - 1);
                 break;
             }
             if start_byte > 0 { start_byte -= 1; }
         }
 
         let res = Pos::new(start_byte, base.page.line, 0);
-        event!(Level::TRACE, "final pos = {res}");
         res
     }
 
@@ -283,8 +260,6 @@ impl ColumnMetrics {
 
     /// Returns the start position of the text, given its end position.
     pub fn start_position<'text>(&self, text: &'text str, end: Pos) -> Pos {
-        let _span = span!(Level::TRACE, "start_position").entered();
-
         let mut start = end;
 
         while start.byte > 0 {
@@ -298,8 +273,6 @@ impl ColumnMetrics {
 
     /// Returns the end position of the text, given its start position.
     pub fn end_position<'text>(&self, text: &'text str, start: Pos) -> Pos {
-        let _span = span!(Level::TRACE, "end_position").entered();
-
         let mut end = start;
 
         while end.byte < text.len() {
@@ -320,8 +293,6 @@ impl ColumnMetrics {
         pattern: &'a str)
         -> Option<Pos>
     {
-        let _span = span!(Level::TRACE, "position_after_str").entered();
-
         let mut end = start;
         while let Some(adv) = self.next_position(text, end) {
             if &pattern[end.byte-start.byte .. adv.byte-start.byte] 
@@ -347,9 +318,6 @@ impl ColumnMetrics {
         -> Option<Pos>
         where F: FnMut(char) -> bool
     {
-        let _span = span!(Level::TRACE, "position_after_chars_matching")
-            .entered();
-
         let mut end = start;
         while let Some(adv) = self.next_position(text, end) {
             if !text[end.byte..adv.byte].chars().all(&mut f) { break; }
@@ -372,9 +340,6 @@ impl ColumnMetrics {
         -> Option<Pos>
         where F: FnMut(char) -> bool
     {
-        let _span = span!(Level::TRACE, "next_position_after_chars_matching")
-            .entered();
-
         if let Some(adv) = self.next_position(text, start) {
             if text[start.byte..adv.byte].chars().all(&mut f) { 
                 return Some(adv);

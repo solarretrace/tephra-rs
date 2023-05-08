@@ -7,28 +7,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! General-purpose errors supporting formatted source text display.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(missing_docs)]
 
 
 // Internal library imports.
-use crate::ParseError;
+use crate::CodeDisplay;
 use crate::Note;
 use crate::SpanDisplay;
-use crate::CodeDisplay;
+
 
 // External library imports.
 use tephra_span::SourceText;
-use tephra_span::SourceTextRef;
-use tephra_span::SourceTextOwned;
-use tephra_span::Span;
 
 
 // Standard library imports.
 use std::error::Error;
-use std::fmt::Display;
 use std::fmt::Debug;
+use std::fmt::Display;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +124,7 @@ impl<T> Display for SourceError<T> where T: AsRef<str> + Display {
 }
 
 impl<T> Error for SourceError<T> where T: AsRef<str> + Debug + Display {
+    #[allow(trivial_casts)]
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.cause
             .as_deref()

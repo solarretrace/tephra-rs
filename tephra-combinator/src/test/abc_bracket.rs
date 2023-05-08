@@ -7,17 +7,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
-// NOTE: Run the following command to get tracing output:
-// RUST_LOG=[test_name]=TRACE cargo test test_name -- --nocapture
-#![allow(dead_code)]
 
 // Internal library imports.
 use crate::both;
+use crate::bracket;
 use crate::bracket_index;
 use crate::one;
 use crate::raw;
 use crate::spanned;
-use crate::bracket;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
@@ -32,11 +29,11 @@ use tephra::Pos;
 use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
-use test_log::test;
 
 // Standard library imports.
 use std::rc::Rc;
 use std::sync::RwLock;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
@@ -44,7 +41,6 @@ use std::sync::RwLock;
 
 /// Test failed `bracket` combinator with error recovery, with missing brackets.
 #[test]
-#[tracing::instrument]
 fn recover_missing() {
     colored::control::set_override(false);
 
@@ -79,7 +75,6 @@ error: expected open bracket
 /// Test failed `bracket` combinator with error recovery, with an unmatched open
 /// bracket.
 #[test]
-#[tracing::instrument]
 fn recover_unmatched_open() {
     colored::control::set_override(false);
 
@@ -113,7 +108,6 @@ error: unmatched open bracket
 /// Test failed `bracket` combinator with error recovery, with an unmatched
 /// close bracket.
 #[test]
-#[tracing::instrument]
 fn recover_unmatched_closed() {
     colored::control::set_override(false);
 
@@ -145,7 +139,6 @@ error: unmatched close bracket
 /// Test failed `bracket` combinator with error recovery, with an unmatched
 /// close bracket.
 #[test]
-#[tracing::instrument]
 fn recover_mismatched() {
     colored::control::set_override(false);
 
@@ -178,7 +171,6 @@ error: mismatched brackets
 /// Test failed `bracket` combinator with error recovery, with an
 /// unmatched bracket and raw error.
 #[test]
-#[tracing::instrument]
 fn recover_unmatched_raw() {
     colored::control::set_override(false);
 
@@ -211,7 +203,6 @@ error: unmatched open bracket
 /// Test failed `bracket` combinator without error recovery, with an
 /// unmatched bracket.
 #[test]
-#[tracing::instrument]
 fn recover_unmatched_unrecoverable() {
     colored::control::set_override(false);
 
@@ -243,7 +234,6 @@ error: unmatched open bracket
 
 /// Test successful `bracket` combinator.
 #[test]
-#[tracing::instrument]
 fn comma_bracket_index() {
     colored::control::set_override(false);
 
@@ -275,7 +265,6 @@ fn comma_bracket_index() {
 
 /// Test successful `bracket` combinator.
 #[test]
-#[tracing::instrument]
 fn matching_both() {
     colored::control::set_override(false);
 
@@ -317,7 +306,6 @@ fn matching_both() {
 
 /// Test successful `bracket` combinator.
 #[test]
-#[tracing::instrument]
 fn matching_both_first_fail() {
     colored::control::set_override(false);
 
@@ -366,7 +354,6 @@ error: expected pattern
 
 /// Test `bracket` combinator failing due to mismatched brackets.
 #[test]
-#[tracing::instrument]
 fn matching_both_mismatch() {
     colored::control::set_override(false);
 

@@ -13,9 +13,6 @@ use crate::ColumnMetrics;
 use crate::Pos;
 use crate::Span;
 
-// External library imports.
-use tephra_tracing::span;
-use tephra_tracing::Level;
 
 
 pub const SOURCE_TEXT_DISPLAY_LEN: usize = 12;
@@ -327,8 +324,6 @@ impl<'text> Iterator for IterColumns<'text> {
     type Item = (&'text str, Pos);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let _span = span!(Level::TRACE, "IterColumns::next").entered();
-
         // TODO: handle offsets.
         let end = self.base
             .and_then(|start| self.metrics.next_position(self.text, start));

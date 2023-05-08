@@ -7,36 +7,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Error display helper functions.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(missing_docs)]
 
 
 // Internal library imports.
-use crate::MessageType;
 use crate::Highlight;
+use crate::MessageType;
 use crate::Note;
 
-
 // External library imports.
-use colored::Color;
 use colored::Colorize as _;
 use tephra_span::ColumnMetrics;
 use tephra_span::SourceTextRef;
 use tephra_span::Span;
 use tephra_span::SplitLines;
-use tephra_tracing::event;
-use tephra_tracing::Level;
-use tephra_tracing::span;
 
 // Standard library imports.
-use std::borrow::Cow;
-use std::fmt::Write;
 use std::borrow::Borrow as _;
 use std::fmt::Display;
-use std::error::Error;
-
-
+use std::fmt::Write;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,7 +202,7 @@ impl CodeDisplay {
 pub struct SpanDisplay {
     /// The name of the file or data that is being displayed.
     pub(in crate) source_name: Option<String>,
-    /// The column metrics for the source,
+    /// TODO: The column metrics for the source,
     pub(in crate) metrics: ColumnMetrics,
     /// The full text span of the displayed source.
     pub(in crate) span: Span,
@@ -224,7 +212,7 @@ pub struct SpanDisplay {
     pub(in crate) notes: Vec<Note>,
     /// The width of the line number gutter.
     pub(in crate) gutter_width: u8,
-    /// Whether to allow line omissions within the source display.
+    /// TODO: Whether to allow line omissions within the source display.
     pub(in crate) allow_omissions: bool,
 }
 
@@ -286,8 +274,6 @@ impl SpanDisplay {
         -> std::fmt::Result
         where W: Write
     {
-        let _span = span!(Level::TRACE, "SpanDisplay", color_enabled).entered();
-
         let (source_name, sep) = match &self.source_name {
             Some(name) => (name.borrow(), ":"),
             None       => ("", ""),
@@ -355,15 +341,12 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
         gutter_width: u8)
         -> Self
     {
-        let _span = span!(Level::TRACE, "new").entered();
-
         let riser_width = highlights
             .iter()
             .filter(|h| h.is_multiline())
             .count()
             .try_into()
             .expect("riser width < 255");
-        event!(Level::TRACE, "riser_width = {riser_width}");
 
         let source_lines = span_display.split_lines(source_text);
 
@@ -377,16 +360,13 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
 
     /// Consumes the MultiSplitLines and writes all of the contained data.
     pub(in crate) fn write_with_color_enablement<W>(
-        mut self,
+        self,
         out: &mut W,
         source_text: SourceTextRef<'text>,
         color_enabled: bool)
         -> std::fmt::Result
         where W: Write
     {
-        let _span = span!(Level::TRACE, "MultiSplitLines", color_enabled)
-            .entered();
-
         // Write empty line to uncramp the display.
         write_gutter(out, "", self.gutter_width, color_enabled)?;
         writeln!(out)?;
@@ -401,9 +381,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
                 });
         }
 
-        for (i, span) in self.source_lines.enumerate() {
-            event!(Level::TRACE, "span {i} = {span}");
-
+        for span in self.source_lines {
             let current_line = span.start().page.line;
 
             // Write gutter for source line.
@@ -420,7 +398,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
                     color_enabled)?;
                 if hl.is_multiline() { multiline_highlights_present = true; }
             }
-            if multiline_highlights_present { write!(out, " "); }
+            if multiline_highlights_present { write!(out, " ")?; }
 
             // Write source text.
             writeln!(out, "{}", source_text.clipped(span).as_ref())?;
@@ -469,24 +447,6 @@ fn write_gutter<V, W>(
             width=width as usize)
     } else {
         write!(out, "{:>width$} | ", value, width=width as usize)
-    }
-}
-
-fn write_gutter_omit<V, W>(
-    out: &mut W,
-    value: V,
-    width: u8,
-    color_enabled: bool)
-    -> std::fmt::Result
-    where V: Display, W: Write
-{
-    if color_enabled {
-        write!(out, "{:>width$}{}",
-            "",
-            "...".bright_blue().bold(),
-            width=width as usize)
-    } else {
-        write!(out, "{:>width$}...", "", width=width as usize)
     }
 }
 

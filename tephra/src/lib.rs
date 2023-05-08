@@ -48,10 +48,6 @@
 #![warn(unused_results)]
 #![warn(variant_size_differences)]
 #![warn(while_true)]
-// #![warn(must_not_suspend)] // Unstable
-// #![warn(non_exhaustive_omitted_patterns)] // Unstable.
-// #![warn(single_use_lifetimes)] // False positives.
-// #![warn(unused_crate_dependencies)] // False positives.
 
 // Clippy groups.
 #![warn(clippy::cargo)]
