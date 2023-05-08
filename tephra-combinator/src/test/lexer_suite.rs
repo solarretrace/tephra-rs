@@ -53,7 +53,7 @@ impl std::fmt::Display for TestToken {
 struct Test(Option<TestToken>);
 
 impl Test {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Test(None)
     }
 }

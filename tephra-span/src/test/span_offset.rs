@@ -31,7 +31,7 @@ fn span_offset_oob_empty() {
     let span = Span::new();
 
     // Clipping outside of the text should panic.
-    source.clipped(span);
+    let _ = source.clipped(span);
 }
 
 /// Tests `Span::new`.

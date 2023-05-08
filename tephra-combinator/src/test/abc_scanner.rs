@@ -41,7 +41,7 @@ use tephra::Spanned;
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum AbcToken {
+pub(in crate) enum AbcToken {
     A,
     B,
     C,
@@ -65,10 +65,10 @@ impl AbcToken {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Abc(Option<AbcToken>);
+pub(in crate) struct Abc(Option<AbcToken>);
 
 impl Abc {
-    pub fn new() -> Self {
+    pub(in crate) fn new() -> Self {
         Abc(None)
     }
 }
@@ -171,13 +171,15 @@ impl Scanner for Abc {
 // Abc grammar
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Pattern<'text> {
+pub(in crate) enum Pattern<'text> {
     Abc(Spanned<&'text str>),
     Bxx(Spanned<&'text str>),
     Xyc(Spanned<&'text str>),
 }
 
-pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
+pub(in crate) fn pattern<'text>(
+    lexer: Lexer<'text, Abc>,
+    ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
     match spanned(text(abc))
@@ -197,7 +199,7 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     }
 
     // Setup error context.
-    let ctx = ctx.push(std::rc::Rc::new(move |e| {
+    let ctx = ctx.pushed(std::rc::Rc::new(move |e| {
         let parse_span = e.parse_span();
         let e = e.into_owned();
         // Collect the token span so that we can include it in the final span.
@@ -219,7 +221,7 @@ pub fn pattern<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
         .map_value(Pattern::Xyc)
 }
 
-pub fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
+pub(in crate) fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
@@ -228,7 +230,7 @@ pub fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
         .map_value(|v| (v[0], v[1], v[2]))
 }
 
-pub fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
+pub(in crate) fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
@@ -243,7 +245,7 @@ pub fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
         .map_value(|z| (x, y, z))
 }
 
-pub fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
+pub(in crate) fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     use AbcToken::*;
@@ -263,15 +265,15 @@ pub fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
 /// An error generated when a successful parse does not consume as much text as
 /// required.
 #[derive(Debug, Clone)]
-pub struct ParsePatternError {
-    pub parse_span: Option<Span>,
-    pub token_span: Option<Span>,
+pub(in crate) struct ParsePatternError {
+    pub(in crate) parse_span: Option<Span>,
+    pub(in crate) token_span: Option<Span>,
 }
 
 impl ParsePatternError {
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
+    pub(in crate) fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         let mut se = SourceError::new(source_text, "expected pattern");

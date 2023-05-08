@@ -5,7 +5,7 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! 
+//! Tephra Spans and SourceTexts.
 ////////////////////////////////////////////////////////////////////////////////
 #![forbid(non_ascii_idents)]
 #![deny(keyword_idents)]
@@ -22,7 +22,6 @@
 #![warn(improper_ctypes)]
 #![warn(missing_copy_implementations)]
 #![warn(missing_debug_implementations)]
-#![warn(rustdoc::missing_doc_code_examples)]
 // #![warn(missing_docs)]
 #![warn(no_mangle_generic_items)]
 #![warn(non_shorthand_field_patterns)]

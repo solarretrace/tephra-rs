@@ -32,7 +32,6 @@
 #![warn(patterns_in_fns_without_body)]
 #![warn(private_in_public)]
 #![warn(rust_2018_idioms)]
-#![warn(rustdoc::missing_doc_code_examples)]
 #![warn(trivial_casts)]
 #![warn(trivial_numeric_casts)]
 #![warn(unconditional_recursion)]
