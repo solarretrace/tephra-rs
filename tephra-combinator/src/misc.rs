@@ -17,6 +17,8 @@ use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Spanned;
 use tephra::Success;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,6 +119,7 @@ pub fn sub<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>,
 {
     move |lexer, ctx| {
+        let _trace_span = span!(Level::TRACE, "sub").entered();
         (parser)(lexer.into_sublexer(), ctx)
     }
 }

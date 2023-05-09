@@ -13,11 +13,11 @@ use crate::bracket_default_index;
 use crate::delimited_list;
 use crate::delimited_list_bounded;
 use crate::sub;
-use crate::unrecoverable;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
 use crate::test::abc_scanner::Pattern;
+use crate::unrecoverable;
 
 // External library imports.
 use ntest::timeout;
@@ -29,6 +29,14 @@ use tephra::Pos;
 use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
+use tephra_tracing::Level;
+use tephra_tracing::span;
+use tracing::subscriber::DefaultGuard;
+use tracing::subscriber::set_default;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt::Layer;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::Registry;
 
 // Standard library imports.
 use std::rc::Rc;
@@ -38,11 +46,21 @@ use std::sync::RwLock;
 ////////////////////////////////////////////////////////////////////////////////
 // Test setup
 ////////////////////////////////////////////////////////////////////////////////
-fn test_setup() {
+fn setup_test_environment() -> DefaultGuard {
+    // Disable colored output for SourceError display output.
     colored::control::set_override(false);
+
+    let env_filter_layer = EnvFilter::from_default_env();
+    let fmt_layer = Layer::new().without_time();
+
+    let subscriber = Registry::default()
+        .with(env_filter_layer)
+        .with(fmt_layer);
+
+    set_default(subscriber)
 }
 
-fn test_parser(text: &'static str) -> (
+fn build_test_lexer(text: &'static str) -> (
     Lexer<'static, Abc>,
     Context<'static, Abc>,
     Rc<RwLock<Vec<SourceError<&'static str>>>>,
@@ -65,12 +83,17 @@ fn test_parser(text: &'static str) -> (
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
 
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::list_empty -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn list_empty() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "list_empty")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("");
     use AbcToken::*;
 
     let (value, succ) = delimited_list(
@@ -88,13 +111,17 @@ fn list_empty() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(0, 0, 0));
 }
 
-
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::list_one -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn list_one() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser(" abc ");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "list_one")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer(" abc ");
     use AbcToken::*;
 
     let (value, succ) = delimited_list(
@@ -116,13 +143,17 @@ fn list_one() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
 }
 
-
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_one() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("[abc]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_one")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("[abc]");
     use AbcToken::*;
 
     let (value, succ) = bracket_default_index(
@@ -149,12 +180,17 @@ fn bracket_list_one() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
 }
 
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::list_two -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn list_two() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser(" abc,aac ");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "list_two")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer(" abc,aac ");
     use AbcToken::*;
 
     let (value, succ) = delimited_list(
@@ -180,12 +216,17 @@ fn list_two() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(9, 0, 9));
 }
 
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_two -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_two() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("[abc,aac]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_two")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("[abc,aac]");
     use AbcToken::*;
 
     let (value, succ) = bracket_default_index(
@@ -216,12 +257,17 @@ fn bracket_list_two() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(9, 0, 9));
 }
 
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::list_one_failed -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn list_one_failed() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("  ");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "list_one_failed")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("  ");
     use AbcToken::*;
 
     let actual = unrecoverable(
@@ -242,12 +288,18 @@ error: invalid item count
 ");
 }
 
+
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_zero -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_zero() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("[]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_zero")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("[]");
     use AbcToken::*;
 
     let (value, _succ) = bracket_default_index(
@@ -268,12 +320,18 @@ fn bracket_list_zero() {
     assert_eq!(actual, expected);
 }
 
+
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one_failed -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_one_failed() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("[]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_one_failed")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("[]");
     use AbcToken::*;
 
     let actual = unrecoverable(
@@ -298,12 +356,18 @@ error: invalid item count
 ");
 }
 
+
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one_recovered -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_one_recovered() {
-    test_setup();
-    let (lexer, ctx, errors, _source) = test_parser("[       ]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_one_recovered")
+        .entered();
+    let (lexer, ctx, errors, _source) = build_test_lexer("[       ]");
     use AbcToken::*;
 
     let (value, succ) = bracket_default_index(
@@ -336,22 +400,26 @@ error: invalid item count
 }
 
 
-/// Test successful `delimited_list_bounded` combinator.
+
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_two_recovered_first -- --exact --nocapture > .trace
+//
+/// Tests parse of a bracketed list with error recovery for the first position.
 #[test]
 #[timeout(100)]
 fn bracket_list_two_recovered_first() {
-    test_setup();
-    let (lexer, ctx, errors, _source) = test_parser("[   ,aac]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_two_recovered_first")
+        .entered();
+    let (lexer, ctx, errors, _source) = build_test_lexer("[   ,aac]");
     use AbcToken::*;
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
             delimited_list(
                 pattern,
-                Comma,
-                |tok| *tok == CloseBracket),
-            &[CloseBracket],
-            |_| false)
+                Comma, |tok| *tok == CloseBracket),
+            &[CloseBracket], |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -378,12 +446,18 @@ error: expected pattern
 ");
 }
 
-/// Test successful `delimited_list_bounded` combinator.
+
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_two_recovered_second -- --exact --nocapture > .trace
+//
+/// Tests parse of a bracketed list with error recovery for the second position.
 #[test]
 #[timeout(100)]
 fn bracket_list_two_recovered_second() {
-    test_setup();
-    let (lexer, ctx, errors, _source) = test_parser("[abc,   ]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_two_recovered_second")
+        .entered();
+    let (lexer, ctx, errors, _source) = build_test_lexer("[abc,   ]");
     use AbcToken::*;
 
     let (value, succ) = bracket_default_index(
@@ -404,29 +478,27 @@ fn bracket_list_two_recovered_second() {
                 value: "abc",
                 span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
             })),
-            None,
         ],
         0);
 
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(9, 0, 9));
 
-    assert_eq!(errors.read().unwrap().len(), 1);
-    assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\
-error: expected pattern
- --> (0:0-0:9, bytes 0-9)
-  | 
-0 | [abc,   ]
-  |         \\ expected 'ABC', 'BXX', or 'XYC' pattern
-");
+    assert_eq!(errors.read().unwrap().len(), 0);
 }
 
+
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_missing_delimiter -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_missing_delimiter() {
-    test_setup();
-    let (lexer, ctx, errors, _source) = test_parser("[abc aac]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_missing_delimiter")
+        .entered();
+    let (lexer, ctx, errors, _source) = build_test_lexer("[abc aac]");
     use AbcToken::*;
 
     let (value, succ) = bracket_default_index(
@@ -457,12 +529,18 @@ error: incomplete parse
 ");
 }
 
+
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_nested -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_nested() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("[[],[abc, abc], [aac]]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_nested")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("[[],[abc, abc], [aac]]");
     use AbcToken::*;
 
     let (value, succ) = bracket_default_index(
@@ -509,12 +587,18 @@ fn bracket_list_nested() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(22, 0, 22));
 }
 
+
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_commas -- --exact --nocapture > .trace
+//
 /// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_commas() {
-    test_setup();
-    let (lexer, ctx, errors, _source) = test_parser("[,,,,,abc]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bracket_list_commas")
+        .entered();
+    let (lexer, ctx, errors, _source) = build_test_lexer("[,,,,,abc]");
     use AbcToken::*;
 
     let (value, succ) = bracket_default_index(
@@ -547,14 +631,14 @@ fn bracket_list_commas() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
 
     assert_eq!(errors.read().unwrap().len(), 5);
-    assert_eq!(format!("{}", errors.write().unwrap().first().unwrap()), "\
+    assert_eq!(format!("{}", errors.read().unwrap().first().unwrap()), "\
 error: expected pattern
  --> (0:0-0:10, bytes 0-10)
   | 
 0 | [,,,,,abc]
   |  \\ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
-    assert_eq!(format!("{}", errors.write().unwrap().last().unwrap()), "\
+    assert_eq!(format!("{}", errors.read().unwrap().last().unwrap()), "\
 error: expected pattern
  --> (0:0-0:10, bytes 0-10)
   | 

@@ -8,6 +8,8 @@
 //! Parser combinators for joining and bracketting.
 ////////////////////////////////////////////////////////////////////////////////
 
+// Internal library imports.
+use crate::map;
 
 // External library imports.
 use tephra::Context;
@@ -15,6 +17,8 @@ use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,13 +39,8 @@ pub fn left<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
-        let (l, succ) = (left)
-            (lexer, ctx.clone())?
-            .take_value();
-
-        (right)
-            (succ.lexer, ctx)
-            .map_value(|_| l)
+        map(both(&mut left, &mut right), |(l, _)| l)
+            (lexer, ctx)
     }
 }
 
@@ -55,11 +54,8 @@ pub fn right<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
-        let succ = (left)
-            (lexer, ctx.clone())?;
-
-        (right)
-            (succ.lexer, ctx)
+        map(both(&mut left, &mut right), |(_, r)| r)
+            (lexer, ctx)
     }
 }
 
@@ -78,10 +74,13 @@ pub fn both<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Y>,
 {
     move |lexer, ctx| {
+        let left_span = span!(Level::DEBUG, "left").entered();
         let (l, succ) = (left)
             (lexer, ctx.clone())?
             .take_value();
 
+        let _ = left_span.exit();
+        let _right_span = span!(Level::DEBUG, "right").entered();
         (right)
             (succ.lexer, ctx)
             .map_value(|r| (l, r))
@@ -106,6 +105,7 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
         R: FnMut(Lexer<'text, Sc>, Context<'text, Sc>) -> ParseResult<'text, Sc, Z>,
 {
     move |lexer, ctx| {
+        let left_span = span!(Level::DEBUG, "left").entered();
         let succ = match (left)
             (lexer, ctx.clone())
         {
@@ -113,6 +113,8 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
             Err(fail) => return Err(fail),
         };
 
+        let _ = left_span.exit();
+        let center_span = span!(Level::DEBUG, "center").entered();
         let (c, succ) = match (center)
             (succ.lexer, ctx.clone())
         {
@@ -120,6 +122,8 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
             Err(fail) => return Err(fail),
         };
 
+        let _ = center_span.exit();
+        let _right_span = span!(Level::DEBUG, "right").entered();
         (right)
             (succ.lexer, ctx)
             .map_value(|_| c)

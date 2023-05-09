@@ -57,5 +57,11 @@ pub struct Span;
 
 impl Span {
     /// Stub for `tracing::Span::entered`.
-    pub fn entered(&self) {}
+    pub fn entered(&self) -> Span { *self }
+
+    /// Stub for `tracing::Span::enter`.
+    pub fn enter(&self) {}
+
+    /// Stub for `tracing::Span::exit`.
+    pub fn exit(&self) {}
 }

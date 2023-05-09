@@ -20,6 +20,9 @@ use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Success;
+use tephra_tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,13 +151,19 @@ pub fn bracket_default_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
     }
 
     move |lexer, ctx| {
+        let _trace_span = span!(Level::DEBUG, "bracket_*").entered();
+
         match match_nested_brackets(
             lexer.clone(),
             open_tokens,
             close_tokens,
             &abort_pred)
         {
-            Err(bracket_error) => Err(Box::new(bracket_error)),
+            Err(bracket_error) => {
+                event!(Level::DEBUG, "match nested brackets failed: {:?}",
+                    bracket_error);
+                Err(Box::new(bracket_error))
+            },
 
             Ok(BracketMatch {mut open, mut close, index }) => {
                 // Prepare the sublexers.
@@ -164,23 +173,35 @@ pub fn bracket_default_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
 
                 // NOTE: We will do manual error recovery here: we don't want to
                 // advance to a token, because they're potentially nested. We
-                // instead substitute the close, which is already pointing
-                // to the proper recovery position.
+                // instead use the close token position we've already found, as
+                // it is pointing to the proper recovery position.
                 match (inner)
                     (inner_lexer, ctx.clone())
                     .map_value(|v| (v, index))
                 {
-                    Ok(succ) => Ok(Success {
-                        value: succ.value,
-                        lexer: close,
-                    }),
+                    Ok(succ) => {
+                        event!(Level::DEBUG, "bracket inner parse success");
+                        Ok(Success {
+                            value: succ.value,
+                            lexer: close,
+                        })
+                    },
                     Err(fail) => {
                         match ctx.send_error(fail) {
-                            Err(parse_error) => Err(parse_error),
-                            Ok(()) => Ok(Success {
-                                value: (X::default(), index),
-                                lexer: close,
-                            }),
+                            Err(parse_error) => {
+                                event!(Level::DEBUG, "error recovery failed: \
+                                    disabled");
+                                Err(parse_error)
+                            },
+
+                            Ok(()) => {
+                                event!(Level::DEBUG, "error recovery point \
+                                    found");
+                                Ok(Success {
+                                    value: (X::default(), index),
+                                    lexer: close,
+                                })
+                            },
                         }
                     },
                 }
@@ -211,6 +232,8 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
         Sc: Scanner,
         A: Fn(&Sc::Token) -> bool + 'a + Clone,
 {
+    let _trace_span = span!(Level::TRACE, "match_nested_*").entered();
+
     use MatchBracketError::*;
     let start_span = lexer.start_span();
     let mut open_lexer: Option<Lexer<'_, Sc>> = None;
@@ -220,6 +243,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
 
     while let Some(tok) = lexer.peek() {
         if let Some(idx) = close_tokens.iter().position(|t| t == &tok) {
+            event!(Level::TRACE, "found close token ({:?} idx={})", tok, idx);
             match opened.pop() {
                 // Close token found before open token.
                 None => return Err(Unopened {
@@ -245,6 +269,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
                 Some(_) => unreachable!(),
             }
         } else if let Some(idx) = open_tokens.iter().position(|t| t == &tok) {
+            event!(Level::TRACE, "found open token ({:?} idx={})", tok, idx);
             // Found our first open token.
             if open_lexer.is_none() { 
                 open_lexer = Some(lexer.clone());
@@ -263,6 +288,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
                 Some(_) => unreachable!(),
             }
         } else if abort_pred(&tok) && open_lexer.is_none() {
+            event!(Level::TRACE, "found abort token ({:?})", tok);
             // Abort search if no open tokens found before abort token.
             return Err(NoneFound {
                 expected_start: lexer.peek_token_span().unwrap(),

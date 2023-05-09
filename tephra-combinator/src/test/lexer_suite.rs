@@ -110,7 +110,7 @@ impl Scanner for Test {
 ////////////////////////////////////////////////////////////////////////////////
 // Test setup
 ////////////////////////////////////////////////////////////////////////////////
-fn test_setup() {
+fn setup_test_environment() {
     colored::control::set_override(false);
 }
 
@@ -123,7 +123,7 @@ fn test_setup() {
 #[test]
 #[timeout(100)]
 fn empty() {
-    test_setup();
+    setup_test_environment();
 
     const TEXT: &'static str = "";
     let source = SourceText::new(TEXT);
@@ -138,7 +138,7 @@ fn empty() {
 #[test]
 #[timeout(100)]
 fn simple() {
-    test_setup();
+    setup_test_environment();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b";
@@ -155,7 +155,7 @@ fn simple() {
 #[test]
 #[timeout(100)]
 fn simple_peek() {
-    test_setup();
+    setup_test_environment();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b";
@@ -176,7 +176,7 @@ fn simple_peek() {
 #[test]
 #[timeout(100)]
 fn simple_iter() {
-    test_setup();
+    setup_test_environment();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b";
@@ -202,7 +202,7 @@ fn simple_iter() {
 #[test]
 #[timeout(100)]
 fn auto_filter() {
-    test_setup();
+    setup_test_environment();
 
     use TestToken::*;
     const TEXT: &'static str = "aaaabaaaab";
@@ -244,7 +244,7 @@ fn auto_filter() {
 #[test]
 #[timeout(100)]
 fn whitespace_filter() {
-    test_setup();
+    setup_test_environment();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b \nbdef\n aaa";
@@ -282,7 +282,7 @@ fn whitespace_filter() {
 #[test]
 #[timeout(100)]
 fn both_whitespace_filter() {
-    test_setup();
+    setup_test_environment();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b \nbdef\n aaa";
@@ -307,7 +307,7 @@ fn both_whitespace_filter() {
 #[test]
 #[timeout(100)]
 fn display_formatting() {
-    test_setup();
+    setup_test_environment();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b \nbdef\n aaa";
@@ -413,7 +413,7 @@ note: lexer state
 #[test]
 #[timeout(100)]
 fn tabstop_align() {
-    test_setup();
+    setup_test_environment();
 
     use TestToken::*;
     const TEXT: &'static str = "\taa\ta\n\t\tb";

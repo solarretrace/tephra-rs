@@ -8,7 +8,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.217"
+version = "0.0.218"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 description = "Tephra parser combinator library"
 homepage = "https://github.com/solarretrace/tephra-rs"

@@ -31,6 +31,14 @@ use tephra::Pos;
 use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
+use tephra_tracing::Level;
+use tephra_tracing::span;
+use tracing::subscriber::DefaultGuard;
+use tracing::subscriber::set_default;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt::Layer;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::Registry;
 
 // Standard library imports.
 use std::rc::Rc;
@@ -40,11 +48,21 @@ use std::sync::RwLock;
 ////////////////////////////////////////////////////////////////////////////////
 // Test setup
 ////////////////////////////////////////////////////////////////////////////////
-fn test_setup() {
+fn setup_test_environment() -> DefaultGuard {
+    // Disable colored output for SourceError display output.
     colored::control::set_override(false);
+
+    let env_filter_layer = EnvFilter::from_default_env();
+    let fmt_layer = Layer::new().without_time();
+
+    let subscriber = Registry::default()
+        .with(env_filter_layer)
+        .with(fmt_layer);
+
+    set_default(subscriber)
 }
 
-fn test_parser(text: &'static str) -> (
+fn build_test_lexer(text: &'static str) -> (
     Lexer<'static, Abc>,
     Context<'static, Abc>,
     Rc<RwLock<Vec<SourceError<&'static str>>>>,
@@ -71,8 +89,10 @@ fn test_parser(text: &'static str) -> (
 #[test]
 #[timeout(100)]
 fn recover_missing() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser(" abc ");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "recover_missing")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer(" abc ");
     use AbcToken::*;
 
     let actual = bracket_index(
@@ -98,8 +118,10 @@ error: expected open bracket
 #[test]
 #[timeout(100)]
 fn recover_unmatched_open() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("[ab   bbb  ");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "recover_unmatched_open")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("[ab   bbb  ");
     use AbcToken::*;
 
 
@@ -126,8 +148,10 @@ error: unmatched open bracket
 #[test]
 #[timeout(100)]
 fn recover_unmatched_closed() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser(" abc]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "recover_unmatched_closed")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer(" abc]");
     use AbcToken::*;
 
     let actual = bracket_index(
@@ -152,8 +176,10 @@ error: unmatched close bracket
 #[test]
 #[timeout(100)]
 fn recover_mismatched() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("[abc,");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "recover_mismatched")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("[abc,");
     use AbcToken::*;
 
     let actual = bracket_index(
@@ -179,8 +205,10 @@ error: mismatched brackets
 #[test]
 #[timeout(100)]
 fn recover_unmatched_raw() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("[ab   bbb  ");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "recover_unmatched_raw")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("[ab   bbb  ");
     use AbcToken::*;
 
     let actual = raw(bracket_index(
@@ -205,8 +233,10 @@ error: unmatched open bracket
 #[test]
 #[timeout(100)]
 fn recover_unmatched_unrecoverable() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("[ab   bbb  ");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "recover_unmatched_unrecoverable")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("[ab   bbb  ");
     use AbcToken::*;
 
     let actual = unrecoverable(bracket_index(
@@ -230,8 +260,10 @@ error: unmatched open bracket
 #[test]
 #[timeout(100)]
 fn comma_bracket_index() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("a,b");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "comma_bracket_index")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("a,b");
     use AbcToken::*;
 
     let (value, succ) = spanned(bracket_index(
@@ -257,8 +289,10 @@ fn comma_bracket_index() {
 #[test]
 #[timeout(100)]
 fn matching_both() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("[abc][aac]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "matching_both")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("[abc][aac]");
     use AbcToken::*;
 
     let (value, succ) = both(
@@ -294,8 +328,10 @@ fn matching_both() {
 #[test]
 #[timeout(100)]
 fn matching_both_first_fail() {
-    test_setup();
-    let (lexer, ctx, errors, _) = test_parser("[a  ][aac]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "matching_both_first_fail")
+        .entered();
+    let (lexer, ctx, errors, _) = build_test_lexer("[a  ][aac]");
     use AbcToken::*;
 
     let (value, succ) = both(
@@ -337,8 +373,10 @@ error: expected pattern
 #[test]
 #[timeout(100)]
 fn matching_both_mismatch() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("[abc,[aac]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "matching_both_mismatch")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("[abc,[aac]");
     use AbcToken::*;
 
     let actual = both(

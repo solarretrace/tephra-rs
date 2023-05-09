@@ -18,6 +18,8 @@ use crate::Lexer;
 // External library imports.
 use tephra_error::ParseError;
 use tephra_span::Span;
+use tephra_tracing::event;
+use tephra_tracing::Level;
 
 // Standard library imports.
 use std::rc::Rc;
@@ -173,6 +175,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
     /// given `Context`.
     pub fn pushed(self, error_transform: ErrorTransform<'text>) -> Self {
         if !self.locked {
+            event!(Level::DEBUG, "pushed new error context");
             Context {
                 shared: self.shared.clone(),
                 local: Rc::new(RwLock::new(LocalContext {
@@ -190,6 +193,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
     /// given `Context`.
     pub fn push(&mut self, error_transform: ErrorTransform<'text>) {
         if !self.locked {
+            event!(Level::DEBUG, "pushed new error context");
             self.local = Rc::new(RwLock::new(LocalContext {
                 parent: Some(self.local.clone()),
                 error_transform: Some(error_transform),
@@ -245,6 +249,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
             .as_ref()
         {
             Some(sink) => {
+                event!(Level::DEBUG, "error sent to sink");
                 (sink)(self.apply_error_transform_recursive(parse_error));
                 Ok(())
             },

@@ -40,8 +40,7 @@ tracing = { version = "0.1", optional = true, default_features = false, features
 [dev-dependencies]
 pretty_assertions = "*"
 ntest = { version = "0.9" }
-test-log = { version = "0.2", default_features = false, features = ["trace"] }
-tracing = { version = "0.1", default-features = false, features = ["attributes"] }
+tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 
 

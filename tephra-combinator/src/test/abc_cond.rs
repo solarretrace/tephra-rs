@@ -27,6 +27,14 @@ use tephra::Pos;
 use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
+use tephra_tracing::Level;
+use tephra_tracing::span;
+use tracing::subscriber::DefaultGuard;
+use tracing::subscriber::set_default;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt::Layer;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::Registry;
 
 // Standard library imports.
 use std::rc::Rc;
@@ -36,11 +44,21 @@ use std::sync::RwLock;
 ////////////////////////////////////////////////////////////////////////////////
 // Test setup
 ////////////////////////////////////////////////////////////////////////////////
-fn test_setup() {
+fn setup_test_environment() -> DefaultGuard {
+    // Disable colored output for SourceError display output.
     colored::control::set_override(false);
+
+    let env_filter_layer = EnvFilter::from_default_env();
+    let fmt_layer = Layer::new().without_time();
+
+    let subscriber = Registry::default()
+        .with(env_filter_layer)
+        .with(fmt_layer);
+
+    set_default(subscriber)
 }
 
-fn test_parser(text: &'static str) -> (
+fn build_test_lexer(text: &'static str) -> (
     Lexer<'static, Abc>,
     Context<'static, Abc>,
     Rc<RwLock<Vec<SourceError<&'static str>>>>,
@@ -64,8 +82,10 @@ fn test_parser(text: &'static str) -> (
 #[test]
 #[timeout(100)]
 fn pattern_implies() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("abc bdd");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "pattern_implies")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("abc bdd");
 
     let (value, succ) = implies(pattern, pattern)
         (lexer, ctx)
@@ -93,8 +113,10 @@ fn pattern_implies() {
 #[test]
 #[timeout(100)]
 fn pattern_implies_failed_left() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("agc cdd");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "pattern_implies_failed_left")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("agc cdd");
 
     let (value, succ) = implies(pattern, pattern)
         (lexer, ctx)
@@ -113,8 +135,10 @@ fn pattern_implies_failed_left() {
 #[test]
 #[timeout(100)]
 fn pattern_implies_failed_right() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("abc cdd");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "pattern_implies_failed_right")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("abc cdd");
 
     let actual = implies(pattern, pattern)
         (lexer, ctx)
@@ -134,8 +158,10 @@ error: expected pattern
 #[test]
 #[timeout(100)]
 fn pattern_implies_list() {
-    test_setup();
-    let (lexer, ctx, _errors, _source) = test_parser("abc[bdd, abc]");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "pattern_implies_list")
+        .entered();
+    let (lexer, ctx, _errors, _source) = build_test_lexer("abc[bdd, abc]");
     use AbcToken::*;
 
     let (value, succ) = implies(

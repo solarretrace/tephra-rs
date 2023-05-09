@@ -35,6 +35,15 @@ use tephra::SourceTextRef;
 use tephra::Span;
 use tephra::SpanDisplay;
 use tephra::Spanned;
+use tephra_tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
+use tracing::subscriber::DefaultGuard;
+use tracing::subscriber::set_default;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt::Layer;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::Registry;
 
 // Standard library imports.
 use std::rc::Rc;
@@ -187,6 +196,20 @@ pub(in crate) fn pattern<'text>(
     ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
+    let _trace_span = span!(Level::DEBUG, "pattern").entered();
+
+    // Optimization to shortcut when we know a pattern can't succeed:
+    match lexer.peek() {
+        Some(tok) if !tok.is_pattern_token() => {
+            event!(Level::DEBUG, "non-pattern token found: ({:?})", tok);
+            let parse_span = Some(lexer.parse_span());
+            let token_span = Some(lexer.token_span());
+            return Err(Box::new(ParsePatternError { parse_span, token_span }));
+        },
+        _ => (),
+    }
+
+
     match spanned(text(abc))
         (lexer.clone(), ctx.clone())
         .map_value(Pattern::Abc)
@@ -229,6 +252,8 @@ pub(in crate) fn pattern<'text>(
 pub(in crate) fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
+    let _trace_span = span!(Level::TRACE, "abc").entered();
+
     use AbcToken::*;
     seq(&[A, B, C])
         (lexer, ctx)
@@ -238,6 +263,8 @@ pub(in crate) fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
 pub(in crate) fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
+    let _trace_span = span!(Level::TRACE, "bxx").entered();
+
     use AbcToken::*;
     let ((x, y), succ) = both(
             one(B),
@@ -253,6 +280,8 @@ pub(in crate) fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
 pub(in crate) fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
+    let _trace_span = span!(Level::TRACE, "xyc").entered();
+
     use AbcToken::*;
     both(
         both(
@@ -327,11 +356,21 @@ impl ParseError for ParsePatternError {
 ////////////////////////////////////////////////////////////////////////////////
 // Test setup
 ////////////////////////////////////////////////////////////////////////////////
-fn test_setup() {
+fn setup_test_environment() -> DefaultGuard {
+    // Disable colored output for SourceError display output.
     colored::control::set_override(false);
+
+    let env_filter_layer = EnvFilter::from_default_env();
+    let fmt_layer = Layer::new().without_time();
+
+    let subscriber = Registry::default()
+        .with(env_filter_layer)
+        .with(fmt_layer);
+
+    set_default(subscriber)
 }
 
-fn test_parser(text: &'static str) -> (
+fn build_test_lexer(text: &'static str) -> (
     Lexer<'static, Abc>,
     Context<'static, Abc>,
     Rc<RwLock<Vec<SourceError<&'static str>>>>,
@@ -358,8 +397,10 @@ fn test_parser(text: &'static str) -> (
 #[test]
 #[timeout(100)]
 fn abc_tokens() {
-    test_setup();
-    let (mut lexer, _ctx, _errors, source) = test_parser("a b\nc d");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "abc_tokens")
+        .entered();
+    let (mut lexer, _ctx, _errors, source) = build_test_lexer("a b\nc d");
     use AbcToken::*;
 
     let actual = lexer
@@ -383,8 +424,10 @@ fn abc_tokens() {
 #[test]
 #[timeout(100)]
 fn abc_pattern() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("abc");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "abc_pattern")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("abc");
 
     let (value, succ) = pattern
         (lexer.clone(), ctx)
@@ -405,8 +448,10 @@ fn abc_pattern() {
 #[test]
 #[timeout(100)]
 fn bxx_pattern() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("baa");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "bxx_pattern")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("baa");
 
     let (value, succ) = pattern
         (lexer.clone(), ctx)
@@ -427,8 +472,10 @@ fn bxx_pattern() {
 #[test]
 #[timeout(100)]
 fn xyc_pattern() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("bac");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "xyc_pattern")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("bac");
 
     let (value, succ) = pattern
         (lexer.clone(), ctx)
@@ -450,8 +497,10 @@ fn xyc_pattern() {
 #[test]
 #[timeout(100)]
 fn initial_newline_ws_skip() {
-    test_setup();
-    let (lexer, ctx, _errors, source) = test_parser("\n    aaa");
+    let _trace_guard = setup_test_environment();
+    let _trace_span = span!(Level::DEBUG, "initial_newline_ws_skip")
+        .entered();
+    let (lexer, ctx, _errors, source) = build_test_lexer("\n    aaa");
 
     let actual = pattern
         (lexer.clone(), ctx)

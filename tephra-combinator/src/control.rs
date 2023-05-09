@@ -69,73 +69,6 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
     }
 }
 
-/// A combinator which performs error recovery, returning a default value when
-/// an error occurs.
-pub fn recover_default<'text, Sc, F, V>(
-    mut parser: F,
-    recover: Recover<Sc::Token>)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
-        -> ParseResult<'text, Sc, V>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
-            -> ParseResult<'text, Sc, V>,
-        V: Default
-{
-    move |lexer, ctx| {
-        let _trace_span = span!(Level::DEBUG, "recover_default").entered();
-
-        let mut base_lexer = lexer.clone();
-        base_lexer.set_recover_state(Some(recover.clone()));
-
-        match (parser)
-            (lexer, ctx.clone())
-        {
-            Ok(succ) => Ok(succ),
-
-            Err(fail) => match ctx.send_error(fail) {
-                Err(fail) => {
-                    event!(Level::TRACE, "error recovery failed: disabled");
-                    Err(fail)
-                },
-
-                Ok(()) => match base_lexer.advance_to_recover() {
-                    Ok(_) => {
-                        event!(Level::DEBUG, "error recovery point found");
-                        Ok(Success {
-                            lexer: base_lexer,
-                            value: V::default(),
-                        })
-                    },
-                    Err(recover_error) => {
-                        event!(Level::DEBUG, "error recovery failed: unable to \
-                            find recovery point");
-                        Err(Box::new(recover_error))
-                    },
-                },
-            },
-        }
-    }
-}
-
-/// A combinator which performs error recovery, returning a default value when
-/// an error occurs. The recovery token is required when the combinator is
-/// called rather than when it is constructed.
-pub fn recover_default_delayed<'text, Sc, F, V>(
-    mut parser: F)
-    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>, Recover<Sc::Token>)
-        -> ParseResult<'text, Sc, V>
-    where
-        Sc: Scanner,
-        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
-            -> ParseResult<'text, Sc, V>,
-        V: Default
-{
-    move |lexer, ctx, recover| {
-        recover_default(&mut parser, recover)(lexer, ctx)
-    }
-}
-
 /// A combinator which performs error recovery, returning a `None` value when
 /// an error occurs.
 pub fn recover<'text, Sc, F, V>(
@@ -181,6 +114,75 @@ pub fn recover_delayed<'text, Sc, F, V>(
     }
 }
 
+/// A combinator which performs error recovery, returning a default value when
+/// an error occurs. The recovery token is required when the combinator is
+/// called rather than when it is constructed.
+pub fn recover_default_delayed<'text, Sc, F, V>(
+    mut parser: F)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>, Recover<Sc::Token>)
+        -> ParseResult<'text, Sc, V>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, V>,
+        V: Default
+{
+    move |lexer, ctx, recover| {
+        recover_default(&mut parser, recover)(lexer, ctx)
+    }
+}
+
+/// A combinator which performs error recovery, returning a default value when
+/// an error occurs.
+pub fn recover_default<'text, Sc, F, V>(
+    mut parser: F,
+    recover: Recover<Sc::Token>)
+    -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+        -> ParseResult<'text, Sc, V>
+    where
+        Sc: Scanner,
+        F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
+            -> ParseResult<'text, Sc, V>,
+        V: Default
+{
+    move |lexer, ctx| {
+        let _trace_span = span!(Level::DEBUG, "recover_*").entered();
+
+        let mut base_lexer = lexer.clone();
+        base_lexer.set_recover_state(Some(recover.clone()));
+
+        match (parser)
+            (lexer, ctx.clone())
+        {
+            Ok(succ) => Ok(succ),
+
+            Err(fail) => match ctx.send_error(fail) {
+                Err(fail) => {
+                    event!(Level::TRACE, "error recovery failed: disabled");
+                    Err(fail)
+                },
+
+                Ok(()) => match base_lexer.advance_to_recover() {
+                    Ok(_) => {
+                        event!(Level::DEBUG, "error recovery point found ({})",
+                            base_lexer.cursor_pos());
+                        Ok(Success {
+                            lexer: base_lexer,
+                            value: V::default(),
+                        })
+                    },
+                    Err(recover_error) => {
+                        event!(Level::DEBUG, "error recovery failed: \
+                            unable to find recovery point ({})",
+                            base_lexer.cursor_pos());
+                        Err(Box::new(recover_error))
+                    },
+                },
+            },
+        }
+    }
+}
+
 /// A combinator which ends error recovery if a successful parse is achieved, or
 /// resumes error recovery if a failure occurs.
 pub fn stabilize<'text, Sc, F, V>(mut parser: F)
@@ -198,24 +200,26 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
             (lexer.clone(), ctx.clone());
 
         #[cfg_attr(not(feature="tracing"), allow(unused_variables))]
-        for attempt in 1u32.. {
+        for attempt in 0u32.. {
+            let _trace_span = span!(Level::DEBUG, "", attempt).entered();
             match res {
                 Ok(mut succ) => {
-                    event!(Level::DEBUG, "error recovery succeeded");
+                    event!(Level::DEBUG, "stable after {} attempt(s)", attempt);
                     succ.lexer.set_recover_state(None);
                     return Ok(succ);
                 },
                 Err(_) => match lexer.advance_to_recover() {
                     Ok(_) => {
-                        event!(Level::DEBUG, attempt, "error recovery point \
-                            found");
+                        event!(Level::DEBUG, "error recovery point found ({})",
+                            lexer.cursor_pos());
 
-                        res = (parser)
+                        res = unrecoverable(&mut parser)
                             (lexer.clone(), ctx.clone());
                     },
                     Err(recover_error) => {
-                        event!(Level::DEBUG, "error recovery failed: unable to \
-                            find recovery point");
+                        event!(Level::DEBUG, "error recovery failed: \
+                            unable to find recovery point ({})",
+                            lexer.cursor_pos());
                         return Err(Box::new(recover_error))
                     },
                 },

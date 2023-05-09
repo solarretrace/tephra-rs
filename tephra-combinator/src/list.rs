@@ -8,12 +8,14 @@
 //! Parser combinators for delimitted brackets and lists.
 ////////////////////////////////////////////////////////////////////////////////
 
+
 // Internal library imports.
 use crate::empty;
 use crate::discard;
 use crate::one;
 use crate::recover_default;
 use crate::stabilize;
+use crate::maybe;
 
 // External library imports.
 use tephra::error::ParseBoundaryError;
@@ -24,10 +26,14 @@ use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Success;
+use tephra_tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 // Standard library imports.
 use std::rc::Rc;
 use std::sync::RwLock;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Miscellaneous delimiter combinators.
@@ -167,6 +173,8 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     }));
 
     move |mut lexer, ctx| {
+        let _trace_span = span!(Level::DEBUG, "delimited_list_*").entered();
+
         let mut vals = match high {
             // Do empty parse if requested.
             Some(0) => {
@@ -180,34 +188,43 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
             None    => Vec::with_capacity(LIST_UNBOUND_PREALLOCATE),
         };
 
-        let mut aborting = false;
-        
-        loop {
-            // End loop if no remaining text.
+        #[cfg_attr(not(feature="tracing"), allow(unused_variables))]
+        for idx in 0i32.. {
+            let _trace_span = span!(Level::TRACE, "", idx).entered();
+
+            // Stop if there is no text remaining or we hit an abort token.
             match lexer.peek() {
                 None => { break; }
                 Some(tok) if (abort_pred)(&tok) => {
-                    if vals.is_empty() { break; }
-                    aborting = true;
+                    event!(Level::TRACE, "found abort token ({:?})", tok);
+                    if vals.is_empty() {
+                        // We can exit now if this is the first value.
+                        break;
+                    } else {
+                        // Otherwise, we're probably at the last value. Try to
+                        // capture it, but if it fails it's just a trailing
+                        // delimiter.
+                        let (val, _) = stabilize(
+                                maybe(up_to(&mut parser, &sep_or_abort_pred)))
+                            (lexer.clone(), ctx.clone())?
+                            .take_value();
+                        if let Some(val) = val { vals.push(val); }
+                        break;
+                    }
                 }
                 _ => (),
             }
-            if lexer.is_empty() { break; }
 
-            // Try to parse value.
-            let res = stabilize(recover_default(
+            // Try to parse a value.
+            let (val, succ) = stabilize(recover_default(
                     up_to(&mut parser, &sep_or_abort_pred),
                     recover_pat.clone()))
-                (lexer.clone(), ctx.clone());
-
-            if aborting {
-                vals.push(X::default());
-                break;
-            }
-            let (val, succ) = res?
+                (lexer.clone(), ctx.clone())?
                 .take_value();
+
             lexer = succ.lexer;
             vals.push(val);
+            event!(Level::DEBUG, "value captured");
 
             // End loop if high is reached.
             if let Some(n) = high { if vals.len() >= n { break; } }
@@ -220,13 +237,21 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
             if lexer.is_empty() { break; }
 
             // Try to parse sep token.
-            let (_, succ) = stabilize(recover_default(
+            // TODO: Do we need recovery here? We should usually recover before
+            // the right token if the recovery pred is correct. Needs testing.
+            let (_, succ) = recover_default(
                     discard(one(sep_token.clone())),
-                    recover_pat.clone()))
+                    recover_pat.clone())
                 (lexer.clone(), ctx.clone())?
                 .take_value();
+            event!(Level::DEBUG, "sep token parsed");
+
             lexer = succ.lexer.into_sublexer();
         }
+
+        // We should be stable after each value parse, so no further recovery
+        // should be needed after finishing the list.
+        debug_assert!(lexer.recover_state().is_none());
 
         if vals.len() < low {
             let parse_error = Box::new(RepeatCountError {
