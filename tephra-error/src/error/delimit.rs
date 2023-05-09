@@ -43,6 +43,7 @@ pub struct ParseBoundaryError {
 
 impl ParseBoundaryError {
     /// Returns the full span of the parsed and unexpected text.
+    #[must_use]
     pub fn full_span(&self) -> Span {
         Span::new_enclosing(
             self.parse_span.start(),
@@ -50,6 +51,7 @@ impl ParseBoundaryError {
     }
 
     /// Returns the span of the unexpected text.
+    #[must_use]
     pub fn unparsed_span(&self) -> Span {
         Span::new_enclosing(
             self.parse_span.end(),
@@ -58,8 +60,9 @@ impl ParseBoundaryError {
 
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+    #[must_use]
+    pub fn into_source_error(self, source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         SourceError::new(source_text, "incomplete parse")
             .with_span_display(SpanDisplay::new(
@@ -87,10 +90,10 @@ impl ParseError for ParseBoundaryError {
         Some(self.parse_span)
     }
 
-    fn into_source_error<'text>(
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         Self::into_source_error(*self, source_text)
     }
@@ -139,8 +142,9 @@ impl MatchBracketError {
 
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+    #[must_use]
+    pub fn into_source_error(self, source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         use MatchBracketError::*;
         let source_error = match self {
@@ -190,21 +194,16 @@ impl Display for MatchBracketError {
         use MatchBracketError::*;
         match self {
             NoneFound { expected_start } => write!(f,
-                "bracket error: expected open bracket at {}",
-                expected_start),
+                "bracket error: expected open bracket at {expected_start}"),
 
             Unclosed { found_start } => write!(f,
-                "bracket error: unmatched open bracket at {}",
-                found_start),
+                "bracket error: unmatched open bracket at {found_start}"),
             
             Unopened { found_end } => write!(f,
-                "bracket error: unmatched close bracket at {}",
-                found_end),
+                "bracket error: unmatched close bracket at {found_end}"),
             
             Mismatch { found_start, found_end } => write!(f,
-                "bracket error: mismatched brackets at {} and {}",
-                found_start,
-                found_end),
+                "bracket error: mismatched brackets at {found_start} and {found_end}"),
         }
     }
 }
@@ -216,10 +215,10 @@ impl ParseError for MatchBracketError {
         Some(self.full_span())
     }
 
-    fn into_source_error<'text>(
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         Self::into_source_error(*self, source_text)
     }
@@ -272,8 +271,9 @@ impl RepeatCountError {
 
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+    #[must_use]
+    pub fn into_source_error(self, source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         SourceError::new(source_text, "invalid item count")
             .with_span_display(SpanDisplay::new(
@@ -301,10 +301,10 @@ impl ParseError for RepeatCountError {
         Some(self.parse_span)
     }
 
-    fn into_source_error<'text>(
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         Self::into_source_error(*self, source_text)
     }

@@ -55,14 +55,14 @@ struct Test(Option<TestToken>);
 
 impl Test {
     fn new() -> Self {
-        Test(None)
+        Self(None)
     }
 }
 
 impl Scanner for Test {
     type Token = TestToken;
 
-    fn scan<'text>(&mut self, source: SourceTextRef<'text>, base: Pos)
+    fn scan(&mut self, source: SourceTextRef<'_>, base: Pos)
         -> Option<(Self::Token, Pos)>
     {
         let text = &source.as_ref()[base.byte..];
@@ -78,13 +78,13 @@ impl Scanner for Test {
             self.0 = Some(TestToken::A);
             Some((
                 TestToken::A,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
         } else if text.starts_with('b') {
             self.0 = Some(TestToken::B);
             Some((
                 TestToken::B,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
         } else if text.starts_with("def") {
             self.0 = Some(TestToken::Def);
@@ -125,7 +125,7 @@ fn setup_test_environment() {
 fn empty() {
     setup_test_environment();
 
-    const TEXT: &'static str = "";
+    const TEXT: &str = "";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
 
@@ -141,7 +141,7 @@ fn simple() {
     setup_test_environment();
 
     use TestToken::*;
-    const TEXT: &'static str = "aa b";
+    const TEXT: &str = "aa b";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
 
@@ -158,7 +158,7 @@ fn simple_peek() {
     setup_test_environment();
 
     use TestToken::*;
-    const TEXT: &'static str = "aa b";
+    const TEXT: &str = "aa b";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
 
@@ -179,7 +179,7 @@ fn simple_iter() {
     setup_test_environment();
 
     use TestToken::*;
-    const TEXT: &'static str = "aa b";
+    const TEXT: &str = "aa b";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
 
@@ -205,7 +205,7 @@ fn auto_filter() {
     setup_test_environment();
 
     use TestToken::*;
-    const TEXT: &'static str = "aaaabaaaab";
+    const TEXT: &str = "aaaabaaaab";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
     lexer.set_filter_fn(|tok| *tok != Aa);
@@ -247,7 +247,7 @@ fn whitespace_filter() {
     setup_test_environment();
 
     use TestToken::*;
-    const TEXT: &'static str = "aa b \nbdef\n aaa";
+    const TEXT: &str = "aa b \nbdef\n aaa";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
@@ -285,7 +285,7 @@ fn both_whitespace_filter() {
     setup_test_environment();
 
     use TestToken::*;
-    const TEXT: &'static str = "aa b \nbdef\n aaa";
+    const TEXT: &str = "aa b \nbdef\n aaa";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
     let ctx = Context::empty();
@@ -310,7 +310,7 @@ fn display_formatting() {
     setup_test_environment();
 
     use TestToken::*;
-    const TEXT: &'static str = "aa b \nbdef\n aaa";
+    const TEXT: &str = "aa b \nbdef\n aaa";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
     lexer.set_filter_fn(|tok| *tok != Ws);
@@ -416,7 +416,7 @@ fn tabstop_align() {
     setup_test_environment();
 
     use TestToken::*;
-    const TEXT: &'static str = "\taa\ta\n\t\tb";
+    const TEXT: &str = "\taa\ta\n\t\tb";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
 

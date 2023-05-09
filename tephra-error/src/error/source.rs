@@ -47,10 +47,10 @@ impl<T> SourceError<T> where T: AsRef<str> {
     /// Constructs a new `SourceError` with the given `SourceText` and
     /// message.
     pub fn new<M>(source_text: SourceText<T>, message: M)
-        -> SourceError<T>
+        -> Self
         where M: Into<String>,
     {
-        SourceError {
+        Self {
             source_text,
             code_display: CodeDisplay::new(message)
                 .with_error_type(),

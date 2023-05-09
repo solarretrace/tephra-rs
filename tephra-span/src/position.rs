@@ -9,7 +9,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Pos
 ////////////////////////////////////////////////////////////////////////////////
@@ -24,30 +23,34 @@ pub struct Pos {
 
 impl Pos {
     /// The initial span position.
-    pub const ZERO: Pos = Pos { byte: 0, page: Page::ZERO };
+    pub const ZERO: Self = Self { byte: 0, page: Page::ZERO };
 
     /// Creates a Pos with the given number of bytes, lines, and
     /// columns.
+    #[must_use]
     pub fn new(byte: usize, line: usize, column: usize) -> Self {
-        Pos {
+        Self {
             byte,
             page: Page { line, column },
         }
     }
 
     /// Return true if the span position is the zero position.
+    #[must_use]
     pub fn is_zero(self) -> bool {
-        self == Pos::ZERO
+        self == Self::ZERO
     }
 
     /// Return true if the span position is the start of a new line.
+    #[must_use]
     pub fn is_line_start(self) -> bool {
         self.page.is_line_start()
     }
 
 
+    #[must_use]
     pub fn shifted(self, other: Self) -> Self {
-        Pos {
+        Self {
             byte: self.byte + other.byte,
             page: self.page.shifted(other.page),
         }
@@ -71,7 +74,7 @@ impl Pos {
 
 impl Default for Pos {
     fn default() -> Self {
-        Pos::ZERO
+        Self::ZERO
     }
 }
 
@@ -97,21 +100,23 @@ pub struct Page {
 
 impl Default for Page {
     fn default() -> Self {
-        Page::ZERO
+        Self::ZERO
     }
 }
 
 impl Page {
     /// The start position.
-    pub const ZERO: Page = Page { line: 0, column: 0 };
+    pub const ZERO: Self = Self { line: 0, column: 0 };
 
     /// Return true if the page position is the start of a new line.
+    #[must_use]
     pub fn is_line_start(self) -> bool {
         self.column == 0
     }
 
+    #[must_use]
     pub fn shifted(self, other: Self) -> Self {
-        Page {
+        Self {
             line: self.line + other.line,
             column: if other.is_line_start() || other.line > 0 { 
                 other.column

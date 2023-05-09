@@ -83,7 +83,6 @@ impl<'text, Sc, V> ParseResultExt<'text, Sc, V> for ParseResult<'text, Sc, V>
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Success
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,10 +103,7 @@ impl<'text, Sc, V> Success<'text, Sc, V>
 {
     /// Constructs a new `Success` containing the given value and lexer state.
     pub fn new(value: V, lexer: Lexer<'text, Sc>) -> Self {
-        Success {
-            value,
-            lexer,
-        }
+        Success { lexer, value }
     }
 
     /// Consumes the Success and returns its parsed value.

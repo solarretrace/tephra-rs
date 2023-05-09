@@ -25,7 +25,7 @@ use pretty_assertions::assert_eq;
 #[test]
 #[should_panic]
 fn span_offset_oob_empty() {
-    const TEXT: &'static str = "abcd";
+    const TEXT: &str = "abcd";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = Span::new();
@@ -37,7 +37,7 @@ fn span_offset_oob_empty() {
 /// Tests `Span::new`.
 #[test]
 fn span_offset_within_empty() {
-    const TEXT: &'static str = "abcd";
+    const TEXT: &str = "abcd";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = Span::new_at(Pos::new(100, 10, 10));
@@ -48,7 +48,7 @@ fn span_offset_within_empty() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "10:10, byte 100";
     assert_eq!(actual, expected);
 }
@@ -56,11 +56,11 @@ fn span_offset_within_empty() {
 /// Tests `SourceText::full_span`.
 #[test]
 fn source_text_offset_full_span() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = source.full_span();
-    println!("{:?}", span);
+    println!("{span:?}");
 
     // Check text clip.
     let actual = source.clipped(span);
@@ -68,7 +68,7 @@ fn source_text_offset_full_span() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "10:10-12:1, bytes 100-112";
     assert_eq!(actual, expected);
 }
@@ -76,7 +76,7 @@ fn source_text_offset_full_span() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn span_offset_widen_to_line() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = Span::new_enclosing(
@@ -90,7 +90,7 @@ fn span_offset_widen_to_line() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "11:0-11:8, bytes 102-110";
     assert_eq!(actual, expected);
 }
@@ -98,7 +98,7 @@ fn span_offset_widen_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn span_offset_empty_widen_to_line() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = Span::new_at(Pos::new(106, 11, 4))
@@ -110,7 +110,7 @@ fn span_offset_empty_widen_to_line() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "11:0-11:8, bytes 102-110";
     assert_eq!(actual, expected);
 }
@@ -118,7 +118,7 @@ fn span_offset_empty_widen_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn span_offset_line_widen_to_line() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = Span::new_enclosing(
@@ -132,7 +132,7 @@ fn span_offset_line_widen_to_line() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "11:0-11:8, bytes 102-110";
     assert_eq!(actual, expected);
 }
@@ -140,7 +140,7 @@ fn span_offset_line_widen_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn span_offset_full_widen_to_line() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = source.full_span()
@@ -152,7 +152,7 @@ fn span_offset_full_widen_to_line() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "10:10-12:1, bytes 100-112";
     assert_eq!(actual, expected);
 }
@@ -161,7 +161,7 @@ fn span_offset_full_widen_to_line() {
 /// Tests `Span::split_lines`.
 #[test]
 fn span_offset_split_lines() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = source.full_span();
@@ -188,7 +188,7 @@ fn span_offset_split_lines() {
 /// Tests `Span::split_lines` with no line breaks.
 #[test]
 fn span_offset_no_breaks_split_line() {
-    const TEXT: &'static str = "abcd";
+    const TEXT: &str = "abcd";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
     let span = source.full_span();
@@ -208,7 +208,7 @@ fn span_offset_no_breaks_split_line() {
 /// Tests `Span::enclose`.
 #[test]
 fn span_offset_enclose() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 
@@ -226,7 +226,7 @@ fn span_offset_enclose() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "12:0-16:3, bytes 103-120";
     assert_eq!(actual, expected);
 }
@@ -234,7 +234,7 @@ fn span_offset_enclose() {
 /// Tests `Span::union`.
 #[test]
 fn span_offset_union() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 
@@ -252,7 +252,7 @@ fn span_offset_union() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "12:0-16:3, bytes 103-120";
     assert_eq!(actual, expected);
 }
@@ -260,7 +260,7 @@ fn span_offset_union() {
 /// Tests `Span::intersect`.
 #[test]
 fn span_offset_intersect() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 
@@ -278,7 +278,7 @@ fn span_offset_intersect() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "13:1-14:4, bytes 105-110";
     assert_eq!(actual, expected);
 }
@@ -286,7 +286,7 @@ fn span_offset_intersect() {
 /// Tests `Span::minus`.
 #[test]
 fn span_offset_minus() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 
@@ -304,17 +304,16 @@ fn span_offset_minus() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "12:0-13:1, bytes 103-105";
     assert_eq!(actual, expected);
 }
 
 
-
 /// Tests `SourceText::iter_columns` for `Lf`.
 #[test]
 fn source_text_lf_iter_columns() {
-    const TEXT: &'static str = "abcd";
+    const TEXT: &str = "abcd";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 

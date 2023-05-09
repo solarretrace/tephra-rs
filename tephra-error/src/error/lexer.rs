@@ -27,7 +27,6 @@ use std::fmt::Write;
 use std::iter::IntoIterator;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // UnrecognizedTokenError
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,8 +41,9 @@ pub struct UnrecognizedTokenError {
 impl UnrecognizedTokenError {
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+    #[must_use]
+    pub fn into_source_error(self, source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         SourceError::new(source_text, "unrecognized token")
             .with_span_display(SpanDisplay::new(
@@ -55,8 +55,7 @@ impl UnrecognizedTokenError {
 
 impl Display for UnrecognizedTokenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}",
-            "unrecognized token",
+        write!(f, "unrecognized token {}",
             self.parse_span.end())
     }
 }
@@ -68,10 +67,10 @@ impl ParseError for UnrecognizedTokenError {
         Some(self.parse_span)
     }
     
-    fn into_source_error<'text>(
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         Self::into_source_error(*self, source_text)
     }
@@ -107,14 +106,14 @@ impl<T> Expected<T> {
 
     /// Returns `true` if the expected token list is empty.
     pub fn is_empty(&self) -> bool {
-        matches!(self, Expected::Tokens(toks) if toks.is_empty())
+        matches!(self, Self::Tokens(toks) if toks.is_empty())
     }
 
     /// Constructs an `Expected` description for any of the given tokens.
     pub fn any<I>(tokens: I) -> Self
         where I: IntoIterator<Item=T>
     {
-        Expected::Tokens(tokens.into_iter().collect())
+        Self::Tokens(tokens.into_iter().collect())
     }
 }
 
@@ -123,17 +122,20 @@ impl<T> Display for Expected<T> where T: Debug + Display + 'static {
         use Expected::*;
 
         match self {
-            Token(tok) => write!(f, "{}", tok),
+            Token(tok)                      => write!(f, "{tok}"),
             Tokens(toks) if toks.is_empty() => write!(f, "nothing"),
             Tokens(toks) if toks.len() == 1 => write!(f, "{}", toks[0]),
+            
             Tokens(toks) if toks.len() < Self::MAX_EXPECTED_DISPLAY
                 => write!(f, "one of {}", fmt_list(&toks[..])?),
+            
             Tokens(toks) => write!(f,
                 "one of {}",
                 fmt_list(&toks[..Self::MAX_EXPECTED_DISPLAY])?),
-            Other(message) =>write!(f, "{}", message),
-            EndOfText => write!(f, "end of text"),
-            AnyToken => write!(f, "any token"),
+
+            Other(message) => write!(f, "{message}"),
+            EndOfText      => write!(f, "end of text"),
+            AnyToken       => write!(f, "any token"),
         }
     }
 }
@@ -148,10 +150,10 @@ fn fmt_list<I, T>(items: I) -> Result<String, std::fmt::Error>
     let mut res = String::new();
 
     if let Some(item) = items.next() {
-        write!(&mut res, "{}", item)?;
+        write!(&mut res, "{item}")?;
     }
     for item in items {
-        write!(&mut res, ", {}", item)?;
+        write!(&mut res, ", {item}")?;
     }
     Ok(res)
 }
@@ -171,7 +173,7 @@ impl<T> Display for Found<T> where T: Debug + Display + 'static {
         use Found::*;
 
         match self {
-            Token(tok) => write!(f, "{}", tok),
+            Token(tok) => write!(f, "{tok}"),
             EndOfText => write!(f, "end of text"),
         }
     }
@@ -208,8 +210,8 @@ impl<T> UnexpectedTokenError<T> where T: Debug + Display + Send + Sync {
 
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+    pub fn into_source_error(self, source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         SourceError::new(source_text, "unexpected token")
             .with_span_display(SpanDisplay::new_error_highlight(
@@ -240,10 +242,10 @@ impl<T> ParseError for UnexpectedTokenError<T>
         Some(self.parse_span)
     }
     
-    fn into_source_error<'text>(
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         Self::into_source_error(*self, source_text)
     }

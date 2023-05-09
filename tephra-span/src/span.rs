@@ -22,7 +22,7 @@ use few::Few;
 ////////////////////////////////////////////////////////////////////////////////
 /// A specific section of the source text.
 // NOTE: Span methods must maintain an invariant: span.start() < span.end().
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Span {
     /// The byte range of the spanned section within the source.
     byte: ByteSpan,
@@ -30,49 +30,49 @@ pub struct Span {
     page: PageSpan,
 }
 
-impl Default for Span {
-    fn default() -> Self {
-        Span::new()
-    }
-}
-
 impl Span {
     /// Constructs a new empty span.
+    #[must_use]
     pub fn new() -> Self {
-        Span {
+        Self {
             byte: ByteSpan::default(),
             page: PageSpan::default(),
         }
     }
 
     /// Constructs a new empty span starting from the given byte and page.
+    #[must_use]
     pub fn new_at(pos: Pos) -> Self {
         let byte = ByteSpan { start: pos.byte, end: pos.byte };
         let page = PageSpan { start: pos.page, end: pos.page };
 
-        Span { byte, page }
+        Self { byte, page }
     }
 
     /// Constructs a new span covering given start and end positions.
+    #[must_use]
     pub fn new_enclosing(mut a: Pos, mut b: Pos) -> Self {
         if a.byte > b.byte { std::mem::swap(&mut a, &mut b); }
         let byte = ByteSpan { start: a.byte, end: b.byte };
         let page = PageSpan { start: a.page, end: b.page };
 
-        Span { byte, page }
+        Self { byte, page }
     }
 
     /// Returns true if the span is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.byte.start == self.byte.end
     }
 
     /// Returns true if the span covers the entire source text.
-    pub fn is_full<'text>(&self, source: SourceTextRef<'text>) -> bool {
+    #[must_use]
+    pub fn is_full(&self, source: SourceTextRef<'_>) -> bool {
         (self.byte.end - self.byte.start) == source.len()
     }
 
     /// Returns the start position of the span.
+    #[must_use]
     pub fn start(&self) -> Pos {
         Pos {
             byte: self.byte.start,
@@ -81,6 +81,7 @@ impl Span {
     }
 
     /// Returns the end position of the span.
+    #[must_use]
     pub fn end(&self) -> Pos {
         Pos {
             byte: self.byte.end,
@@ -88,16 +89,19 @@ impl Span {
         }
     }
 
-    /// Returns the ByteSpan of the span.
+    /// Returns the `ByteSpan` of the span.
+    #[must_use]
     pub fn byte_span(&self) -> ByteSpan {
         self.byte
     }
-    /// Returns the PageSpan of the span.
+    /// Returns the `PageSpan` of the span.
+    #[must_use]
     pub fn page_span(&self) -> PageSpan {
         self.page
     }
 
     /// Returns the length of the span in bytes.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.byte.len()
     }
@@ -105,17 +109,19 @@ impl Span {
     /// Returns true if the given position is contained within the span.
     ///
     /// This will return true if the position is a boundary point of the span.
+    #[must_use]
     pub fn contains(&self, pos: &Pos) -> bool {
         *pos >= self.start()  && *pos <= self.end()
     }
 
     /// Widens the span on the left and right to the nearest newline.
-    pub fn widen_to_line<'text>(&self, source: SourceTextRef<'text>) -> Self {
+    #[must_use]
+    pub fn widen_to_line(&self, source: SourceTextRef<'_>) -> Self {
         if self.is_full(source) {
-            return self.clone();
+            return *self;
         }
 
-        Span::new_enclosing(
+        Self::new_enclosing(
             source.line_start_position(self.start()),
             source.line_end_position(self.end()))
     }
@@ -153,7 +159,7 @@ impl Span {
         let b_end = other.end();
         let start = if a_start < b_start { a_start } else { b_start };
         let end = if a_end > b_end { a_end } else { b_end };
-        Span::new_enclosing(start, end)
+        Self::new_enclosing(start, end)
     }
 
     /// Returns the smallest set of spans covering the given spans.
@@ -161,10 +167,10 @@ impl Span {
         where S: Into<Self>,
     {
         let other = other.into();
-        if self.intersects(other.clone()) {
+        if self.intersects(other) {
             Few::One(self.enclose(other))
         } else {
-            Few::Two(self.clone(), other)
+            Few::Two(*self, other)
         }
     }
 
@@ -192,7 +198,7 @@ impl Span {
             (false, false) => return None,
         };
 
-        Some(Span::new_enclosing(start, end))
+        Some(Self::new_enclosing(start, end))
     }
 
     /// Returns the result of removing a portion of the span.
@@ -215,12 +221,13 @@ impl Span {
             _            => (None,             None),
         };
 
-        let l = l.map(|(a, b)| Span::new_enclosing(a, b));
-        let r = r.map(|(a, b)| Span::new_enclosing(a, b));
+        let l = l.map(|(a, b)| Self::new_enclosing(a, b));
+        let r = r.map(|(a, b)| Self::new_enclosing(a, b));
         Few::from((l, r))
     }
 
     /// Returns an iterator over the lines of the span.
+    #[must_use]
     pub fn split_lines<'text>(&self, source: SourceTextRef<'text>)
         -> SplitLines<'text>
     {
@@ -246,7 +253,7 @@ impl std::fmt::Display for Span {
 // ByteSpan
 ////////////////////////////////////////////////////////////////////////////////
 /// The interval of bytes which span the source text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct ByteSpan {
     // NOTE: Field order must be maintained for PartialOrd and Ord impls.
     /// The start of the span.
@@ -255,19 +262,15 @@ pub struct ByteSpan {
     pub end: usize,
 }
 
-impl Default for ByteSpan {
-    fn default() -> Self {
-        ByteSpan { start: 0, end: 0 }
-    }
-}
-
 impl ByteSpan {
     /// Returns the length of the span in bytes.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.end - self.start
     }
 
     /// Returns true if the span is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.start == self.end
     }
@@ -299,12 +302,13 @@ pub struct PageSpan {
 
 impl Default for PageSpan {
     fn default() -> Self {
-        PageSpan { start: Page::ZERO, end: Page::ZERO }
+        Self { start: Page::ZERO, end: Page::ZERO }
     }
 }
 
 impl PageSpan {
     /// Returns true if the span is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.start == self.end
     }
@@ -319,7 +323,6 @@ impl std::fmt::Display for PageSpan {
         }
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

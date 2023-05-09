@@ -14,7 +14,6 @@ use crate::Pos;
 use crate::Span;
 
 
-
 pub const SOURCE_TEXT_DISPLAY_LEN: usize = 12;
 pub const SOURCE_TEXT_DEBUG_LEN: usize = 12;
 
@@ -40,8 +39,9 @@ pub struct SourceText<T> {
 }
 
 impl<T> SourceText<T> where T: Default {
-    pub fn empty() -> SourceText<T>{
-        SourceText::new(T::default())
+    #[must_use]
+    pub fn empty() -> Self{
+        Self::new(T::default())
     }
 }
 
@@ -49,7 +49,7 @@ impl<T> SourceText<T> {
     /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
     pub fn new(text: T) -> Self {
-        SourceText {
+        Self {
             text,
             name: None,
             offset: Pos::ZERO,
@@ -99,7 +99,7 @@ impl<T> SourceText<T> where T: AsRef<str> {
     }
 
     pub fn name(&self) -> Option<&'_ str> {
-        self.name.as_ref().map(|n| n.as_ref())
+        self.name.as_ref().map(std::convert::AsRef::as_ref)
     }
 
     #[inline(always)]
@@ -124,7 +124,7 @@ impl<T> SourceText<T> where T: AsRef<str> {
 
     /// Returns the end position of the text.
     pub fn end_position(&self) -> Pos {
-        let end = self.metrics.end_position(&self.as_str(), Pos::ZERO);
+        let end = self.metrics.end_position(self.as_str(), Pos::ZERO);
         self.offset.shifted(end)
     }
 
@@ -184,7 +184,7 @@ impl<T> SourceText<T> where T: AsRef<str> {
 
     /// Returns the position after the given pattern string, given its start
     /// position.
-    pub fn position_after_str<'a>(&self, start: Pos, pattern: &'a str)
+    pub fn position_after_str(&self, start: Pos, pattern: &str)
         -> Option<Pos>
     {
         start.with_byte_offset(self.offset.byte,
@@ -254,7 +254,7 @@ impl<'text, T> SourceText<T>
 
         let s = span.start().byte - self.offset.byte;
         let e = span.end().byte - self.offset.byte;
-        SourceText {
+        Self {
             text: T::from(&self.as_str()[s..e]),
             name: self.name.as_ref().map(|n| T::from(n.as_ref())),
             metrics: self.metrics,
@@ -278,7 +278,7 @@ impl<T> std::fmt::Display for SourceText<T> where T: AsRef<str> {
         if text.len() > SOURCE_TEXT_DISPLAY_LEN {
             write!(f, "{}...", &text[0..SOURCE_TEXT_DISPLAY_LEN])?;
         } else {
-            write!(f, "{}", &text[..])?;
+            write!(f, "{text}")?;
         };
 
         write!(f, " ({}, {:?})", self.offset, self.metrics)
@@ -291,12 +291,12 @@ impl<T> std::fmt::Debug for SourceText<T>  where T: AsRef<str> {
         let src = if text.len() > SOURCE_TEXT_DEBUG_LEN {
             format!("{}...", &text[0..SOURCE_TEXT_DEBUG_LEN])
         } else {
-            format!("{}", &text[..])
+            format!("{text}")
         };
 
         f.debug_struct("SourceText")
             .field("text", &src)
-            .field("name", &self.name.as_ref().map(|n| n.as_ref()))
+            .field("name", &self.name.as_ref().map(std::convert::AsRef::as_ref))
             .field("offset", &self.offset)
             .field("metrics", &self.metrics)
             .finish()

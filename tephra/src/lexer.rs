@@ -27,7 +27,6 @@ use std::rc::Rc;
 
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Scanner
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +37,7 @@ pub trait Scanner: Debug + Clone + PartialEq {
     type Token: Display + Debug + Clone + PartialEq + Send + Sync + 'static;
 
     /// Parses a token from the given source text.
-    fn scan<'text>(&mut self, source: SourceTextRef<'text>, base: Pos)
+    fn scan(&mut self, source: SourceTextRef<'_>, base: Pos)
         -> Option<(Self::Token, Pos)>;
 }
 
@@ -284,7 +283,7 @@ impl<'text, Sc> Lexer<'text, Sc>
         self
     }
     
-    /// Returns the span (excluding filtered text) of the token_start lexed
+    /// Returns the span (excluding filtered text) of the `token_start` lexed
     /// token.
     pub fn token_span(&self) -> Span {
         Span::new_enclosing(self.token_start, self.end)
@@ -353,10 +352,10 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Advances to the next token indicated by the current recover state.
     ///
-    /// Returns the span of the skipped text, or an UnexpectedTokenError if the
+    /// Returns the span of the skipped text, or an `UnexpectedTokenError` if the
     /// end-of-text is reached during recovery.
     pub fn advance_to_recover(&mut self) -> Result<Span, RecoverError> {
-        if !self.recover.is_some() {
+        if self.recover.is_none() {
             return Ok(self.cursor_span());
         }
 
@@ -392,12 +391,12 @@ impl<'text, Sc> Lexer<'text, Sc>
     ///
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
-    pub fn advance_up_to<P>(&mut self, mut pred: P) -> bool
+    pub fn advance_up_to<P>(&mut self, pred: P) -> bool
         where P: Fn(&Sc::Token) -> bool
     {
         while let Some(tok) = self.peek() {
 
-            if (&mut pred)(&tok) { return true; }
+            if pred(&tok) { return true; }
             let _ = self.next();
         }
         false
@@ -408,11 +407,11 @@ impl<'text, Sc> Lexer<'text, Sc>
     ///
     /// Returns `true` if one of the given tokens was found, and `false` if the
     /// end of text was reached.
-    pub fn advance_to<P>(&mut self, mut pred: P) -> bool
+    pub fn advance_to<P>(&mut self, pred: P) -> bool
         where P: Fn(&Sc::Token) -> bool
     {
-        while let Some(tok) = self.next() {
-            if (&mut pred)(&tok) { return true; }
+        for tok in self.by_ref() {
+            if pred(&tok) { return true; }
         }
         false
     }

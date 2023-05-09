@@ -26,10 +26,10 @@ use std::num::ParseIntError;
 ////////////////////////////////////////////////////////////////////////////////
 
 impl ParseError for ParseIntError {
-    fn into_source_error<'text>(
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         SourceErrorRef::new(source_text, format!("{self}"))
     }
@@ -47,10 +47,10 @@ impl ParseError for ParseIntError {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl ParseError for ParseFloatError {
-    fn into_source_error<'text>(
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         SourceErrorRef::new(source_text, format!("{self}"))
     }

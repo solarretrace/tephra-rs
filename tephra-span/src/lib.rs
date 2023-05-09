@@ -5,7 +5,7 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Tephra Spans and SourceTexts.
+//! Tephra Spans and `SourceTexts`.
 ////////////////////////////////////////////////////////////////////////////////
 #![forbid(non_ascii_idents)]
 #![deny(keyword_idents)]

@@ -98,7 +98,6 @@
 #![allow(clippy::missing_panics_doc)]
 
 
-
 // Public modules.
 mod lexer;
 mod result;

@@ -2,7 +2,6 @@
 
 
 
-
 ## Use `&'t str`, not `&mut &'t str`.
 
 This makes it easier to back up in case of a failure. This only applies to a combined lexer/parser.

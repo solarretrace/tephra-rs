@@ -16,7 +16,6 @@ use crate::Pos;
 use unicode_width::UnicodeWidthChar;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Constants
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +28,6 @@ pub const DEFAULT_TAB_WIDTH: u8 = 4;
 
 /// The byte size of a tab character.
 const TAB_LEN_UTF8: usize = '\t'.len_utf8();
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,15 +53,15 @@ impl Default for LineEnding {
 
 impl LineEnding {
     /// Returns the line ending as an `&'static str`.
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
-            LineEnding::Lf   => "\n",
-            LineEnding::Cr   => "\r",
-            LineEnding::CrLf => "\r\n",
+            Self::Lf   => "\n",
+            Self::Cr   => "\r",
+            Self::CrLf => "\r\n",
         }
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,26 +78,29 @@ pub struct ColumnMetrics {
 
 impl Default for ColumnMetrics {
     fn default() -> Self {
-        ColumnMetrics::new()
+        Self::new()
     }
 }
 
 impl ColumnMetrics {
     /// Returns a new `ColumnMetrics` with the default values.
+    #[must_use]
     pub const fn new() -> Self {
-        ColumnMetrics {
+        Self {
             line_ending: DEFAULT_LINE_ENDING,
             tab_width: DEFAULT_TAB_WIDTH,
         }
     }
 
     /// Sets the line ending style for the Lexer.
+    #[must_use]
     pub fn with_line_ending(mut self, line_ending: LineEnding) -> Self {
         self.line_ending = line_ending;
         self
     }
 
     /// Sets the tab width for the Lexer.
+    #[must_use]
     pub fn with_tab_width(mut self, tab_width: u8) -> Self {
         self.tab_width = tab_width;
         self
@@ -108,7 +109,8 @@ impl ColumnMetrics {
     /// Returns the next column-aligned position after the given base position
     /// within the given text. None is returned if the result position is not
     /// within the text.
-    pub fn next_position<'text>(&self, text: &'text str, base: Pos)
+    #[must_use]
+    pub fn next_position(&self, text: &str, base: Pos)
         -> Option<Pos>
     {
         let line_break = self.line_ending.as_str();
@@ -149,7 +151,8 @@ impl ColumnMetrics {
     /// Returns the previous column-aligned position before the given base
     /// position within the given text. None is returned if the result position
     /// is not within the text.
-    pub fn previous_position<'text>(&self, text: &'text str, base: Pos)
+    #[must_use]
+    pub fn previous_position(&self, text: &str, base: Pos)
         -> Option<Pos>
     {
         let line_break = self.line_ending.as_str();
@@ -196,7 +199,8 @@ impl ColumnMetrics {
 
     /// Returns true if a line break is positioned at the given byte position in
     /// the text.
-    pub fn is_line_break<'text>(&self, text: &'text str, byte: usize) -> bool {
+    #[must_use]
+    pub fn is_line_break(&self, text: &str, byte: usize) -> bool {
         let line_break = self.line_ending.as_str();
 
         text[byte..].starts_with(line_break)
@@ -204,7 +208,8 @@ impl ColumnMetrics {
 
     /// Returns the position of the end of line containing the given base
     /// position.
-    pub fn line_end_position<'text>(&self, text: &'text str, base: Pos) -> Pos {
+    #[must_use]
+    pub fn line_end_position(&self, text: &str, base: Pos) -> Pos {
         let mut end = base;
         while end.byte < text.len() {
             if self.is_line_break(text, end.byte) {
@@ -220,7 +225,8 @@ impl ColumnMetrics {
 
     /// Returns the position of the start of line containing the given base
     /// position.
-    pub fn line_start_position<'text>(&self, text: &'text str, base: Pos)
+    #[must_use]
+    pub fn line_start_position(&self, text: &str, base: Pos)
         -> Pos
     {
         let mut start_byte = base.byte;
@@ -231,16 +237,17 @@ impl ColumnMetrics {
             if self.is_line_break(text, start_byte - 1) {
                 break;
             }
-            if start_byte > 0 { start_byte -= 1; }
+            start_byte = start_byte.saturating_sub(1);
         }
 
-        let res = Pos::new(start_byte, base.page.line, 0);
-        res
+        
+        Pos::new(start_byte, base.page.line, 0)
     }
 
     /// Returns the position at the start of the next line after the given base
     /// position.
-    pub fn previous_line_end_position<'text>(&self, text: &'text str, base: Pos)
+    #[must_use]
+    pub fn previous_line_end_position(&self, text: &str, base: Pos)
         -> Option<Pos>
     {
         self.previous_position(
@@ -250,7 +257,8 @@ impl ColumnMetrics {
 
     /// Returns the position at the start of the next line after the given base
     /// position.
-    pub fn next_line_start_position<'text>(&self, text: &'text str, base: Pos)
+    #[must_use]
+    pub fn next_line_start_position(&self, text: &str, base: Pos)
         -> Option<Pos>
     {
         self.next_position(
@@ -259,7 +267,8 @@ impl ColumnMetrics {
     }
 
     /// Returns the start position of the text, given its end position.
-    pub fn start_position<'text>(&self, text: &'text str, end: Pos) -> Pos {
+    #[must_use]
+    pub fn start_position(&self, text: &str, end: Pos) -> Pos {
         let mut start = end;
 
         while start.byte > 0 {
@@ -272,7 +281,8 @@ impl ColumnMetrics {
     }
 
     /// Returns the end position of the text, given its start position.
-    pub fn end_position<'text>(&self, text: &'text str, start: Pos) -> Pos {
+    #[must_use]
+    pub fn end_position(&self, text: &str, start: Pos) -> Pos {
         let mut end = start;
 
         while end.byte < text.len() {
@@ -286,11 +296,12 @@ impl ColumnMetrics {
 
     /// Returns the position after the given pattern string, given its start
     /// position.
-    pub fn position_after_str<'text, 'a>(
+    #[must_use]
+    pub fn position_after_str(
         &self,
-        text: &'text str,
+        text: &str,
         start: Pos,
-        pattern: &'a str)
+        pattern: &str)
         -> Option<Pos>
     {
         let mut end = start;
@@ -310,9 +321,9 @@ impl ColumnMetrics {
 
     /// Returns the position after any `char`s matching a closure, given its
     /// start position.
-    pub fn position_after_chars_matching<'text, F>(
+    pub fn position_after_chars_matching<F>(
         &self,
-        text: &'text str,
+        text: &str,
         start: Pos,
         mut f: F)
         -> Option<Pos>
@@ -332,9 +343,9 @@ impl ColumnMetrics {
 
     /// Returns the next position after `char`s matching a closure, given its
     /// start position.
-    pub fn next_position_after_chars_matching<'text, F>(
+    pub fn next_position_after_chars_matching<F>(
         &self,
-        text: &'text str,
+        text: &str,
         start: Pos,
         mut f: F)
         -> Option<Pos>

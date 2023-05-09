@@ -45,7 +45,7 @@ impl Highlight {
     pub fn new<M>(span: Span, message: M) -> Self
         where M: Into<String>,
     {
-        Highlight {
+        Self {
             span,
             start_message: None,
             end_message: Some(message.into()),
@@ -54,48 +54,56 @@ impl Highlight {
         }
     }
 
-    /// Returns the given CodeDisplay with the info MessageType.
+    /// Returns the given `CodeDisplay` with the info `MessageType`.
+    #[must_use]
     pub fn with_info_type(mut self) -> Self {
         self.message_type = MessageType::Info;
         self
     }
 
-    /// Returns the given CodeDisplay with the error MessageType.
+    /// Returns the given `CodeDisplay` with the error `MessageType`.
+    #[must_use]
     pub fn with_error_type(mut self) -> Self {
         self.message_type = MessageType::Error;
         self
     }
 
-    /// Returns the given CodeDisplay with the warning MessageType.
+    /// Returns the given `CodeDisplay` with the warning `MessageType`.
+    #[must_use]
     pub fn with_warning_type(mut self) -> Self {
         self.message_type = MessageType::Warning;
         self
     }
     
-    /// Returns the given CodeDisplay with the note MessageType.
+    /// Returns the given `CodeDisplay` with the note `MessageType`.
+    #[must_use]
     pub fn with_note_type(mut self) -> Self {
         self.message_type = MessageType::Note;
         self
     }
 
-    /// Returns the given CodeDisplay with the hel MessageType.
+    /// Returns the given `CodeDisplay` with the hel `MessageType`.
+    #[must_use]
     pub fn with_help_type(mut self) -> Self {
         self.message_type = MessageType::Help;
         self
     }
 
-    /// Returns the given CodeDisplay with the given MessageType.
+    /// Returns the given `CodeDisplay` with the given `MessageType`.
+    #[must_use]
     pub fn with_message_type(mut self, message_type: MessageType) -> Self {
         self.message_type = message_type;
         self
     }
 
     /// Returns true if the highlight extends across multiple lines.
+    #[must_use]
     pub fn is_multiline(&self) -> bool {
         self.span.start().page.line != self.span.end().page.line
     }
 
     /// Returns true if the highlight has a message for the given line.
+    #[must_use]
     pub fn has_message_for_line(&self, line: usize) -> bool {
         (self.span.start().page.line == line
             && (self.start_message.is_some() 
@@ -191,9 +199,7 @@ impl Highlight {
                 }
             } else {
                 let underline_count = std::cmp::max(
-                    self.span.end().page.column
-                        .checked_sub(self.span.start().page.column)
-                        .unwrap_or(0),
+                    self.span.end().page.column.saturating_sub(self.span.start().page.column),
                     1);
                 for _ in 0..underline_count {
                     if color_enabled {
@@ -211,10 +217,10 @@ impl Highlight {
                 (None,      Some(msg)) => if color_enabled {
                     writeln!(out, " {}", msg.color(self.message_type.color()))?
                 } else {
-                    writeln!(out, " {}", msg)?
+                    writeln!(out, " {msg}")?
                 },
                 (Some(_fst), Some(_snd)) => todo!(),
-                (None,      None)      => writeln!(out, "")?,
+                (None,      None)      => writeln!(out)?,
             }
 
         }  else if self.span.start().page.line == line {
@@ -243,9 +249,9 @@ impl Highlight {
                 Some(msg) => if color_enabled {
                     writeln!(out, " {}", msg.color(self.message_type.color()))?;
                 } else {
-                    write!(out, " {}", msg)?;
+                    write!(out, " {msg}")?;
                 },
-                None      => writeln!(out, "")?,
+                None      => writeln!(out)?,
             }
             
         } else if self.span.end().page.line == line {
@@ -274,10 +280,10 @@ impl Highlight {
                 Some(msg) => if color_enabled {
                     writeln!(out, " {}", msg.color(self.message_type.color()))?;
                 } else {
-                    writeln!(out, " {}", msg)?;
+                    writeln!(out, " {msg}")?;
                 },
                 
-                None      => writeln!(out, "")?,
+                None      => writeln!(out)?,
             }
         }
         Ok(())

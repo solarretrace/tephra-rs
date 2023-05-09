@@ -25,7 +25,6 @@ use tephra_span::SourceTextRef;
 use tephra_span::Span;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // ParseError
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,10 +38,11 @@ pub trait ParseError: std::error::Error + Send + Sync
     fn parse_span(&self) -> Option<Span> { None }
 
     /// Converts a `ParseError` into a `SourceErrorRef<'text>`.
-    fn into_source_error<'text>(
+    #[must_use]
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         SourceError::new(source_text, format!("{self}"))
             .with_cause(self.into_owned())
@@ -63,7 +63,6 @@ impl<E> ParseError for Box<E>
         self
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

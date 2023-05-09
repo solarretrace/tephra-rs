@@ -214,7 +214,7 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
 {
     move |lexer, ctx| {
         if let Some(h) = high {
-            assert!(!(h < low), "intersperse with high < low");
+            assert!(h >= low, "intersperse with high < low");
             if h == 0 {
                 return Ok(Success {
                     lexer,
@@ -293,7 +293,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
 {
     move |lexer, ctx| {
         if let Some(h) = high {
-            assert!(!(h < low), "intersperse with high < low");
+            assert!(h >= low, "intersperse with high < low");
             if h == 0 {
                 return Ok(Success {
                     lexer,
@@ -360,7 +360,6 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
 
 
 
-
 /// Returns a parser which repeats the given number of times, interspersed by
 /// parse attempts from a secondary parser. Each parsed value is collected into
 /// a `Vec`.
@@ -382,7 +381,7 @@ pub fn intersperse_default<'text, Sc, F, V>(
 {
     move |lexer, ctx| {
         if let Some(h) = high {
-            assert!(!(h < low), "invalid argument to intersperse_default: high < low");
+            assert!(h >= low, "invalid argument to intersperse_default: high < low");
             if h == 0 {
                 return Ok(Success {
                     lexer,

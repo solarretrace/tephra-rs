@@ -398,7 +398,6 @@ error: invalid item count
 }
 
 
-
 /// Tests parse of a bracketed list with error recovery for the first position.
 //
 // To collect trace output:

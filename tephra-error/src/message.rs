@@ -38,6 +38,7 @@ pub enum MessageType {
 
 impl MessageType {
     /// Returns the color associated with the message type.
+    #[must_use]
     pub fn color(&self) -> Color {
         use MessageType::*;
         match self {
@@ -50,6 +51,7 @@ impl MessageType {
     }
 
     /// Returns the underline associated with the message type.
+    #[must_use]
     pub fn underline(&self) -> &'static str {
         use MessageType::*;
         match self {
@@ -72,7 +74,7 @@ impl MessageType {
         if color_enabled {
             let color = self.color();
             match self {
-                Info    => write!(out, "{}", "info"),
+                Info    => write!(out, "info"),
                 Error   => write!(out, "{}", "error".color(color).bold()),
                 Warning => write!(out, "{}", "warning".color(color).bold()),
                 Note    => write!(out, "{}", "note".color(color).bold()),

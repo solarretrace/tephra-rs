@@ -99,7 +99,6 @@ The main problems to be solved by error recovery are (1) where in the text do we
 A secondary problem is that of constructing the errors with the appropriate context information. Up until now, we've been assuming that errors will get wrapped in contextual information as they bubble up the call stack. This means we either need to continue to allow all errors to bubble up to the root (and subsequently find a way to return back down to the parse context where we intend to recover to,) or instead store the parse contexts on the way down so that we can recover in place by wrapping the errors in that context before emitting them. The former would basically require first-class [continuations](https://en.wikipedia.org/wiki/Continuation). The latter only requires us to build & store a stack of context information, which incedentally plays nicely with the plan to store a handle to an external error collector.
 
 
-
 # Additional parse failure contexts
 In addition to the above highlightings, it is often beneficial to know what was expected, and more importantly, *why* it was expected. If a parse fails, we know what parser was running and what it is expecting to find. If some prefix of an unambiguous parse succeeds, then we also know why we're expecting something. 
 

@@ -44,7 +44,6 @@ pub type ErrorTransform<'text> = Rc<
     dyn for<'a> Fn(Box<dyn ParseError>) -> Box<dyn ParseError> + 'text>;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // SharedContext
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +135,7 @@ pub struct Context<'text, Sc> where Sc: Scanner {
 
 impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
     /// Constructs a new `Context`.
+    #[must_use]
     pub fn empty() -> Self {
         Context {
             shared: Rc::new(RwLock::new(SharedContext {
@@ -150,6 +150,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
     }
 
     /// Constructs a new `Context` with the given `ErrorSink`.
+    #[must_use]
     pub fn new(error_sink: Option<ErrorSink<'text>>) -> Self {
         Context {
             shared: Rc::new(RwLock::new(SharedContext {
@@ -165,6 +166,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
 
     /// Sets the lock value of the `Context`. The value indicates that the
     /// whether new contexts may be pushed.
+    #[must_use]
     pub fn locked(mut self, locked: bool) -> Self {
         self.locked = locked;
         self
@@ -214,6 +216,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
         shared.error_sink.replace(error_sink)
     }
 
+    #[must_use]
     pub fn apply_error_transform_recursive(
         &self,
         parse_error: Box<dyn ParseError>)

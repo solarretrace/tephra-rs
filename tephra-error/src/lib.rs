@@ -103,7 +103,6 @@
 
 
 
-
 // Internal modules.
 mod display;
 mod highlight;

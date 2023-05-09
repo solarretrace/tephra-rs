@@ -29,15 +29,15 @@ pub struct Level(LevelInner);
 
 impl Level {
     /// Stub for `tracing::Level::TRACE`.
-    pub const TRACE: Level = Level(LevelInner::Trace);
+    pub const TRACE: Self = Self(LevelInner::Trace);
     /// Stub for `tracing::Level::DEBUG`.
-    pub const DEBUG: Level = Level(LevelInner::Debug);
+    pub const DEBUG: Self = Self(LevelInner::Debug);
     /// Stub for `tracing::Level::INFO`.
-    pub const INFO: Level = Level(LevelInner::Info);
+    pub const INFO: Self = Self(LevelInner::Info);
     /// Stub for `tracing::Level::WARN`.
-    pub const WARN: Level = Level(LevelInner::Warn);
+    pub const WARN: Self = Self(LevelInner::Warn);
     /// Stub for `tracing::Level::ERROR`.
-    pub const ERROR: Level = Level(LevelInner::Error);
+    pub const ERROR: Self = Self(LevelInner::Error);
 }
 
 /// Internal representation of `Level`.
@@ -57,7 +57,8 @@ pub struct Span;
 
 impl Span {
     /// Stub for `tracing::Span::entered`.
-    pub fn entered(&self) -> Span { *self }
+    #[must_use]
+    pub fn entered(&self) -> Self { *self }
 
     /// Stub for `tracing::Span::enter`.
     pub fn enter(&self) {}

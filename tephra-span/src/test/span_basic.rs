@@ -24,7 +24,7 @@ use pretty_assertions::assert_eq;
 /// Tests `Span::new`.
 #[test]
 fn span_basic_empty() {
-    const TEXT: &'static str = "abcd";
+    const TEXT: &str = "abcd";
     let source = SourceText::new(TEXT);
     let span = Span::new();
 
@@ -34,7 +34,7 @@ fn span_basic_empty() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "0:0, byte 0";
     assert_eq!(actual, expected);
 }
@@ -42,7 +42,7 @@ fn span_basic_empty() {
 /// Tests `SourceText::full_span`.
 #[test]
 fn source_text_basic_full_span() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
     let span = source.full_span();
 
@@ -52,7 +52,7 @@ fn source_text_basic_full_span() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "0:0-2:1, bytes 0-12";
     assert_eq!(actual, expected);
 }
@@ -60,7 +60,7 @@ fn source_text_basic_full_span() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn span_basic_widen_to_line() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
     let span = Span::new_enclosing(
             Pos::new(4, 1, 2),
@@ -73,7 +73,7 @@ fn span_basic_widen_to_line() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "1:0-1:8, bytes 2-10";
     assert_eq!(actual, expected);
 }
@@ -81,7 +81,7 @@ fn span_basic_widen_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn span_basic_empty_widen_to_line() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
     let span = Span::new_at(Pos::new(6, 1, 4))
         .widen_to_line(source);
@@ -92,7 +92,7 @@ fn span_basic_empty_widen_to_line() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "1:0-1:8, bytes 2-10";
     assert_eq!(actual, expected);
 }
@@ -100,7 +100,7 @@ fn span_basic_empty_widen_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn span_basic_line_widen_to_line() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
     let span = Span::new_enclosing(
             Pos::new(2, 1, 0),
@@ -113,7 +113,7 @@ fn span_basic_line_widen_to_line() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "1:0-1:8, bytes 2-10";
     assert_eq!(actual, expected);
 }
@@ -121,7 +121,7 @@ fn span_basic_line_widen_to_line() {
 /// Tests `Span::widen_to_line`.
 #[test]
 fn span_basic_full_widen_to_line() {
-    const TEXT: &'static str = " \n  abcd  \n ";
+    const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
     let span = source.full_span()
         .widen_to_line(source);
@@ -132,7 +132,7 @@ fn span_basic_full_widen_to_line() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "0:0-2:1, bytes 0-12";
     assert_eq!(actual, expected);
 }
@@ -141,7 +141,7 @@ fn span_basic_full_widen_to_line() {
 /// Tests `Span::split_lines`.
 #[test]
 fn span_basic_split_lines() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
     let span = source.full_span();
 
@@ -167,7 +167,7 @@ fn span_basic_split_lines() {
 /// Tests `Span::split_lines` with no line breaks.
 #[test]
 fn span_basic_no_breaks_split_line() {
-    const TEXT: &'static str = "abcd";
+    const TEXT: &str = "abcd";
     let source = SourceText::new(TEXT);
     let span = source.full_span();
 
@@ -186,7 +186,7 @@ fn span_basic_no_breaks_split_line() {
 /// Tests `Span::enclose`.
 #[test]
 fn span_basic_enclose() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
 
     let a = Span::new_enclosing(
@@ -203,7 +203,7 @@ fn span_basic_enclose() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "2:0-6:3, bytes 3-20";
     assert_eq!(actual, expected);
 }
@@ -211,7 +211,7 @@ fn span_basic_enclose() {
 /// Tests `Span::union`.
 #[test]
 fn span_basic_union() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
 
     let a = Span::new_enclosing(
@@ -228,7 +228,7 @@ fn span_basic_union() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "2:0-6:3, bytes 3-20";
     assert_eq!(actual, expected);
 }
@@ -236,7 +236,7 @@ fn span_basic_union() {
 /// Tests `Span::intersect`.
 #[test]
 fn span_basic_intersect() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
 
     let a = Span::new_enclosing(
@@ -253,7 +253,7 @@ fn span_basic_intersect() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "3:1-4:4, bytes 5-10";
     assert_eq!(actual, expected);
 }
@@ -261,7 +261,7 @@ fn span_basic_intersect() {
 /// Tests `Span::minus`.
 #[test]
 fn span_basic_minus() {
-    const TEXT: &'static str = "\n \n\n \nabcd\n def \nghi\n";
+    const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
 
     let a = Span::new_enclosing(
@@ -278,17 +278,16 @@ fn span_basic_minus() {
     assert_eq!(actual.as_ref(), expected);
 
     // Check span display.
-    let actual = format!("{}", span);
+    let actual = format!("{span}");
     let expected = "2:0-3:1, bytes 3-5";
     assert_eq!(actual, expected);
 }
 
 
-
 /// Tests `SourceText::iter_columns` for `Lf`.
 #[test]
 fn source_text_lf_iter_columns() {
-    const TEXT: &'static str = "abcd";
+    const TEXT: &str = "abcd";
     let source = SourceText::new(TEXT);
 
     let actual: Vec<_> = source.iter_columns(Pos::ZERO)

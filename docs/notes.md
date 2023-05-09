@@ -71,7 +71,6 @@
 
 
 
-
 ## Source span display
 
 ### Description
@@ -122,7 +121,6 @@
 
 
 
-
     warning: variable does not need to be mutable
       --> src/result/display.rs:46:9
        |
@@ -141,7 +139,6 @@
     warning: 1 warning emitted
 
 
-
 # New error & span ownership
 
 Separate references to the source text from the spans. The span operations can be applied to arbitrary text sources, allowing for more code sharing between borrowed & owned structs.
@@ -158,7 +155,6 @@ ParseError
 ParseErrorOwned
 
 # Tephra Parse Errors
-
 
 
 
@@ -264,7 +260,6 @@ Three important aspects of nice parsing:
 + Error recovery
 + Errors
 + Panics
-
 
 
 # Tracing targets

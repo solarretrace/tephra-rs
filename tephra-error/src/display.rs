@@ -49,11 +49,11 @@ pub struct CodeDisplay {
 }
 
 impl CodeDisplay {
-    /// Constructs a new info-type CodeDisplay with the given description.
+    /// Constructs a new info-type `CodeDisplay` with the given description.
     pub fn new<M>(message: M) -> Self 
         where M: Into<String>,
     {
-        CodeDisplay {
+        Self {
             message: message.into(),
             message_type: MessageType::Info,
             code_id: None,
@@ -64,55 +64,63 @@ impl CodeDisplay {
     }
 
     /// Returns the given `CodeDisplay` with the given message.
+    #[must_use]
     pub fn with_message(mut self, message: String) -> Self {
         self.message = message;
         self
     }
 
     /// Returns the given `CodeDisplay` with the given color enablement.
+    #[must_use]
     pub fn with_color(mut self, color_enabled: bool) -> Self {
         self.color_enabled = color_enabled;
         self
     }
 
 
-    /// Returns the given `CodeDisplay` with the error MessageType.
+    /// Returns the given `CodeDisplay` with the error `MessageType`.
+    #[must_use]
     pub fn with_error_type(mut self) -> Self {
         self.message_type = MessageType::Error;
         self
     }
 
-    /// Returns the given `CodeDisplay` with the warning MessageType.
+    /// Returns the given `CodeDisplay` with the warning `MessageType`.
+    #[must_use]
     pub fn with_warning_type(mut self) -> Self {
         self.message_type = MessageType::Warning;
         self
     }
     
-    /// Returns the given `CodeDisplay` with the note MessageType.
+    /// Returns the given `CodeDisplay` with the note `MessageType`.
+    #[must_use]
     pub fn with_note_type(mut self) -> Self {
         self.message_type = MessageType::Note;
         self
     }
 
-    /// Returns the given `CodeDisplay` with the hel MessageType.
+    /// Returns the given `CodeDisplay` with the hel `MessageType`.
+    #[must_use]
     pub fn with_help_type(mut self) -> Self {
         self.message_type = MessageType::Help;
         self
     }
 
-    /// Returns the given `CodeDisplay` with the given MessageType.
+    /// Returns the given `CodeDisplay` with the given `MessageType`.
+    #[must_use]
     pub fn with_message_type(mut self, message_type: MessageType) -> Self {
         self.message_type = message_type;
         self
     }
 
     /// Returns the given `CodeDisplay` with the given error code id.
+    #[must_use]
     pub fn with_code_id(mut self, code_id: Option<&'static str>) -> Self {
         self.code_id = code_id;
         self
     }
 
-    /// Returns the given `CodeDisplay` with the given SpanDisplay attachment.
+    /// Returns the given `CodeDisplay` with the given `SpanDisplay` attachment.
     pub fn with_span_display<S>(mut self, span_display: S)
         -> Self
         where S: Into<SpanDisplay>
@@ -130,7 +138,7 @@ impl CodeDisplay {
         self
     }
 
-    /// Returns the given `CodeDisplay` with the given SpanDisplay attachment.
+    /// Returns the given `CodeDisplay` with the given `SpanDisplay` attachment.
     pub fn push_span_display<S>(&mut self, span_display: S)
         where S: Into<SpanDisplay>
     {
@@ -146,6 +154,7 @@ impl CodeDisplay {
     }
 
     /// Returns the `CodeDisplay`'s message.
+    #[must_use]
     pub fn message(&self) -> &str {
         self.message.as_str()
     }
@@ -171,7 +180,7 @@ impl CodeDisplay {
         if color_enabled {
             write!(out, "{}", self.message_type)?;
             if let Some(code_id) = self.code_id {
-                write!(out, "[{}]", code_id)?;
+                write!(out, "[{code_id}]")?;
             }
             writeln!(out, "{} {}",
                 ":".bright_white().bold(),
@@ -191,7 +200,6 @@ impl CodeDisplay {
         Ok(())
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,12 +225,12 @@ pub struct SpanDisplay {
 }
 
 impl SpanDisplay {
-    /// Constructs a new SpanDisplay with the given span.
+    /// Constructs a new `SpanDisplay` with the given span.
     pub fn new(source_text: SourceTextRef<'_>, span: Span) -> Self {
         let gutter_width = std::cmp::max(
             (span.end().page.line as f32).log10().ceil() as u8, 1);
 
-        SpanDisplay {
+        Self {
             source_name: source_text.name().map(String::from),
             _metrics: source_text.column_metrics(),
             span: span.widen_to_line(source_text),
@@ -233,7 +241,7 @@ impl SpanDisplay {
         }
     }
 
-    /// Constructs a new SpanDisplay with the given span and highlight message.
+    /// Constructs a new `SpanDisplay` with the given span and highlight message.
     pub fn new_error_highlight<M>(
         source_text: SourceTextRef<'_>, 
         span: Span,
@@ -241,12 +249,12 @@ impl SpanDisplay {
         -> Self
         where M: Into<String>,
     {
-        SpanDisplay::new(source_text, span)
+        Self::new(source_text, span)
             .with_highlight(Highlight::new(span, message)
                 .with_error_type())
     }
 
-    /// Returns the given SpanDisplay with the given source name.
+    /// Returns the given `SpanDisplay` with the given source name.
     pub fn with_source_name<M>(mut self, name: M) -> Self
         where M: Into<String>,
     {
@@ -255,12 +263,14 @@ impl SpanDisplay {
     }
 
     /// Attaches the given Highlight to the source span.
+    #[must_use]
     pub fn with_highlight(mut self, highlight: Highlight) -> Self {
         self.highlights.push(highlight);
         self
     }
 
     /// Attaches the given Note to the source span.
+    #[must_use]
     pub fn with_note(mut self, note: Note) -> Self {
         self.notes.push(note);
         self
@@ -314,11 +324,10 @@ impl SpanDisplay {
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // MultiSplitLines
 ////////////////////////////////////////////////////////////////////////////////
-/// An iterator over the line-based data relevant to a particular SpanDisplay.
+/// An iterator over the line-based data relevant to a particular `SpanDisplay`.
 #[derive(Debug, Clone)]
 struct MultiSplitLines<'text, 'hl> {
     /// The SplitLines iterator for the `SpanDisplay`.
@@ -332,7 +341,7 @@ struct MultiSplitLines<'text, 'hl> {
 }
 
 impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
-    /// Constructs a new MultiSplitLines from the given source span and
+    /// Constructs a new `MultiSplitLines` from the given source span and
     /// highlights.
     pub(in crate) fn new(
         source_text: SourceTextRef<'text>,
@@ -358,7 +367,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
         }
     }
 
-    /// Consumes the MultiSplitLines and writes all of the contained data.
+    /// Consumes the `MultiSplitLines` and writes all of the contained data.
     pub(in crate) fn write_with_color_enablement<W>(
         self,
         out: &mut W,
@@ -442,7 +451,7 @@ fn write_gutter<V, W>(
 {
     if color_enabled {
         write!(out, "{:>width$} {} ",
-            format!("{}", value).bright_blue().bold(),
+            format!("{value}").bright_blue().bold(),
             "|".bright_blue().bold(),
             width=width as usize)
     } else {
@@ -452,7 +461,7 @@ fn write_gutter<V, W>(
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(in crate) enum RiserState {
+pub enum RiserState {
     Unused,
     Waiting,
     Started,

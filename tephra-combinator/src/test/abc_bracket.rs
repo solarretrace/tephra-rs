@@ -299,7 +299,7 @@ fn comma_bracket_index() {
         value: (Some(Comma), 0),
         span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
     };
-    println!("{:?}", actual);
+    println!("{actual:?}");
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
 }

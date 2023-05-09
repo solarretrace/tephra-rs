@@ -55,7 +55,7 @@ use std::sync::RwLock;
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub(in crate) enum AbcToken {
+pub(in crate::test) enum AbcToken {
     A,
     B,
     C,
@@ -79,11 +79,11 @@ impl AbcToken {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate) struct Abc(Option<AbcToken>);
+pub(in crate::test) struct Abc(Option<AbcToken>);
 
 impl Abc {
-    pub(in crate) fn new() -> Self {
-        Abc(None)
+    pub(in crate::test) fn new() -> Self {
+        Self(None)
     }
 }
 
@@ -108,7 +108,7 @@ impl std::fmt::Display for AbcToken {
 impl Scanner for Abc {
     type Token = AbcToken;
 
-    fn scan<'text>(&mut self, source: SourceTextRef<'text>, base: Pos)
+    fn scan(&mut self, source: SourceTextRef<'_>, base: Pos)
         -> Option<(Self::Token, Pos)>
     {
         let text = &source.as_ref()[base.byte..];
@@ -118,49 +118,49 @@ impl Scanner for Abc {
             self.0 = Some(AbcToken::Comma);
             Some((
                 AbcToken::Comma,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
         } else if text.starts_with(';') {
             self.0 = Some(AbcToken::Semicolon);
             Some((
                 AbcToken::Semicolon,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
         } else if text.starts_with(']') {
             self.0 = Some(AbcToken::CloseBracket);
             Some((
                 AbcToken::CloseBracket,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
         } else if text.starts_with('[') {
             self.0 = Some(AbcToken::OpenBracket);
             Some((
                 AbcToken::OpenBracket,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
         } else if text.starts_with('a') {
             self.0 = Some(AbcToken::A);
             Some((
                 AbcToken::A,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
         } else if text.starts_with('b') {
             self.0 = Some(AbcToken::B);
             Some((
                 AbcToken::B,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
         } else if text.starts_with('c') {
             self.0 = Some(AbcToken::C);
             Some((
                 AbcToken::C,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
 
-        } else if text.starts_with("d") {
+        } else if text.starts_with('d') {
             self.0 = Some(AbcToken::D);
             Some((
                 AbcToken::D,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
             
         } else if text.starts_with(char::is_whitespace) {
             self.0 = Some(AbcToken::Ws);
@@ -169,11 +169,11 @@ impl Scanner for Abc {
             let substr_len = text.len() - rest.len();
             let substr = &source.as_ref()[0.. base.byte + substr_len];
             Some((AbcToken::Ws, metrics.end_position(substr, base)))
-        } else if text.len() > 0 {
+        } else if !text.is_empty() {
             self.0 = Some(AbcToken::Invalid);
             Some((
                 AbcToken::Invalid,
-                metrics.end_position(&source.as_ref()[..base.byte + 1], base)))
+                metrics.end_position(&source.as_ref()[..=base.byte], base)))
         } else {
             self.0 = None;
             None
@@ -185,13 +185,13 @@ impl Scanner for Abc {
 // Abc grammar
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate) enum Pattern<'text> {
+pub(in crate::test) enum Pattern<'text> {
     Abc(Spanned<&'text str>),
     Bxx(Spanned<&'text str>),
     Xyc(Spanned<&'text str>),
 }
 
-pub(in crate) fn pattern<'text>(
+pub(in crate::test) fn pattern<'text>(
     lexer: Lexer<'text, Abc>,
     ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
@@ -249,7 +249,9 @@ pub(in crate) fn pattern<'text>(
         .map_value(Pattern::Xyc)
 }
 
-pub(in crate) fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
+pub(in crate::test) fn abc<'text>(
+    lexer: Lexer<'text, Abc>,
+    ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     let _trace_span = span!(Level::TRACE, "abc").entered();
@@ -260,7 +262,9 @@ pub(in crate) fn abc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
         .map_value(|v| (v[0], v[1], v[2]))
 }
 
-pub(in crate) fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
+pub(in crate::test) fn bxx<'text>(
+    lexer: Lexer<'text, Abc>,
+    ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     let _trace_span = span!(Level::TRACE, "bxx").entered();
@@ -277,7 +281,9 @@ pub(in crate) fn bxx<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
         .map_value(|z| (x, y, z))
 }
 
-pub(in crate) fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
+pub(in crate::test) fn xyc<'text>(
+    lexer: Lexer<'text, Abc>,
+    ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, (AbcToken, AbcToken, AbcToken)>
 {
     let _trace_span = span!(Level::TRACE, "xyc").entered();
@@ -299,25 +305,25 @@ pub(in crate) fn xyc<'text>(lexer: Lexer<'text, Abc>, ctx: Context<'text, Abc>)
 /// An error generated when a successful parse does not consume as much text as
 /// required.
 #[derive(Debug, Clone)]
-pub(in crate) struct ParsePatternError {
-    pub(in crate) parse_span: Option<Span>,
-    pub(in crate) token_span: Option<Span>,
+pub(in crate::test) struct ParsePatternError {
+    pub(in crate::test) parse_span: Option<Span>,
+    pub(in crate::test) token_span: Option<Span>,
 }
 
 impl ParsePatternError {
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub(in crate) fn into_source_error<'text>(
+    pub(in crate::test) fn into_source_error(
         self,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         let mut se = SourceError::new(source_text, "expected pattern");
         if let Some(span) = self.parse_span {
             se = se
                 .with_span_display(SpanDisplay::new_error_highlight(
                     source_text,
-                    self.token_span.map(|t| span.enclose(t)).unwrap_or(span),
+                    self.token_span.map_or(span, |t| span.enclose(t)),
                     "expected 'ABC', 'BXX', or 'XYC' pattern"))
         };
         se.with_cause(Box::new(self))
@@ -337,10 +343,10 @@ impl ParseError for ParsePatternError {
         self.parse_span
     }
 
-    fn into_source_error<'text>(
+    fn into_source_error(
         self: Box<Self>,
-        source_text: SourceTextRef<'text>)
-        -> SourceErrorRef<'text>
+        source_text: SourceTextRef<'_>)
+        -> SourceErrorRef<'_>
     {
         Self::into_source_error(*self, source_text)
     }
