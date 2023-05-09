@@ -34,7 +34,7 @@ tephra = { version = "*", path = "../tephra" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
 unicode-width = { version = "0.1" }
 # Optional dependencies.
-tracing = { version = "0.1", optional = true }
+tracing = { version = "0.1", optional = true, default_features = false, features = ["std", "log"] }
 
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]

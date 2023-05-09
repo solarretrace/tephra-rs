@@ -12,13 +12,13 @@
 /// Stub for `tracing::span`.
 #[macro_export]
 macro_rules! span {
-    ($level:expr, $($a:tt) *) => {{ $level; $crate::Span }};
+    ($level:expr, $($a:tt) *) => { $crate::Span };
 }
 
 /// Stub for `tracing::event`.
 #[macro_export]
 macro_rules! event {
-    ($level:expr, $($a:tt) *) => { $level };
+    ($level:expr, $($a:tt) *) => { };
 }
 
 /// Stub for `tracing::Level`.

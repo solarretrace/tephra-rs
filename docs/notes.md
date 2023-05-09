@@ -264,3 +264,17 @@ Three important aspects of nice parsing:
 + Error recovery
 + Errors
 + Panics
+
+
+
+# Tracing targets
+
++ combinators
++ combinators internals
++ error recovery
++ scanner operations
++ lexer operations
++ span operations
++ context ops
++ results
+

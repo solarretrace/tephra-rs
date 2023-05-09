@@ -20,7 +20,7 @@ default = []
 
 # Required dependencies
 [dependencies]
-tracing = { version = "0.1", optional = true }
+tracing = { version = "0.1", optional = true, default_features = false, features = ["std", "log"] }
 
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]
