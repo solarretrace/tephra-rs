@@ -84,8 +84,10 @@ fn build_test_lexer(text: &'static str) -> (
 ////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
-
 /// Test failed `bracket` combinator with error recovery, with missing brackets.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::recover_missing -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn recover_missing() {
@@ -115,6 +117,9 @@ error: expected open bracket
 
 /// Test failed `bracket` combinator with error recovery, with an unmatched open
 /// bracket.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::recover_unmatched_open -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn recover_unmatched_open() {
@@ -145,6 +150,9 @@ error: unmatched open bracket
 
 /// Test failed `bracket` combinator with error recovery, with an unmatched
 /// close bracket.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::recover_unmatched_closed -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn recover_unmatched_closed() {
@@ -173,6 +181,9 @@ error: unmatched close bracket
 
 /// Test failed `bracket` combinator with error recovery, with an unmatched
 /// close bracket.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::recover_mismatched -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn recover_mismatched() {
@@ -202,6 +213,9 @@ error: mismatched brackets
 
 /// Test failed `bracket` combinator with error recovery, with an
 /// unmatched bracket and raw error.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::recover_unmatched_raw -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn recover_unmatched_raw() {
@@ -230,6 +244,9 @@ error: unmatched open bracket
 
 /// Test failed `bracket` combinator without error recovery, with an
 /// unmatched bracket.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::recover_unmatched_unrecoverable -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn recover_unmatched_unrecoverable() {
@@ -255,8 +272,10 @@ error: unmatched open bracket
   | ^ this bracket is not closed
 ");
 }
-
 /// Test successful `bracket` combinator.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::comma_bracket_index -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn comma_bracket_index() {
@@ -284,8 +303,10 @@ fn comma_bracket_index() {
     assert_eq!(actual, expected);
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(3, 0, 3));
 }
-
 /// Test successful `bracket` combinator.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::matching_both -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn matching_both() {
@@ -325,6 +346,9 @@ fn matching_both() {
 }
 
 /// Test successful `bracket` combinator.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::matching_both_first_fail -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn matching_both_first_fail() {
@@ -368,8 +392,10 @@ error: expected pattern
 ");
 }
 
-
 /// Test `bracket` combinator failing due to mismatched brackets.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_bracket::matching_both_mismatch -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn matching_both_mismatch() {

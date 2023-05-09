@@ -36,7 +36,7 @@ pub struct Highlight {
     /// The message type.
     message_type: MessageType,
     // TODO: Whether to allow line omissions within the highlighted span.
-    allow_omissions: bool,
+    _allow_omissions: bool,
 }
 
 
@@ -50,7 +50,7 @@ impl Highlight {
             start_message: None,
             end_message: Some(message.into()),
             message_type: MessageType::Info,
-            allow_omissions: true,
+            _allow_omissions: true,
         }
     }
 

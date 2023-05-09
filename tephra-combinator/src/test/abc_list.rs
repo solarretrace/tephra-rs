@@ -83,10 +83,10 @@ fn build_test_lexer(text: &'static str) -> (
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Test successful `delimited_list` combinator with empty list.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::list_empty -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn list_empty() {
@@ -98,8 +98,7 @@ fn list_empty() {
 
     let (value, succ) = delimited_list(
             pattern,
-            Comma,
-            |_| false)
+            Comma, |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -111,10 +110,10 @@ fn list_empty() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(0, 0, 0));
 }
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::list_one -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn list_one() {
@@ -126,8 +125,7 @@ fn list_one() {
 
     let (value, succ) = delimited_list(
             pattern,
-            Comma,
-            |_| false)
+            Comma, |_| false)
         (lexer.clone(), ctx)
         .expect("successful parse")
         .take_value();
@@ -143,10 +141,10 @@ fn list_one() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
 }
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_one() {
@@ -180,10 +178,10 @@ fn bracket_list_one() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
 }
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::list_two -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn list_two() {
@@ -216,10 +214,10 @@ fn list_two() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(9, 0, 9));
 }
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_two -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_two() {
@@ -257,10 +255,10 @@ fn bracket_list_two() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(9, 0, 9));
 }
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::list_one_failed -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn list_one_failed() {
@@ -289,10 +287,10 @@ error: invalid item count
 }
 
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_zero -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_zero() {
@@ -321,10 +319,10 @@ fn bracket_list_zero() {
 }
 
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one_failed -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_one_failed() {
@@ -357,10 +355,10 @@ error: invalid item count
 }
 
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one_recovered -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_one_recovered() {
@@ -401,10 +399,10 @@ error: invalid item count
 
 
 
+/// Tests parse of a bracketed list with error recovery for the first position.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_two_recovered_first -- --exact --nocapture > .trace
-//
-/// Tests parse of a bracketed list with error recovery for the first position.
 #[test]
 #[timeout(100)]
 fn bracket_list_two_recovered_first() {
@@ -447,10 +445,10 @@ error: expected pattern
 }
 
 
+/// Tests parse of a bracketed list with error recovery for the second position.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_two_recovered_second -- --exact --nocapture > .trace
-//
-/// Tests parse of a bracketed list with error recovery for the second position.
 #[test]
 #[timeout(100)]
 fn bracket_list_two_recovered_second() {
@@ -488,10 +486,10 @@ fn bracket_list_two_recovered_second() {
 }
 
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_missing_delimiter -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_missing_delimiter() {
@@ -530,10 +528,10 @@ error: incomplete parse
 }
 
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_nested -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_nested() {
@@ -588,10 +586,10 @@ fn bracket_list_nested() {
 }
 
 
+/// Test successful `delimited_list_bounded` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_commas -- --exact --nocapture > .trace
-//
-/// Test successful `delimited_list_bounded` combinator.
 #[test]
 #[timeout(100)]
 fn bracket_list_commas() {

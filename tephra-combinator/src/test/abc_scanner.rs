@@ -394,6 +394,9 @@ fn build_test_lexer(text: &'static str) -> (
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Tests Abc token lexing & filtering.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_scanner::abc_tokens -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn abc_tokens() {
@@ -421,6 +424,9 @@ fn abc_tokens() {
 }
 
 /// Parses a `Pattern::Abc`.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_scanner::abc_pattern -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn abc_pattern() {
@@ -445,6 +451,9 @@ fn abc_pattern() {
 }
 
 /// Parses a `Pattern::Bxx`.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_scanner::bxx_pattern -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn bxx_pattern() {
@@ -469,6 +478,9 @@ fn bxx_pattern() {
 }
 
 /// Parses a `Pattern::Xyc`.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_scanner::xyc_pattern -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn xyc_pattern() {
@@ -494,6 +506,9 @@ fn xyc_pattern() {
 
 /// Ensures that a failure encountered after initial newline & whitespace
 /// doesn't include that whitespace in the error message.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_scanner::initial_newline_ws_skip -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn initial_newline_ws_skip() {

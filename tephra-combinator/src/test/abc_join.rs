@@ -82,15 +82,15 @@ fn build_test_lexer(text: &'static str) -> (
     (lexer, ctx, errors, source)
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
 
-
+/// Test successful `pred` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::simple_not -- --exact --nocapture > .trace
-//
-/// Test successful `pred` combinator.
 #[test]
 #[timeout(100)]
 fn simple_not() {
@@ -116,10 +116,10 @@ fn simple_not() {
 }
 
 
+/// Test failed `pred` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::simple_not_failed -- --exact --nocapture > .trace
-//
-/// Test failed `pred` combinator.
 #[test]
 #[timeout(100)]
 fn simple_not_failed() {
@@ -147,10 +147,10 @@ error: unexpected token
 }
 
 
+/// Test successful `both` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::pattern_both -- --exact --nocapture > .trace
-//
-/// Test successful `both` combinator.
 #[test]
 #[timeout(100)]
 fn pattern_both() {
@@ -181,10 +181,10 @@ fn pattern_both() {
 }
 
 
+/// Test successful `left` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::pattern_left -- --exact --nocapture > .trace
-//
-/// Test successful `left` combinator.
 #[test]
 #[timeout(100)]
 fn pattern_left() {
@@ -210,10 +210,10 @@ fn pattern_left() {
 }
 
 
+/// Test successful `right` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::pattern_right -- --exact --nocapture > .trace
-//
-/// Test successful `right` combinator.
 #[test]
 #[timeout(100)]
 fn pattern_right() {
@@ -239,10 +239,10 @@ fn pattern_right() {
 }
 
 
+/// Test `right` combinator failure. Ensure error is properly wrapped.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::pattern_right_failed -- --exact --nocapture > .trace
-//
-/// Test `right` combinator failure. Ensure error is properly wrapped.
 #[test]
 #[timeout(100)]
 fn pattern_right_failed() {
@@ -265,12 +265,12 @@ error: expected pattern
 ");
 }
 
-/// Test failed `right` combinator with `raw` wrapper. Ensure error is not
 
+/// Test failed `right` combinator with `raw` wrapper. Ensure error is not
+/// wrapped.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::pattern_right_failed_raw -- --exact --nocapture > .trace
-//
-/// wrapped.
 #[test]
 #[timeout(100)]
 fn pattern_right_failed_raw() {
@@ -294,10 +294,10 @@ error: unexpected token
 }
 
 
+/// Test successful `center` combinator.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::pattern_center -- --exact --nocapture > .trace
-//
-/// Test successful `center` combinator.
 #[test]
 #[timeout(100)]
 fn pattern_center() {
@@ -326,10 +326,10 @@ fn pattern_center() {
 }
 
 
+/// Test failed `center` combinator with error recovery.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::pattern_center_recover -- --exact --nocapture > .trace
-//
-/// Test failed `center` combinator with error recovery.
 #[test]
 #[timeout(100)]
 fn pattern_center_recover() {
@@ -363,12 +363,12 @@ error: expected pattern
 ");
 }
 
-/// Test failed `center` combinator with error recovery, with a delayed close
 
+/// Test failed `center` combinator with error recovery, with a delayed close
+/// center.
+//
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_join::pattern_center_recover_delayed -- --exact --nocapture > .trace
-//
-/// center.
 #[test]
 #[timeout(100)]
 fn pattern_center_recover_delayed() {

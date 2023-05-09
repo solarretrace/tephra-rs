@@ -203,7 +203,7 @@ pub struct SpanDisplay {
     /// The name of the file or data that is being displayed.
     pub(in crate) source_name: Option<String>,
     /// TODO: The column metrics for the source,
-    pub(in crate) metrics: ColumnMetrics,
+    pub(in crate) _metrics: ColumnMetrics,
     /// The full text span of the displayed source.
     pub(in crate) span: Span,
     /// The subsets of the displayed text to highlight.
@@ -213,7 +213,7 @@ pub struct SpanDisplay {
     /// The width of the line number gutter.
     pub(in crate) gutter_width: u8,
     /// TODO: Whether to allow line omissions within the source display.
-    pub(in crate) allow_omissions: bool,
+    pub(in crate) _allow_omissions: bool,
 }
 
 impl SpanDisplay {
@@ -224,11 +224,11 @@ impl SpanDisplay {
 
         SpanDisplay {
             source_name: source_text.name().map(String::from),
-            metrics: source_text.column_metrics(),
+            _metrics: source_text.column_metrics(),
             span: span.widen_to_line(source_text),
             highlights: Vec::with_capacity(2),
             notes: Vec::new(),
-            allow_omissions: true,
+            _allow_omissions: true,
             gutter_width,
         }
     }
@@ -327,8 +327,8 @@ struct MultiSplitLines<'text, 'hl> {
     highlights: &'hl [Highlight],
     /// The width of the line number gutter.
     gutter_width: u8,
-    /// The width of the highlight riser gutter.
-    riser_width: u8,
+    /// TODO: The width of the highlight riser gutter.
+    _riser_width: u8,
 }
 
 impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
@@ -341,7 +341,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
         gutter_width: u8)
         -> Self
     {
-        let riser_width = highlights
+        let _riser_width = highlights
             .iter()
             .filter(|h| h.is_multiline())
             .count()
@@ -354,7 +354,7 @@ impl<'text, 'hl> MultiSplitLines<'text, 'hl>  {
             source_lines,
             highlights,
             gutter_width,
-            riser_width,
+            _riser_width,
         }
     }
 

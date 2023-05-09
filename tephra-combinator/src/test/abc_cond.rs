@@ -79,6 +79,9 @@ fn build_test_lexer(text: &'static str) -> (
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Test successful `implies` combinator.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_cond::pattern_implies -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn pattern_implies() {
@@ -110,6 +113,9 @@ fn pattern_implies() {
 }
 
 /// Test successful `implies` combinator.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_cond::pattern_implies_failed_left -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn pattern_implies_failed_left() {
@@ -132,6 +138,9 @@ fn pattern_implies_failed_left() {
 
 
 /// Test successful `implies` combinator.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_cond::pattern_implies_failed_right -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn pattern_implies_failed_right() {
@@ -155,6 +164,9 @@ error: expected pattern
 }
 
 /// Test successful `implies` combinator.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::abc_cond::pattern_implies_list -- --exact --nocapture > .trace
 #[test]
 #[timeout(100)]
 fn pattern_implies_list() {
