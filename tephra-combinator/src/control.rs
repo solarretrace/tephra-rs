@@ -17,6 +17,9 @@ use tephra::ParseResultExt as _;
 use tephra::Recover;
 use tephra::Scanner;
 use tephra::Success;
+use tephra_tracing::event;
+use tephra_tracing::Level;
+use tephra_tracing::span;
 
 
 
@@ -33,9 +36,12 @@ pub fn raw<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
+        let _trace_span = span!(Level::DEBUG, "raw").entered();
+
         let mut ctx = ctx.clone()
             .locked(true);
         let _ = ctx.take_local_context();
+        event!(Level::TRACE, "error contexts disabled");
 
         (parser)
             (lexer, ctx)
@@ -52,8 +58,11 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
+        let _trace_span = span!(Level::DEBUG, "unrecoverable").entered();
+
         let mut ctx = ctx.clone();
         let _ = ctx.take_error_sink();
+        event!(Level::TRACE, "error recovery disabled");
         
         (parser)
             (lexer, ctx)
@@ -74,6 +83,8 @@ pub fn recover_default<'text, Sc, F, V>(
         V: Default
 {
     move |lexer, ctx| {
+        let _trace_span = span!(Level::DEBUG, "recover_default").entered();
+
         let mut base_lexer = lexer.clone();
         base_lexer.set_recover_state(Some(recover.clone()));
 
@@ -83,16 +94,24 @@ pub fn recover_default<'text, Sc, F, V>(
             Ok(succ) => Ok(succ),
 
             Err(fail) => match ctx.send_error(fail) {
-                Err(fail) => Err(fail),
+                Err(fail) => {
+                    event!(Level::TRACE, "error recovery failed: disabled");
+                    Err(fail)
+                },
 
                 Ok(()) => match base_lexer.advance_to_recover() {
                     Ok(_) => {
+                        event!(Level::DEBUG, "error recovery point found");
                         Ok(Success {
                             lexer: base_lexer,
                             value: V::default(),
                         })
                     },
-                    Err(recover_error) => Err(Box::new(recover_error)),
+                    Err(recover_error) => {
+                        event!(Level::DEBUG, "error recovery failed: unable to \
+                            find recovery point");
+                        Err(Box::new(recover_error))
+                    },
                 },
             },
         }
@@ -173,24 +192,36 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>
 {
     move |mut lexer, ctx| {
+        let _trace_span = span!(Level::DEBUG, "stabilize").entered();
+
         let mut res = (parser)
             (lexer.clone(), ctx.clone());
 
-        loop {
+        #[cfg_attr(not(feature="tracing"), allow(unused_variables))]
+        for attempt in 1u32.. {
             match res {
                 Ok(mut succ) => {
+                    event!(Level::DEBUG, "error recovery succeeded");
                     succ.lexer.set_recover_state(None);
                     return Ok(succ);
                 },
                 Err(_) => match lexer.advance_to_recover() {
-                    Err(recover_error) => return Err(Box::new(recover_error)),
                     Ok(_) => {
+                        event!(Level::DEBUG, attempt, "error recovery point \
+                            found");
+
                         res = (parser)
                             (lexer.clone(), ctx.clone());
+                    },
+                    Err(recover_error) => {
+                        event!(Level::DEBUG, "error recovery failed: unable to \
+                            find recovery point");
+                        return Err(Box::new(recover_error))
                     },
                 },
             }
         }
+        panic!("overflow on error recovery attempts");
     }
 }
 
@@ -220,12 +251,16 @@ pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
             -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer, ctx| {
+        let _trace_span = span!(Level::TRACE, "filter_with").entered();
+
         let old_filter = lexer.take_filter();
         lexer.set_filter_fn(filter_fn.clone());
+        event!(Level::TRACE, "new lexer filter applied");
 
         (parser)
             (lexer, ctx)
             .map(|mut succ| {
+                event!(Level::TRACE, "lexer filter restored");
                 succ.lexer.set_filter(old_filter);
                 succ
             })
@@ -250,10 +285,15 @@ pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer, ctx| {
+        let _trace_span = span!(Level::TRACE, "unfiltered").entered();
+
         let filter = lexer.take_filter();
+        event!(Level::TRACE, "lexer filter disabled");
+
         (parser)
             (lexer, ctx)
             .map(|mut succ| {
+        event!(Level::TRACE, "lexer filter enabled");
                 succ.lexer.set_filter(filter);
                 succ
             })
