@@ -23,18 +23,46 @@ use crate::test::abc_scanner::pattern;
 use crate::test::abc_scanner::Pattern;
 
 // External library imports.
+use ntest::timeout;
 use pretty_assertions::assert_eq;
 use tephra::Context;
+use tephra::error::SourceError;
 use tephra::Lexer;
 use tephra::Pos;
+use tephra::recover_before;
 use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
-use tephra::recover_before;
 
 // Standard library imports.
 use std::rc::Rc;
 use std::sync::RwLock;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Test setup
+////////////////////////////////////////////////////////////////////////////////
+fn test_setup() {
+    colored::control::set_override(false);
+}
+
+fn test_parser(text: &'static str) -> (
+    Lexer<'static, Abc>,
+    Context<'static, Abc>,
+    Rc<RwLock<Vec<SourceError<&'static str>>>>,
+    SourceText<&'static str>)
+{
+    let source = SourceText::new(text);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx_errors = errors.clone();
+    let ctx = Context::new(Some(Box::new(move |e| 
+        ctx_errors.write().unwrap().push(e.into_source_error(source))
+    )));
+
+    (lexer, ctx, errors, source)
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
@@ -42,17 +70,14 @@ use std::sync::RwLock;
 
 /// Test successful `pred` combinator.
 #[test]
+#[timeout(100)]
 fn simple_not() {
-    colored::control::set_override(false);
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("abc dac");
+    use AbcToken::*;
 
     use crate::pred;
     use crate::Expr;
-    use AbcToken::*;
-    const TEXT: &'static str = "abc dac";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = pred(Expr::Not(Box::new(Expr::Var(D))))
         (lexer.clone(), ctx)
@@ -69,17 +94,14 @@ fn simple_not() {
 
 /// Test failed `pred` combinator.
 #[test]
+#[timeout(100)]
 fn simple_not_failed() {
-    colored::control::set_override(false);
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("dabc dac");
+    use AbcToken::*;
 
     use crate::pred;
     use crate::Expr;
-    use AbcToken::*;
-    const TEXT: &'static str = "dabc dac";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = pred(Expr::Not(Box::new(Expr::Var(D))))
         (lexer.clone(), ctx)
@@ -97,15 +119,10 @@ error: unexpected token
 
 /// Test successful `both` combinator.
 #[test]
+#[timeout(100)]
 fn pattern_both() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "abc dac";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("abc dac");
 
     let (value, succ) = both(pattern, pattern)
         (lexer.clone(), ctx)
@@ -131,15 +148,10 @@ fn pattern_both() {
 
 /// Test successful `left` combinator.
 #[test]
+#[timeout(100)]
 fn pattern_left() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "abc dac";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("abc dac");
 
     let (value, succ) = left(pattern, pattern)
         (lexer.clone(), ctx)
@@ -159,15 +171,10 @@ fn pattern_left() {
 
 /// Test successful `right` combinator.
 #[test]
+#[timeout(100)]
 fn pattern_right() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "abc dac";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("abc dac");
 
     let (value, succ) = right(pattern, pattern)
         (lexer.clone(), ctx)
@@ -187,16 +194,10 @@ fn pattern_right() {
 
 /// Test `right` combinator failure. Ensure error is properly wrapped.
 #[test]
+#[timeout(100)]
 fn pattern_right_failed() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "abc ddd";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("abc ddd");
 
     let actual = right(pattern, pattern)
         (lexer.clone(), ctx)
@@ -215,16 +216,10 @@ error: expected pattern
 /// Test failed `right` combinator with `raw` wrapper. Ensure error is not
 /// wrapped.
 #[test]
+#[timeout(100)]
 fn pattern_right_failed_raw() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "abc ddd";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("abc ddd");
 
     let actual = raw(right(pattern, pattern))
         (lexer.clone(), ctx)
@@ -242,15 +237,11 @@ error: unexpected token
 
 /// Test successful `center` combinator.
 #[test]
+#[timeout(100)]
 fn pattern_center() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("[abc]");
     use AbcToken::*;
-    const TEXT: &'static str = "[abc]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = center(
             one(OpenBracket),
@@ -272,18 +263,11 @@ fn pattern_center() {
 
 /// Test failed `center` combinator with error recovery.
 #[test]
+#[timeout(100)]
 fn pattern_center_recover() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, errors, _source) = test_parser("[ab]");
     use AbcToken::*;
-    const TEXT: &'static str = "[ab]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| 
-        errors.write().unwrap().push(e.into_source_error(source))
-    )));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = center(
             one(OpenBracket),
@@ -312,19 +296,11 @@ error: expected pattern
 /// Test failed `center` combinator with error recovery, with a delayed close
 /// center.
 #[test]
+#[timeout(100)]
 fn pattern_center_recover_delayed() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, errors, _source) = test_parser("[ab   bbb] ");
     use AbcToken::*;
-    const TEXT: &'static str = "[ab   bbb] ";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap()
-            .push(e.into_source_error(source)))
-    ));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = center(
             one(OpenBracket),

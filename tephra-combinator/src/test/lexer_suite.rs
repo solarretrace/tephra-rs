@@ -14,6 +14,7 @@ use crate::one;
 use crate::text;
 
 // External library imports.
+use ntest::timeout;
 use pretty_assertions::assert_eq;
 use tephra::Context;
 use tephra::Lexer;
@@ -107,13 +108,22 @@ impl Scanner for Test {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Test setup
+////////////////////////////////////////////////////////////////////////////////
+fn test_setup() {
+    colored::control::set_override(false);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Tests `Lexer::new`.
 #[test]
+#[timeout(100)]
 fn empty() {
-    colored::control::set_override(false);
+    test_setup();
 
     const TEXT: &'static str = "";
     let source = SourceText::new(TEXT);
@@ -126,8 +136,9 @@ fn empty() {
 
 /// Tests `Lexer::next`.
 #[test]
+#[timeout(100)]
 fn simple() {
-    colored::control::set_override(false);
+    test_setup();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b";
@@ -142,8 +153,9 @@ fn simple() {
 
 /// Tests `Lexer::peek`.
 #[test]
+#[timeout(100)]
 fn simple_peek() {
-    colored::control::set_override(false);
+    test_setup();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b";
@@ -162,8 +174,9 @@ fn simple_peek() {
 
 /// Tests `Lexer::iter_with_spans`.
 #[test]
+#[timeout(100)]
 fn simple_iter() {
-    colored::control::set_override(false);
+    test_setup();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b";
@@ -187,8 +200,9 @@ fn simple_iter() {
 
 /// Tests `Lexer`'s auto-filtering capability.
 #[test]
+#[timeout(100)]
 fn auto_filter() {
-    colored::control::set_override(false);
+    test_setup();
 
     use TestToken::*;
     const TEXT: &'static str = "aaaabaaaab";
@@ -228,8 +242,9 @@ fn auto_filter() {
 
 /// Tests `Lexer` with whitespace filter.
 #[test]
+#[timeout(100)]
 fn whitespace_filter() {
-    colored::control::set_override(false);
+    test_setup();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b \nbdef\n aaa";
@@ -265,8 +280,9 @@ fn whitespace_filter() {
 
 /// Tests `both` with whitespace filter.
 #[test]
+#[timeout(100)]
 fn both_whitespace_filter() {
-    colored::control::set_override(false);
+    test_setup();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b \nbdef\n aaa";
@@ -289,8 +305,9 @@ fn both_whitespace_filter() {
 
 /// Tests `Lexer` display output formatting.
 #[test]
+#[timeout(100)]
 fn display_formatting() {
-    colored::control::set_override(false);
+    test_setup();
 
     use TestToken::*;
     const TEXT: &'static str = "aa b \nbdef\n aaa";
@@ -394,8 +411,9 @@ note: lexer state
 
 /// Tests `Lexer` display output formatting with tabstops.
 #[test]
+#[timeout(100)]
 fn tabstop_align() {
-    colored::control::set_override(false);
+    test_setup();
 
     use TestToken::*;
     const TEXT: &'static str = "\taa\ta\n\t\tb";

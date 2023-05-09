@@ -17,6 +17,7 @@ use crate::spanned;
 use crate::text;
 
 // External library imports.
+use ntest::timeout;
 use pretty_assertions::assert_eq;
 use tephra::Context;
 use tephra::error::Found;
@@ -34,6 +35,10 @@ use tephra::SourceTextRef;
 use tephra::Span;
 use tephra::SpanDisplay;
 use tephra::Spanned;
+
+// Standard library imports.
+use std::rc::Rc;
+use std::sync::RwLock;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,7 +278,9 @@ pub(in crate) struct ParsePatternError {
 impl ParsePatternError {
     /// Converts the error into a `SourceError` attached to the given
     /// `SourceText`.
-    pub(in crate) fn into_source_error<'text>(self, source_text: SourceTextRef<'text>)
+    pub(in crate) fn into_source_error<'text>(
+        self,
+        source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         let mut se = SourceError::new(source_text, "expected pattern");
@@ -301,15 +308,45 @@ impl ParseError for ParsePatternError {
         self.parse_span
     }
 
-    fn into_source_error<'text>(self: Box<Self>, source_text: SourceTextRef<'text>)
+    fn into_source_error<'text>(
+        self: Box<Self>,
+        source_text: SourceTextRef<'text>)
         -> SourceErrorRef<'text>
     {
         Self::into_source_error(*self, source_text)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+    fn into_owned(self: Box<Self> )
+        -> Box<dyn std::error::Error + Send + Sync + 'static>
+    {
         self
     }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Test setup
+////////////////////////////////////////////////////////////////////////////////
+fn test_setup() {
+    colored::control::set_override(false);
+}
+
+fn test_parser(text: &'static str) -> (
+    Lexer<'static, Abc>,
+    Context<'static, Abc>,
+    Rc<RwLock<Vec<SourceError<&'static str>>>>,
+    SourceText<&'static str>)
+{
+    let source = SourceText::new(text);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx_errors = errors.clone();
+    let ctx = Context::new(Some(Box::new(move |e| 
+        ctx_errors.write().unwrap().push(e.into_source_error(source))
+    )));
+
+    (lexer, ctx, errors, source)
 }
 
 
@@ -319,14 +356,11 @@ impl ParseError for ParsePatternError {
 
 /// Tests Abc token lexing & filtering.
 #[test]
+#[timeout(100)]
 fn abc_tokens() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (mut lexer, _ctx, _errors, source) = test_parser("a b\nc d");
     use AbcToken::*;
-    const TEXT: &'static str = "a b\nc d";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = lexer
         .iter_with_spans()
@@ -347,15 +381,10 @@ fn abc_tokens() {
 
 /// Parses a `Pattern::Abc`.
 #[test]
+#[timeout(100)]
 fn abc_pattern() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "abc";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("abc");
 
     let (value, succ) = pattern
         (lexer.clone(), ctx)
@@ -374,15 +403,10 @@ fn abc_pattern() {
 
 /// Parses a `Pattern::Bxx`.
 #[test]
+#[timeout(100)]
 fn bxx_pattern() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "baa";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("baa");
 
     let (value, succ) = pattern
         (lexer.clone(), ctx)
@@ -401,15 +425,10 @@ fn bxx_pattern() {
 
 /// Parses a `Pattern::Xyc`.
 #[test]
+#[timeout(100)]
 fn xyc_pattern() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "bac";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("bac");
 
     let (value, succ) = pattern
         (lexer.clone(), ctx)
@@ -429,15 +448,10 @@ fn xyc_pattern() {
 /// Ensures that a failure encountered after initial newline & whitespace
 /// doesn't include that whitespace in the error message.
 #[test]
+#[timeout(100)]
 fn initial_newline_ws_skip() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "\n    aaa";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("\n    aaa");
 
     let actual = pattern
         (lexer.clone(), ctx)

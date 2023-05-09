@@ -22,8 +22,10 @@ use crate::test::abc_scanner::Pattern;
 use crate::unrecoverable;
 
 // External library imports.
+use ntest::timeout;
 use pretty_assertions::assert_eq;
 use tephra::Context;
+use tephra::error::SourceError;
 use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
@@ -36,29 +38,48 @@ use std::sync::RwLock;
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Test setup
+////////////////////////////////////////////////////////////////////////////////
+fn test_setup() {
+    colored::control::set_override(false);
+}
+
+fn test_parser(text: &'static str) -> (
+    Lexer<'static, Abc>,
+    Context<'static, Abc>,
+    Rc<RwLock<Vec<SourceError<&'static str>>>>,
+    SourceText<&'static str>)
+{
+    let source = SourceText::new(text);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx_errors = errors.clone();
+    let ctx = Context::new(Some(Box::new(move |e| 
+        ctx_errors.write().unwrap().push(e.into_source_error(source))
+    )));
+
+    (lexer, ctx, errors, source)
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Test failed `bracket` combinator with error recovery, with missing brackets.
 #[test]
+#[timeout(100)]
 fn recover_missing() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser(" abc ");
     use AbcToken::*;
-    const TEXT: &'static str = " abc ";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| 
-        errors.write().unwrap().push(e.into_source_error(source))
-    )));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = bracket_index(
             &[OpenBracket],
             pattern,
             &[CloseBracket], |_| false)
-        (lexer.clone(), ctx)
+        (lexer, ctx)
         .map_err(|e| e.into_source_error(source))
         .unwrap_err();
 
@@ -75,17 +96,12 @@ error: expected open bracket
 /// Test failed `bracket` combinator with error recovery, with an unmatched open
 /// bracket.
 #[test]
+#[timeout(100)]
 fn recover_unmatched_open() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("[ab   bbb  ");
     use AbcToken::*;
-    const TEXT: &'static str = "[ab   bbb  ";
-    let source = SourceText::new(TEXT)
-        .with_name("recover_unmatched");
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e.into_source_error(source)))));
-    lexer.set_filter_fn(|tok| *tok != Ws);
+
 
     let actual = bracket_index(
             &[OpenBracket],
@@ -98,7 +114,7 @@ fn recover_unmatched_open() {
 
     assert_eq!(format!("{actual}"), "\
 error: unmatched open bracket
- --> recover_unmatched:(0:0-0:11, bytes 0-11)
+ --> (0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb  
   | ^ this bracket is not closed
@@ -108,16 +124,11 @@ error: unmatched open bracket
 /// Test failed `bracket` combinator with error recovery, with an unmatched
 /// close bracket.
 #[test]
+#[timeout(100)]
 fn recover_unmatched_closed() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser(" abc]");
     use AbcToken::*;
-    const TEXT: &'static str = " abc]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e.into_source_error(source)))));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = bracket_index(
             &[OpenBracket],
@@ -139,16 +150,11 @@ error: unmatched close bracket
 /// Test failed `bracket` combinator with error recovery, with an unmatched
 /// close bracket.
 #[test]
+#[timeout(100)]
 fn recover_mismatched() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("[abc,");
     use AbcToken::*;
-    const TEXT: &'static str = "[abc,";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e.into_source_error(source)))));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = bracket_index(
             &[OpenBracket, OpenBracket],
@@ -171,17 +177,11 @@ error: mismatched brackets
 /// Test failed `bracket` combinator with error recovery, with an
 /// unmatched bracket and raw error.
 #[test]
+#[timeout(100)]
 fn recover_unmatched_raw() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("[ab   bbb  ");
     use AbcToken::*;
-    const TEXT: &'static str = "[ab   bbb  ";
-    let source = SourceText::new(TEXT)
-        .with_name("recover_unmatched_raw");
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e.into_source_error(source)))));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = raw(bracket_index(
             &[OpenBracket],
@@ -193,7 +193,7 @@ fn recover_unmatched_raw() {
 
     assert_eq!(format!("{actual}"), "\
 error: unmatched open bracket
- --> recover_unmatched_raw:(0:0-0:11, bytes 0-11)
+ --> (0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb  
   | ^ this bracket is not closed
@@ -203,17 +203,11 @@ error: unmatched open bracket
 /// Test failed `bracket` combinator without error recovery, with an
 /// unmatched bracket.
 #[test]
+#[timeout(100)]
 fn recover_unmatched_unrecoverable() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("[ab   bbb  ");
     use AbcToken::*;
-    const TEXT: &'static str = "[ab   bbb  ";
-    let source = SourceText::new(TEXT)
-        .with_name("recover_unmatched_unrecoverable");
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e.into_source_error(source)))));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = unrecoverable(bracket_index(
             &[OpenBracket],
@@ -225,7 +219,7 @@ fn recover_unmatched_unrecoverable() {
 
     assert_eq!(format!("{actual}"), "\
 error: unmatched open bracket
- --> recover_unmatched_unrecoverable:(0:0-0:11, bytes 0-11)
+ --> (0:0-0:11, bytes 0-11)
   | 
 0 | [ab   bbb  
   | ^ this bracket is not closed
@@ -234,15 +228,11 @@ error: unmatched open bracket
 
 /// Test successful `bracket` combinator.
 #[test]
+#[timeout(100)]
 fn comma_bracket_index() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("a,b");
     use AbcToken::*;
-    const TEXT: &'static str = "a,b";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = spanned(bracket_index(
             &[A],
@@ -265,15 +255,11 @@ fn comma_bracket_index() {
 
 /// Test successful `bracket` combinator.
 #[test]
+#[timeout(100)]
 fn matching_both() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("[abc][aac]");
     use AbcToken::*;
-    const TEXT: &'static str = "[abc][aac]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(
             bracket_index(
@@ -306,16 +292,11 @@ fn matching_both() {
 
 /// Test successful `bracket` combinator.
 #[test]
+#[timeout(100)]
 fn matching_both_first_fail() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, errors, _) = test_parser("[a  ][aac]");
     use AbcToken::*;
-    const TEXT: &'static str = "[a  ][aac]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e.into_source_error(source)))));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = both(
             bracket(
@@ -354,16 +335,11 @@ error: expected pattern
 
 /// Test `bracket` combinator failing due to mismatched brackets.
 #[test]
+#[timeout(100)]
 fn matching_both_mismatch() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("[abc,[aac]");
     use AbcToken::*;
-    const TEXT: &'static str = "[abc,[aac]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e| errors.write().unwrap().push(e.into_source_error(source)))));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let actual = both(
             bracket_index(
@@ -389,6 +365,4 @@ error: mismatched brackets
   |     ^ ... does not match the closing bracket here
 ");
 }
-
-
 

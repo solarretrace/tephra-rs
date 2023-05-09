@@ -13,6 +13,7 @@ use crate::bracket_default_index;
 use crate::delimited_list;
 use crate::delimited_list_bounded;
 use crate::sub;
+use crate::unrecoverable;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
@@ -22,6 +23,7 @@ use crate::test::abc_scanner::Pattern;
 use ntest::timeout;
 use pretty_assertions::assert_eq;
 use tephra::Context;
+use tephra::error::SourceError;
 use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
@@ -34,6 +36,32 @@ use std::sync::RwLock;
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Test setup
+////////////////////////////////////////////////////////////////////////////////
+fn test_setup() {
+    colored::control::set_override(false);
+}
+
+fn test_parser(text: &'static str) -> (
+    Lexer<'static, Abc>,
+    Context<'static, Abc>,
+    Rc<RwLock<Vec<SourceError<&'static str>>>>,
+    SourceText<&'static str>)
+{
+    let source = SourceText::new(text);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx_errors = errors.clone();
+    let ctx = Context::new(Some(Box::new(move |e| 
+        ctx_errors.write().unwrap().push(e.into_source_error(source))
+    )));
+
+    (lexer, ctx, errors, source)
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,14 +69,9 @@ use std::sync::RwLock;
 #[test]
 #[timeout(100)]
 fn list_empty() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("");
     use AbcToken::*;
-    const TEXT: &'static str = "";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = delimited_list(
             pattern,
@@ -70,14 +93,9 @@ fn list_empty() {
 #[test]
 #[timeout(100)]
 fn list_one() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser(" abc ");
     use AbcToken::*;
-    const TEXT: &'static str = " abc ";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = delimited_list(
             pattern,
@@ -103,14 +121,9 @@ fn list_one() {
 #[test]
 #[timeout(100)]
 fn bracket_list_one() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("[abc]");
     use AbcToken::*;
-    const TEXT: &'static str = "[abc]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
@@ -140,14 +153,9 @@ fn bracket_list_one() {
 #[test]
 #[timeout(100)]
 fn list_two() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser(" abc,aac ");
     use AbcToken::*;
-    const TEXT: &'static str = " abc,aac ";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = delimited_list(
             pattern,
@@ -176,14 +184,9 @@ fn list_two() {
 #[test]
 #[timeout(100)]
 fn bracket_list_two() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("[abc,aac]");
     use AbcToken::*;
-    const TEXT: &'static str = "[abc,aac]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
@@ -217,20 +220,15 @@ fn bracket_list_two() {
 #[test]
 #[timeout(100)]
 fn list_one_failed() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("  ");
     use AbcToken::*;
-    const TEXT: &'static str = "  ";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = sub(delimited_list_bounded(
+    let actual = unrecoverable(
+        sub(delimited_list_bounded(
             1, None,
             pattern,
-            Comma,
-            |_| false))
+            Comma, |_| false)))
         (lexer.clone(), ctx)
         .map_err(|e| e.into_source_error(source))
         .unwrap_err();
@@ -248,14 +246,9 @@ error: invalid item count
 #[test]
 #[timeout(100)]
 fn bracket_list_zero() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("[]");
     use AbcToken::*;
-    const TEXT: &'static str = "[]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, _succ) = bracket_default_index(
             &[OpenBracket],
@@ -279,24 +272,19 @@ fn bracket_list_zero() {
 #[test]
 #[timeout(100)]
 fn bracket_list_one_failed() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("[]");
     use AbcToken::*;
-    const TEXT: &'static str = "[]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
-    let actual = bracket_default_index(
+    let actual = unrecoverable(
+        bracket_default_index(
             &[OpenBracket],
             delimited_list_bounded(
                 1, None,
                 pattern,
                 Comma,
                 |tok| *tok == CloseBracket),
-            &[CloseBracket],
-            |_| false)
+            &[CloseBracket], |_| false))
         (lexer.clone(), ctx)
         .map_err(|e| e.into_source_error(source))
         .unwrap_err();
@@ -314,17 +302,9 @@ error: invalid item count
 #[test]
 #[timeout(100)]
 fn bracket_list_one_recovered() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, errors, _source) = test_parser("[       ]");
     use AbcToken::*;
-    const TEXT: &'static str = "[       ]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap().push(e.into_source_error(source))
-    )));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
@@ -360,17 +340,9 @@ error: invalid item count
 #[test]
 #[timeout(100)]
 fn bracket_list_two_recovered_first() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, errors, _source) = test_parser("[   ,aac]");
     use AbcToken::*;
-    const TEXT: &'static str = "[   ,aac]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap().push(e.into_source_error(source))
-    )));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
@@ -410,17 +382,9 @@ error: expected pattern
 #[test]
 #[timeout(100)]
 fn bracket_list_two_recovered_second() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, errors, _source) = test_parser("[abc,   ]");
     use AbcToken::*;
-    const TEXT: &'static str = "[abc,   ]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap().push(e.into_source_error(source))
-    )));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
@@ -461,17 +425,9 @@ error: expected pattern
 #[test]
 #[timeout(100)]
 fn bracket_list_missing_delimiter() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, errors, _source) = test_parser("[abc aac]");
     use AbcToken::*;
-    const TEXT: &'static str = "[abc aac]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap().push(e.into_source_error(source))
-    )));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
@@ -505,17 +461,9 @@ error: incomplete parse
 #[test]
 #[timeout(100)]
 fn bracket_list_nested() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("[[],[abc, abc], [aac]]");
     use AbcToken::*;
-    const TEXT: &'static str = "[[],[abc, abc], [aac]]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap().push(e.into_source_error(source))
-    )));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
@@ -565,17 +513,9 @@ fn bracket_list_nested() {
 #[test]
 #[timeout(100)]
 fn bracket_list_commas() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, errors, _source) = test_parser("[,,,,,abc]");
     use AbcToken::*;
-    const TEXT: &'static str = "[,,,,,abc]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let errors = Rc::new(RwLock::new(Vec::new()));
-    let ctx = Context::new(Some(Box::new(|e|
-        errors.write().unwrap().push(e.into_source_error(source))
-    )));
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],

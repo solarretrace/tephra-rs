@@ -18,13 +18,42 @@ use crate::test::abc_scanner::pattern;
 use crate::test::abc_scanner::Pattern;
 
 // External library imports.
+use ntest::timeout;
 use pretty_assertions::assert_eq;
 use tephra::Context;
+use tephra::error::SourceError;
 use tephra::Lexer;
 use tephra::Pos;
 use tephra::SourceText;
 use tephra::Span;
 use tephra::Spanned;
+
+// Standard library imports.
+use std::rc::Rc;
+use std::sync::RwLock;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Test setup
+////////////////////////////////////////////////////////////////////////////////
+fn test_setup() {
+    colored::control::set_override(false);
+}
+
+fn test_parser(text: &'static str) -> (
+    Lexer<'static, Abc>,
+    Context<'static, Abc>,
+    Rc<RwLock<Vec<SourceError<&'static str>>>>,
+    SourceText<&'static str>)
+{
+    let source = SourceText::new(text);
+    let mut lexer = Lexer::new(Abc::new(), source);
+    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let errors = Rc::new(RwLock::new(Vec::new()));
+    let ctx = Context::empty();
+
+    (lexer, ctx, errors, source)
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,15 +62,10 @@ use tephra::Spanned;
 
 /// Test successful `implies` combinator.
 #[test]
+#[timeout(100)]
 fn pattern_implies() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "abc bdd";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("abc bdd");
 
     let (value, succ) = implies(pattern, pattern)
         (lexer, ctx)
@@ -67,15 +91,10 @@ fn pattern_implies() {
 
 /// Test successful `implies` combinator.
 #[test]
+#[timeout(100)]
 fn pattern_implies_failed_left() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "agc cdd";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("agc cdd");
 
     let (value, succ) = implies(pattern, pattern)
         (lexer, ctx)
@@ -92,16 +111,10 @@ fn pattern_implies_failed_left() {
 
 /// Test successful `implies` combinator.
 #[test]
+#[timeout(100)]
 fn pattern_implies_failed_right() {
-    colored::control::set_override(false);
-
-    use AbcToken::*;
-    const TEXT: &'static str = "abc cdd";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
-
+    test_setup();
+    let (lexer, ctx, _errors, source) = test_parser("abc cdd");
 
     let actual = implies(pattern, pattern)
         (lexer, ctx)
@@ -119,15 +132,11 @@ error: expected pattern
 
 /// Test successful `implies` combinator.
 #[test]
+#[timeout(100)]
 fn pattern_implies_list() {
-    colored::control::set_override(false);
-
+    test_setup();
+    let (lexer, ctx, _errors, _source) = test_parser("abc[bdd, abc]");
     use AbcToken::*;
-    const TEXT: &'static str = "abc[bdd, abc]";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
 
     let (value, succ) = implies(
             pattern,
