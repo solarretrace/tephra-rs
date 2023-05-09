@@ -39,7 +39,7 @@ pub enum MessageType {
 impl MessageType {
     /// Returns the color associated with the message type.
     #[must_use]
-    pub fn color(&self) -> Color {
+    pub fn color(self) -> Color {
         use MessageType::*;
         match self {
             Info    => Color::BrightWhite,
@@ -52,19 +52,19 @@ impl MessageType {
 
     /// Returns the underline associated with the message type.
     #[must_use]
-    pub fn underline(&self) -> &'static str {
+    pub fn underline(self) -> &'static str {
         use MessageType::*;
         match self {
-            Info    => "-",
-            Error   => "^",
+            Error   |
             Warning => "^",
+            Info    |
             Note    => "-",
             Help    => "~",
         }
     }
 
     pub(in crate) fn write_with_color_enablement<W>(
-        &self,
+        self,
         out: &mut W,
         color_enabled: bool)
         -> std::fmt::Result

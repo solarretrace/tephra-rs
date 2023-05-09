@@ -15,6 +15,7 @@ exclude.workspace = true
 [lib]
 name = "tephra_error"
 
+#[allow(clippy::negative_feature_names)]
 [features]
 default = []
 trace = [
@@ -29,19 +30,16 @@ no-color = [
 # Required dependencies
 [dependencies]
 colored = { version = "2.0.0" }
+parking_lot = { version = "0.12.0" }
 simple_predicates = { version = "0.4" }
 tephra-span = { version = "*",  path = "../tephra-span" }
 tephra-tracing = { version = "*", path = "../tephra-tracing" }
 # Optional dependencies.
 tracing = { version = "0.1", optional = true, default_features = false, features = ["std", "log"] }
-parking_lot = { version = "0.12.0" }
 
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]
-pretty_assertions = "*"
+pretty_assertions = { version = "1.3" }
 test-log = { version = "0.2", default_features = false, features = ["trace"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
-
-[badges]
-maintenance = { status = "experimental" }

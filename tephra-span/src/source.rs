@@ -48,6 +48,7 @@ impl<T> SourceText<T> where T: Default {
 impl<T> SourceText<T> {
     /// Constructs a new `SourceText` with the given offset `Pos` and
     /// `ColumnMetrics`.
+    #[must_use]
     pub fn new(text: T) -> Self {
         Self {
             text,
@@ -61,16 +62,19 @@ impl<T> SourceText<T> {
         &self.text
     }
 
+    #[must_use]
     pub fn with_name(mut self, name: T) -> Self {
         self.name = Some(name);
         self
     }
 
+    #[must_use]
     pub fn with_column_metrics(mut self, metrics: ColumnMetrics) -> Self {
         self.metrics = metrics;
         self
     }
 
+    #[must_use]
     pub fn with_start_position(mut self, offset: Pos) -> Self {
         self.offset = offset;
         self
@@ -246,6 +250,7 @@ impl<T> SourceText<T> where T: AsRef<str> {
 impl<'text, T> SourceText<T>
     where T: AsRef<str> + From<&'text str> + 'text
 {
+    #[must_use]
     pub fn clipped(&'text self, span: Span) -> Self {
         debug_assert!(self.pos_in_bounds(span.start()),
             "start of span is out of source text bounds");
@@ -308,7 +313,7 @@ impl<T> std::fmt::Debug for SourceText<T>  where T: AsRef<str> {
 // IterColumns
 ////////////////////////////////////////////////////////////////////////////////
 /// An iterator over the display columns of a source text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IterColumns<'text> {
     /// The source text.
     text: &'text str,

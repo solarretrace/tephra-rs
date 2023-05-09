@@ -16,6 +16,8 @@ use crate::SourceTextRef;
 // External library imports.
 use few::Few;
 
+// Standard library imports.
+use std::cmp::Ordering;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Span
@@ -149,6 +151,7 @@ impl Span {
     }
 
     /// Returns the smallest span covering the given spans.
+    #[must_use]
     pub fn enclose<S>(&self, other: S) -> Self 
         where S: Into<Self>,
     {
@@ -163,6 +166,7 @@ impl Span {
     }
 
     /// Returns the smallest set of spans covering the given spans.
+    #[must_use]
     pub fn union<S>(&self, other: S) -> Few<Self> 
         where S: Into<Self>,
     {
@@ -175,6 +179,8 @@ impl Span {
     }
 
     /// Returns the overlapping portion the spans.
+    #[allow(clippy::match_same_arms)]
+    #[must_use]
     pub fn intersect<S>(&self, other: S) -> Option<Self>
         where S: Into<Self>,
     {
@@ -205,6 +211,7 @@ impl Span {
     ///
     /// Note that if an endpoint becomes an empty span, it is omitted. If the
     /// right span is empty, it effectively splits the left span at that point.
+    #[must_use]
     pub fn minus<S>(&self, other: S) -> Few<Self> 
         where S: Into<Self>,
     {
@@ -344,30 +351,33 @@ impl<'text> Iterator for SplitLines<'text> {
     type Item = Span;
     
     fn next(&mut self) -> Option<Self::Item> {
-        if self.start.page.line > self.end.page.line {
-            None
-        } else if self.start.page.line == self.end.page.line {
-            // Last line; no need to advance the start position.
-            let res = Some(Span::new_enclosing(
-                self.start,
-                self.end));
+        match self.start.page.line.cmp(&self.end.page.line) {
+            Ordering::Greater => None,
 
-            self.start.page.line += 1;
+            Ordering::Equal => {
+                // Last line; no need to advance the start position.
+                let res = Some(Span::new_enclosing(
+                    self.start,
+                    self.end));
 
-            res
-        } else {
-            let end = self.source
-                .line_end_position(self.start);
+                self.start.page.line += 1;
 
-            let res = Some(Span::new_enclosing(
-                self.start,
-                end));
+                res
+            },
+            Ordering::Less => {
+                let end = self.source
+                    .line_end_position(self.start);
 
-            self.start = self.source
-                .next_position(end)
-                .expect("next line < end line");
+                let res = Some(Span::new_enclosing(
+                    self.start,
+                    end));
 
-            res
+                self.start = self.source
+                    .next_position(end)
+                    .expect("next line < end line");
+
+                res
+            },
         }
     }
 }

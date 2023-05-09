@@ -17,7 +17,7 @@ license = "MIT or Apache-2.0"
 readme = "readme.md"
 edition = "2021"
 keywords = ["tephra"]
-categories = []
+categories = ["parsing"]
 exclude = [
     "*.sublime-project",
     "*.sublime-workspace",

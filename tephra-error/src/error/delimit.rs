@@ -255,15 +255,15 @@ impl RepeatCountError {
                 self.found)
         } else {
             let max = self.expected_max.expect("get max item count");
-            if max != self.expected_min {
-                format!("expected {} to {} items; found {}",
-                    self.expected_min,
-                    max,
-                    self.found)
-            } else {
+            if max == self.expected_min {
                 format!("expected {} item{}; found {}",
                     max,
                     if max == 1 { "" } else { "s" },
+                    self.found)
+            } else {
+                format!("expected {} to {} items; found {}",
+                    self.expected_min,
+                    max,
                     self.found)
             }
         }

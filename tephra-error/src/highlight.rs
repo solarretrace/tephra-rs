@@ -175,6 +175,7 @@ impl Highlight {
     }
 
     /// Writes the message text for the given line number.
+    #[allow(clippy::too_many_lines)]
     pub(in crate) fn write_message_for_line<W>(
         &self,
         out: &mut W,
@@ -215,12 +216,14 @@ impl Highlight {
             match (&self.start_message, &self.end_message) {
                 (Some(msg), None)      | 
                 (None,      Some(msg)) => if color_enabled {
-                    writeln!(out, " {}", msg.color(self.message_type.color()))?
+                    writeln!(out, " {}", msg.color(self.message_type.color()))?;
                 } else {
-                    writeln!(out, " {msg}")?
+                    writeln!(out, " {msg}")?;
                 },
-                (Some(_fst), Some(_snd)) => todo!(),
-                (None,      None)      => writeln!(out)?,
+                (Some(_fst), Some(_snd))  => todo!(),
+                (None,       None) => {
+                    writeln!(out)?;
+                },
             }
 
         }  else if self.span.start().page.line == line {

@@ -21,6 +21,9 @@ use tephra_tracing::event;
 use tephra_tracing::Level;
 use tephra_tracing::span;
 
+// Standard library imports.
+use std::rc::Rc;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer context combinators.
@@ -148,7 +151,7 @@ pub fn recover_default<'text, Sc, F, V>(
         let _trace_span = span!(Level::DEBUG, "recover_*").entered();
 
         let mut base_lexer = lexer.clone();
-        base_lexer.set_recover_state(Some(recover.clone()));
+        base_lexer.set_recover_state(Some(Rc::clone(&recover)));
 
         match (parser)
             (lexer, ctx.clone())

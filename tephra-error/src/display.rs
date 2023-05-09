@@ -50,6 +50,7 @@ pub struct CodeDisplay {
 
 impl CodeDisplay {
     /// Constructs a new info-type `CodeDisplay` with the given description.
+    #[must_use]
     pub fn new<M>(message: M) -> Self 
         where M: Into<String>,
     {
@@ -121,6 +122,7 @@ impl CodeDisplay {
     }
 
     /// Returns the given `CodeDisplay` with the given `SpanDisplay` attachment.
+    #[must_use]
     pub fn with_span_display<S>(mut self, span_display: S)
         -> Self
         where S: Into<SpanDisplay>
@@ -130,6 +132,7 @@ impl CodeDisplay {
     }
 
     /// Returns the given `CodeDisplay` with the given note attachment.
+    #[must_use]
     pub fn with_note<N>(mut self, note: N)
         -> Self
         where N: Into<Note>
@@ -226,7 +229,10 @@ pub struct SpanDisplay {
 
 impl SpanDisplay {
     /// Constructs a new `SpanDisplay` with the given span.
+    #[must_use]
     pub fn new(source_text: SourceTextRef<'_>, span: Span) -> Self {
+        #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::cast_sign_loss)]
         let gutter_width = std::cmp::max(
             (span.end().page.line as f32).log10().ceil() as u8, 1);
 
@@ -242,6 +248,7 @@ impl SpanDisplay {
     }
 
     /// Constructs a new `SpanDisplay` with the given span and highlight message.
+    #[must_use]
     pub fn new_error_highlight<M>(
         source_text: SourceTextRef<'_>, 
         span: Span,
@@ -255,6 +262,7 @@ impl SpanDisplay {
     }
 
     /// Returns the given `SpanDisplay` with the given source name.
+    #[must_use]
     pub fn with_source_name<M>(mut self, name: M) -> Self
         where M: Into<String>,
     {
@@ -284,6 +292,7 @@ impl SpanDisplay {
         -> std::fmt::Result
         where W: Write
     {
+        #[allow(clippy::option_if_let_else)]
         let (source_name, sep) = match &self.source_name {
             Some(name) => (name.borrow(), ":"),
             None       => ("", ""),

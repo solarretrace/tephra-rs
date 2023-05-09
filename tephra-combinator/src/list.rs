@@ -171,7 +171,6 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     let recover_pat = Rc::new(RwLock::new(move |tok: Sc::Token| {
         Ok(tok == rec_token || rec_pred(&tok))
     }));
-
     move |mut lexer, ctx| {
         let _trace_span = span!(Level::DEBUG, "delimited_list_*").entered();
 
@@ -200,17 +199,16 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
                     if vals.is_empty() {
                         // We can exit now if this is the first value.
                         break;
-                    } else {
-                        // Otherwise, we're probably at the last value. Try to
-                        // capture it, but if it fails it's just a trailing
-                        // delimiter.
-                        let (val, _) = stabilize(
-                                maybe(up_to(&mut parser, &sep_or_abort_pred)))
-                            (lexer.clone(), ctx.clone())?
-                            .take_value();
-                        if let Some(val) = val { vals.push(val); }
-                        break;
                     }
+                    // Otherwise, we're probably at the last value. Try to
+                    // capture it, but if it fails it's just a trailing
+                    // delimiter.
+                    let (val, _) = stabilize(
+                            maybe(up_to(&mut parser, &sep_or_abort_pred)))
+                        (lexer.clone(), ctx.clone())?
+                        .take_value();
+                    if let Some(val) = val { vals.push(val); }
+                    break;
                 }
                 _ => (),
             }

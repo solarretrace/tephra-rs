@@ -52,6 +52,7 @@ pub struct Lexer<'text, Sc> where Sc: Scanner {
     source_text: SourceTextRef<'text>,
     /// The token inclusion filter. Any token for which this returns false will
     /// be skipped automatically.
+    #[allow(clippy::type_complexity)]
     filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>,
 
     /// The position of the start of the last lexed token.
@@ -76,6 +77,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     where Sc: Scanner,
 {
     /// Constructs a new Lexer for the given text.
+    #[must_use]
     pub fn new(scanner: Sc, source_text: SourceTextRef<'text>) -> Self {
         Lexer {
             source_text,
@@ -91,18 +93,21 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Sets the column metrics for the Lexer.
+    #[must_use]
     pub fn with_column_metrics(mut self, metrics: ColumnMetrics) -> Self {
         *self.column_metrics_mut() = metrics;
         self
     }
 
     /// Sets the line ending style for the Lexer.
+    #[must_use]
     pub fn with_line_ending(mut self, line_ending: LineEnding) -> Self {
         self.column_metrics_mut().line_ending = line_ending;
         self
     }
 
     /// Sets the tab width for the Lexer.
+    #[must_use]
     pub fn with_tab_width(mut self, tab_width: u8) -> Self {
         self.column_metrics_mut().tab_width = tab_width;
         self
@@ -172,6 +177,7 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     /// Creates a sublexer starting at the current lex position. The returned
     /// lexer will begin a new parse and advance past any filtered tokens.
+    #[must_use]
     pub fn into_sublexer(mut self) -> Self {
         self.end_current_parse();
         self
@@ -186,6 +192,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Returns the token filter, removing it from the lexer.
+    #[allow(clippy::type_complexity)]
     pub fn take_filter(&mut self) -> Option<Rc<dyn Fn(&Sc::Token) -> bool>>
     {
         self.cursor = self.end;
@@ -194,6 +201,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Sets the token filter directly.
+    #[allow(clippy::type_complexity)]
     pub fn set_filter(
         &mut self,
         filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>)
@@ -267,7 +275,8 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     /// Extends the receiver lexer to include the current parse span of the
-    /// given lexer. (The given lexer's Scanner state will be discarded.)
+    /// `other` lexer. (The `other` lexer's `Scanner` state will be discarded.)
+    #[must_use]
     pub fn join(mut self, other: Self) -> Self {
         if self.end < other.end {
             self.end = other.end;

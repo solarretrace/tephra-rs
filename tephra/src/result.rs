@@ -46,6 +46,7 @@ pub trait ParseResultExt<'text, Sc, V>
         where F: FnOnce(Lexer<'text, Sc>) -> Lexer<'text, Sc>;
 
     /// Applies any `ErrorTransform`s in the given `Context`.
+    #[must_use]
     fn apply_context(self, ctx: Context<'text, Sc>) -> Self;
 }
 

@@ -46,6 +46,7 @@ pub struct SourceError<T> where T: AsRef<str> {
 impl<T> SourceError<T> where T: AsRef<str> {
     /// Constructs a new `SourceError` with the given `SourceText` and
     /// message.
+    #[must_use]
     pub fn new<M>(source_text: SourceText<T>, message: M)
         -> Self
         where M: Into<String>,
@@ -59,6 +60,7 @@ impl<T> SourceError<T> where T: AsRef<str> {
     }
 
     /// Returns the given `SourceError` with the given error cause.
+    #[must_use]
     pub fn with_cause(mut self, cause: Box<dyn Error + Send + Sync + 'static>)
         -> Self
     {
@@ -67,12 +69,14 @@ impl<T> SourceError<T> where T: AsRef<str> {
     }
 
     /// Returns the given `SourceError` with the given color enablement.
+    #[must_use]
     pub fn with_color(mut self, color_enabled: bool) -> Self {
         self.code_display.color_enabled = color_enabled;
         self
     }
 
     /// Returns the given `SourceError` with the given note attachment.
+    #[must_use]
     pub fn with_note<N>(mut self, note: N) -> Self
         where N: Into<Note>
     {
@@ -88,6 +92,7 @@ impl<T> SourceError<T> where T: AsRef<str> {
     }
 
     /// Returns the given `SourceError` with the given `SpanDisplay` attachment.
+    #[must_use]
     pub fn with_span_display<S>(mut self, span_display: S) -> Self
         where S: Into<SpanDisplay>
     {
@@ -108,6 +113,7 @@ impl<T> SourceError<T> where T: AsRef<str> {
     }
 
 
+    #[must_use]
     pub fn into_owned(self) -> SourceErrorOwned {
         SourceError {
             source_text: self.source_text.to_owned(),

@@ -152,6 +152,7 @@ impl ColumnMetrics {
     /// position within the given text. None is returned if the result position
     /// is not within the text.
     #[must_use]
+    #[allow(clippy::similar_names)]
     pub fn previous_position(&self, text: &str, base: Pos)
         -> Option<Pos>
     {
@@ -306,8 +307,8 @@ impl ColumnMetrics {
     {
         let mut end = start;
         while let Some(adv) = self.next_position(text, end) {
-            if &pattern[end.byte-start.byte .. adv.byte-start.byte] 
-                != &text[end.byte..adv.byte]
+            if pattern[end.byte-start.byte .. adv.byte-start.byte] 
+                != text[end.byte..adv.byte]
             {
                 break;
             }

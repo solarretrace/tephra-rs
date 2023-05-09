@@ -145,7 +145,6 @@ pub fn bracket_default_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
             "invalid argument to bracket: common open and close tokens \
             unsupported");
     }
-
     move |lexer, ctx| {
         let _trace_span = span!(Level::DEBUG, "bracket_*").entered();
 
@@ -218,6 +217,7 @@ pub fn bracket_default_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
 /// on invalid inputs. If the `abort_pred` returns `true` for any token
 /// encountered before the first open bracket, the search is aborted. (If a
 /// `close_token` is encountered first, an error will be always be emitted.)
+#[allow(clippy::cognitive_complexity)]
 fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
     mut lexer: Lexer<'text, Sc>,
     open_tokens: &'a [Sc::Token],
@@ -228,9 +228,9 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
         Sc: Scanner,
         A: Fn(&Sc::Token) -> bool + 'a + Clone,
 {
+    use MatchBracketError::*;
     let _trace_span = span!(Level::TRACE, "match_nested_*").entered();
 
-    use MatchBracketError::*;
     let start_span = lexer.start_span();
     let mut open_lexer: Option<Lexer<'_, Sc>> = None;
     // Detected open tokens as (index, count) pairs.

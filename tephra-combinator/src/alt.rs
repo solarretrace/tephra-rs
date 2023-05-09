@@ -173,7 +173,7 @@ pub fn implies<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
             (lexer, ctx.clone())?
             .take_value();
 
-        left_span.exit();
+        let _ = left_span.exit();
         let _right_span = span!(Level::DEBUG, "cons").entered();
         match ante {
             None => {
@@ -273,7 +273,7 @@ pub fn cond_implies<'text, Sc, P, L, R, X, Y>(
             (lexer, ctx.clone())?
             .take_value();
 
-        left_span.exit();
+        let _ = left_span.exit();
         let _right_span = span!(Level::DEBUG, "cons").entered();
         match ante {
             None => {

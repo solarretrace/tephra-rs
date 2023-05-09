@@ -175,13 +175,15 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
 
     /// Constructs a new `Context` by wrapping a new `ErrorTransform` around the
     /// given `Context`.
+    #[allow(clippy::if_not_else)]
+    #[must_use]
     pub fn pushed(self, error_transform: ErrorTransform<'text>) -> Self {
         if !self.locked {
             event!(Level::DEBUG, "pushed new error context");
             Context {
-                shared: self.shared.clone(),
+                shared: Rc::clone(&self.shared),
                 local: Rc::new(RwLock::new(LocalContext {
-                    parent: Some(self.local.clone()),
+                    parent: Some(Rc::clone(&self.local)),
                     error_transform: Some(error_transform),
                 })),
                 locked: false,
@@ -197,7 +199,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
         if !self.locked {
             event!(Level::DEBUG, "pushed new error context");
             self.local = Rc::new(RwLock::new(LocalContext {
-                parent: Some(self.local.clone()),
+                parent: Some(Rc::clone(&self.local)),
                 error_transform: Some(error_transform),
             }));
         }
@@ -245,6 +247,7 @@ impl<'text, Sc> Context<'text, Sc> where Sc: Scanner {
         parse_error: Box<dyn ParseError>)
         -> Result<(), Box<dyn ParseError>>
     {
+        #[allow(clippy::significant_drop_in_scrutinee)]
         match self.shared
             .read()
             .expect("lock shared context")
