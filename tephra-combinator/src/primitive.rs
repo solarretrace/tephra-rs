@@ -230,7 +230,7 @@ impl<'a, T> std::fmt::Display for DisplayList<'a, T>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, val) in self.0.iter().enumerate() {
-            write!(f, "{}", val)?;
+            write!(f, "{val}")?;
             if i < self.0.len() - 1 {
                 write!(f, ", ")?;
             }
@@ -244,7 +244,7 @@ impl<'a, T> std::fmt::Debug for DisplayList<'a, T>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, val) in self.0.iter().enumerate() {
-            write!(f, "{:?}", val)?;
+            write!(f, "{val:?}")?;
             if i < self.0.len() - 1 {
                 write!(f, ", ")?;
             }
@@ -395,7 +395,7 @@ pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
                     parse_span,
                     token_span: lexer.end_span(),
                     expected: Expected::<Sc::Token>::Other(
-                        format!("{:?}", pred)),
+                        format!("{pred:?}")),
                     found: Found::EndOfText,
                 }))
             },
@@ -414,7 +414,7 @@ pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
                 Err(Box::new(UnexpectedTokenError {
                     parse_span,
                     token_span: lexer.token_span(),
-                    expected: Expected::Other(format!("{:?}", pred)),
+                    expected: Expected::Other(format!("{pred:?}")),
                     found: Found::Token(lex),
                 }))
             },

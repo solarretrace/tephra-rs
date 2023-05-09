@@ -136,18 +136,14 @@ pub fn bracket_default_index<'text: 'a, 'a, Sc, F, X: 'a, A>(
         X: Default,
         A: Fn(&Sc::Token) -> bool + 'a + Clone,
 {
-    if open_tokens.is_empty() || close_tokens.is_empty() {
-        panic!("invalid argument to bracket: empty token slice");
-    }
-    if open_tokens.len() != close_tokens.len() || open_tokens.is_empty() {
-        panic!("invalid argument to bracket: mismatched token slice \
-            lengths");
-    }
+    assert!(!(open_tokens.is_empty() || close_tokens.is_empty()),
+        "invalid argument to bracket: empty token slice");
+    assert!(open_tokens.len() == close_tokens.len() && !open_tokens.is_empty(), 
+        "invalid argument to bracket: mismatched token slice lengths");
     for tok in open_tokens {
-        if close_tokens.contains(tok) {
-            panic!("invalid argument to bracket: common open and close \
-                tokens unsupported");       
-        }
+        assert!(!close_tokens.contains(tok), 
+            "invalid argument to bracket: common open and close tokens \
+            unsupported");
     }
 
     move |lexer, ctx| {

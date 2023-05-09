@@ -79,7 +79,7 @@ pub fn both<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
             (lexer, ctx.clone())?
             .take_value();
 
-        let _ = left_span.exit();
+        left_span.exit();
         let _right_span = span!(Level::DEBUG, "right").entered();
         (right)
             (succ.lexer, ctx)
@@ -113,7 +113,7 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
             Err(fail) => return Err(fail),
         };
 
-        let _ = left_span.exit();
+        left_span.exit();
         let center_span = span!(Level::DEBUG, "center").entered();
         let (c, succ) = match (center)
             (succ.lexer, ctx.clone())
@@ -122,7 +122,7 @@ pub fn center<'text, Sc, L, C, R, X, Y, Z>(
             Err(fail) => return Err(fail),
         };
 
-        let _ = center_span.exit();
+        center_span.exit();
         let _right_span = span!(Level::DEBUG, "right").entered();
         (right)
             (succ.lexer, ctx)

@@ -214,7 +214,7 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
 {
     move |lexer, ctx| {
         if let Some(h) = high {
-            if h < low { panic!("intersperse with high < low") }
+            assert!(!(h < low), "intersperse with high < low");
             if h == 0 {
                 return Ok(Success {
                     lexer,
@@ -225,7 +225,7 @@ pub fn intersperse<'text, Sc, F, G, V, U>(
 
         let mut vals = Vec::with_capacity(4);
 
-        let (val, mut succ) = match (&mut parser)
+        let (val, mut succ) = match parser
             (lexer.clone(), ctx.clone())
         {
             Ok(Success { value, lexer: succ_lexer }) => {
@@ -293,7 +293,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
 {
     move |lexer, ctx| {
         if let Some(h) = high {
-            if h < low { panic!("intersperse with high < low") }
+            assert!(!(h < low), "intersperse with high < low");
             if h == 0 {
                 return Ok(Success {
                     lexer,
@@ -304,20 +304,20 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
 
         let mut vals = Vec::with_capacity(4);
 
-        if (&mut stop_parser)
+        if stop_parser
             (lexer.clone(), ctx.clone())
             .is_ok()
         {
             return Ok(Success { lexer, value: vals });
         }
 
-        let (val, mut succ) = (&mut parser)
+        let (val, mut succ) = parser
             (lexer, ctx.clone())?
             .take_value();
         vals.push(val);
 
         while vals.len() < low {
-            if (&mut stop_parser)
+            if stop_parser
                 (succ.lexer.clone(), ctx.clone())
                 .is_ok()
             {
@@ -331,7 +331,7 @@ pub fn intersperse_until<'text, Sc, F, G, H, V, U, T>(
         }
 
         while high.map_or(true, |h| vals.len() < h) {
-            if (&mut stop_parser)
+            if stop_parser
                 (succ.lexer.clone(), ctx.clone())
                 .is_ok()
             {
@@ -382,9 +382,7 @@ pub fn intersperse_default<'text, Sc, F, V>(
 {
     move |lexer, ctx| {
         if let Some(h) = high {
-            if h < low {
-                panic!("invalid argument to intersperse_default: high < low");
-            }
+            assert!(!(h < low), "invalid argument to intersperse_default: high < low");
             if h == 0 {
                 return Ok(Success {
                     lexer,
@@ -395,7 +393,7 @@ pub fn intersperse_default<'text, Sc, F, V>(
 
         let mut vals = Vec::with_capacity(4);
 
-        let (val, mut succ) = match (&mut parser)
+        let (val, mut succ) = match parser
             (lexer.clone(), ctx.clone())
         {
             Ok(Success { value, lexer: succ_lexer }) => {

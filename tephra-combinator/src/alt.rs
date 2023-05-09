@@ -74,7 +74,7 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
             Err(_e) => {
                 event!(Level::TRACE, "maybe None: ({})", _e);
                 Ok(Success {
-                    lexer: lexer,
+                    lexer,
                     value: None,
                 })
             },
@@ -176,7 +176,7 @@ pub fn implies<'text, Sc, L, R, X, Y>(mut left: L, mut right: R)
             (lexer, ctx.clone())?
             .take_value();
 
-        let _ = left_span.exit();
+        left_span.exit();
         let _right_span = span!(Level::DEBUG, "cons").entered();
         match ante {
             None => {
@@ -276,7 +276,7 @@ pub fn cond_implies<'text, Sc, P, L, R, X, Y>(
             (lexer, ctx.clone())?
             .take_value();
 
-        let _ = left_span.exit();
+        left_span.exit();
         let _right_span = span!(Level::DEBUG, "cons").entered();
         match ante {
             None => {
