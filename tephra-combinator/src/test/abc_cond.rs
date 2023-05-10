@@ -49,7 +49,7 @@ fn setup_test_environment() -> DefaultGuard {
     colored::control::set_override(false);
 
     let env_filter_layer = EnvFilter::from_default_env();
-    let fmt_layer = Layer::new().without_time();
+    let fmt_layer = Layer::new().without_time().with_ansi(false);
 
     let subscriber = Registry::default()
         .with(env_filter_layer)
