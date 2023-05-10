@@ -158,7 +158,7 @@ pub fn recover_default<'text, Sc, F, V>(
         {
             Ok(succ) => Ok(succ),
 
-            Err(fail) => match ctx.send_error(fail) {
+            Err(fail) if fail.is_recoverable() => match ctx.send_error(fail) {
                 Err(fail) => {
                     event!(Level::TRACE, "error recovery failed: disabled");
                     Err(fail)
@@ -180,6 +180,12 @@ pub fn recover_default<'text, Sc, F, V>(
                         Err(Box::new(recover_error))
                     },
                 },
+            },
+
+            Err(fail) => {
+                event!(Level::DEBUG, "error recovery failed: unrecoverable \
+                    error type");
+                Err(fail)
             },
         }
     }
@@ -210,21 +216,25 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
                     succ.lexer.set_recover_state(None);
                     return Ok(succ);
                 },
-                Err(_) => match lexer.advance_to_recover() {
-                    Ok(_) => {
-                        event!(Level::DEBUG, "error recovery point found ({})",
-                            lexer.cursor_pos());
+                Err(fail) if fail.is_recoverable() => {
+                    match lexer.advance_to_recover() {
+                        Ok(_) => {
+                            event!(Level::DEBUG, "error recovery point found \
+                                ({})",
+                                lexer.cursor_pos());
 
-                        res = unrecoverable(&mut parser)
-                            (lexer.clone(), ctx.clone());
-                    },
-                    Err(recover_error) => {
-                        event!(Level::DEBUG, "error recovery failed: \
-                            unable to find recovery point ({})",
-                            lexer.cursor_pos());
-                        return Err(Box::new(recover_error))
-                    },
+                            res = unrecoverable(&mut parser)
+                                (lexer.clone(), ctx.clone());
+                        },
+                        Err(recover_error) => {
+                            event!(Level::DEBUG, "error recovery failed: \
+                                unable to find recovery point ({})",
+                                lexer.cursor_pos());
+                            return Err(Box::new(recover_error))
+                        },
+                    }
                 },
+                Err(fail) => { return Err(fail); },
             }
         }
         panic!("overflow on error recovery attempts");

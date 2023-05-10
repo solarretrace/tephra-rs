@@ -37,6 +37,9 @@ pub trait ParseError: std::error::Error + Send + Sync
     /// available.
     fn parse_span(&self) -> Option<Span> { None }
 
+    /// Returns `true` if the error type is recoverable.
+    fn is_recoverable(&self) -> bool { true }
+
     /// Converts a `ParseError` into a `SourceErrorRef<'text>`.
     #[must_use]
     fn into_source_error(
