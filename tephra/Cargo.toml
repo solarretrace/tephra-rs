@@ -17,12 +17,15 @@ name = "tephra"
 
 
 [features]
-default = []
+default = ["no-color"]
 trace = [
 	"tracing",
 	"tephra-tracing/tracing",
 	"tephra-error/trace",
 	"tephra-span/trace",
+]
+no-color = [
+	"tephra-error/no-color",
 ]
 
 # Required dependencies
