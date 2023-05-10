@@ -239,7 +239,8 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
 
     while let Some(tok) = lexer.peek() {
         if let Some(idx) = close_tokens.iter().position(|t| t == &tok) {
-            event!(Level::TRACE, "found close token ({:?} idx={})", tok, idx);
+            event!(Level::TRACE, "found close token ({:?} idx={} @ {})",
+                tok, idx, lexer.cursor_pos());
             match opened.pop() {
                 // Close token found before open token.
                 None => return Err(Unopened {
@@ -265,7 +266,8 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
                 Some(_) => unreachable!(),
             }
         } else if let Some(idx) = open_tokens.iter().position(|t| t == &tok) {
-            event!(Level::TRACE, "found open token ({:?} idx={})", tok, idx);
+            event!(Level::TRACE, "found open token ({:?} idx={} @ {})",
+                tok, idx, lexer.cursor_pos());
             // Found our first open token.
             if open_lexer.is_none() { 
                 open_lexer = Some(lexer.clone());
