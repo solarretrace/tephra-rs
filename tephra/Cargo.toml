@@ -17,7 +17,7 @@ name = "tephra"
 
 
 [features]
-default = ["no-color"]
+default = ["trace", "no-color"]
 trace = [
 	"tracing",
 	"tephra-tracing/tracing",
