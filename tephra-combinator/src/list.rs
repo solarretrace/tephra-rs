@@ -83,7 +83,7 @@ pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a, A>(
 // List combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn delimited_list<'text: 'a, 'a, Sc, F, X: 'a, A>(
+pub fn list<'text: 'a, 'a, Sc, F, X: 'a, A>(
     parser: F,
     sep_token: Sc::Token,
     abort_pred: A)
@@ -95,11 +95,11 @@ pub fn delimited_list<'text: 'a, 'a, Sc, F, X: 'a, A>(
             -> ParseResult<'text, Sc, X> + 'a,
         A: Fn(&Sc::Token) -> bool + 'static + Clone,
 {
-    delimited_list_bounded(0, None, parser, sep_token, abort_pred)
+    list_bounded(0, None, parser, sep_token, abort_pred)
 }
 
 
-pub fn delimited_list_bounded<'text: 'a, 'a, Sc, F, X: 'a, A>(
+pub fn list_bounded<'text: 'a, 'a, Sc, F, X: 'a, A>(
     low: usize,
     high: Option<usize>,
     mut parser: F,
@@ -119,7 +119,7 @@ pub fn delimited_list_bounded<'text: 'a, 'a, Sc, F, X: 'a, A>(
             .map_value(Some)
     };
 
-    delimited_list_bounded_default(
+    list_bounded_default(
         low,
         high,
         option_parser,
@@ -128,7 +128,7 @@ pub fn delimited_list_bounded<'text: 'a, 'a, Sc, F, X: 'a, A>(
 }
 
 
-pub fn delimited_list_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
+pub fn list_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     parser: F,
     sep_token: Sc::Token,
     abort_pred: A)
@@ -141,11 +141,11 @@ pub fn delimited_list_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
         X: Default,
         A: Fn(&Sc::Token) -> bool + 'static + Clone,
 {
-    delimited_list_bounded_default(0, None, parser, sep_token, abort_pred)
+    list_bounded_default(0, None, parser, sep_token, abort_pred)
 }
 
 
-pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
+pub fn list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
     low: usize,
     high: Option<usize>,
     mut parser: F,
@@ -172,7 +172,7 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
         Ok(tok == rec_token || rec_pred(&tok))
     }));
     move |mut lexer, ctx| {
-        let _trace_span = span!(Level::DEBUG, "delimited_list_*").entered();
+        let _trace_span = span!(Level::DEBUG, "list_*").entered();
 
         let mut vals = match high {
             // Do empty parse if requested.
@@ -180,7 +180,7 @@ pub fn delimited_list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
                 return empty(lexer, ctx).map_value(|_| Vec::new());
             },
             Some(n) if n < low => {
-                panic!("delimited_list with high < low");
+                panic!("list with high < low");
             },
             Some(n) if n < LIST_BOUND_PRELLOCATE_LIMIT => Vec::with_capacity(n),
             Some(_) => Vec::with_capacity(LIST_BOUND_PRELLOCATE_LIMIT),

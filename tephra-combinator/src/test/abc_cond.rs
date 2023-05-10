@@ -10,7 +10,7 @@
 
 // Internal library imports.
 use crate::bracket;
-use crate::delimited_list;
+use crate::list;
 use crate::implies;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
@@ -180,7 +180,7 @@ fn pattern_implies_list() {
             pattern,
             bracket(
                 &[OpenBracket],
-                delimited_list(
+                list(
                     pattern,
                     Comma,
                     |tok| *tok == CloseBracket),

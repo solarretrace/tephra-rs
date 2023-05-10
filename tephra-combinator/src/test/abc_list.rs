@@ -10,8 +10,8 @@
 
 // Internal library imports.
 use crate::bracket_default_index;
-use crate::delimited_list;
-use crate::delimited_list_bounded;
+use crate::list;
+use crate::list_bounded;
 use crate::sub;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
@@ -83,7 +83,7 @@ fn build_test_lexer(text: &'static str) -> (
 // Combinator tests
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Test successful `delimited_list` combinator with empty list.
+/// Test successful `list` combinator with empty list.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::list_empty -- --exact --nocapture > .trace
@@ -96,7 +96,7 @@ fn list_empty() {
     let (lexer, ctx, _errors, _source) = build_test_lexer("");
     use AbcToken::*;
 
-    let (value, succ) = delimited_list(
+    let (value, succ) = list(
             pattern,
             Comma, |_| false)
         (lexer.clone(), ctx)
@@ -110,7 +110,7 @@ fn list_empty() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(0, 0, 0));
 }
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::list_one -- --exact --nocapture > .trace
@@ -123,7 +123,7 @@ fn list_one() {
     let (lexer, ctx, _errors, _source) = build_test_lexer(" abc ");
     use AbcToken::*;
 
-    let (value, succ) = delimited_list(
+    let (value, succ) = list(
             pattern,
             Comma, |_| false)
         (lexer.clone(), ctx)
@@ -141,7 +141,7 @@ fn list_one() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
 }
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one -- --exact --nocapture > .trace
@@ -156,7 +156,7 @@ fn bracket_list_one() {
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list(
+            list(
                 pattern,
                 Comma,
                 |tok| *tok == CloseBracket),
@@ -178,7 +178,7 @@ fn bracket_list_one() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
 }
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::list_two -- --exact --nocapture > .trace
@@ -191,7 +191,7 @@ fn list_two() {
     let (lexer, ctx, _errors, _source) = build_test_lexer(" abc,aac ");
     use AbcToken::*;
 
-    let (value, succ) = delimited_list(
+    let (value, succ) = list(
             pattern,
             Comma,
             |_| false)
@@ -214,7 +214,7 @@ fn list_two() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(9, 0, 9));
 }
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_two -- --exact --nocapture > .trace
@@ -229,7 +229,7 @@ fn bracket_list_two() {
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list(
+            list(
                 pattern,
                 Comma,
                 |tok| *tok == CloseBracket),
@@ -255,7 +255,7 @@ fn bracket_list_two() {
     assert_eq!(succ.lexer.cursor_pos(), Pos::new(9, 0, 9));
 }
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::list_one_failed -- --exact --nocapture > .trace
@@ -269,7 +269,7 @@ fn list_one_failed() {
     use AbcToken::*;
 
     let actual = unrecoverable(
-        sub(delimited_list_bounded(
+        sub(list_bounded(
             1, None,
             pattern,
             Comma, |_| false)))
@@ -287,7 +287,7 @@ error: invalid item count
 }
 
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_zero -- --exact --nocapture > .trace
@@ -302,7 +302,7 @@ fn bracket_list_zero() {
 
     let (value, _succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list(
+            list(
                 pattern,
                 Comma,
                 |tok| *tok == CloseBracket),
@@ -319,7 +319,7 @@ fn bracket_list_zero() {
 }
 
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one_failed -- --exact --nocapture > .trace
@@ -335,7 +335,7 @@ fn bracket_list_one_failed() {
     let actual = unrecoverable(
         bracket_default_index(
             &[OpenBracket],
-            delimited_list_bounded(
+            list_bounded(
                 1, None,
                 pattern,
                 Comma,
@@ -355,7 +355,7 @@ error: invalid item count
 }
 
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_one_recovered -- --exact --nocapture > .trace
@@ -370,7 +370,7 @@ fn bracket_list_one_recovered() {
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list_bounded(
+            list_bounded(
                 1, None,
                 pattern,
                 Comma,
@@ -413,7 +413,7 @@ fn bracket_list_two_recovered_first() {
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list(
+            list(
                 pattern,
                 Comma, |tok| *tok == CloseBracket),
             &[CloseBracket], |_| false)
@@ -459,7 +459,7 @@ fn bracket_list_two_recovered_second() {
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list(
+            list(
                 pattern,
                 Comma,
                 |tok| *tok == CloseBracket),
@@ -485,7 +485,7 @@ fn bracket_list_two_recovered_second() {
 }
 
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_missing_delimiter -- --exact --nocapture > .trace
@@ -500,7 +500,7 @@ fn bracket_list_missing_delimiter() {
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list(
+            list(
                 pattern,
                 Comma,
                 |tok| *tok == CloseBracket),
@@ -527,7 +527,7 @@ error: incomplete parse
 }
 
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_nested -- --exact --nocapture > .trace
@@ -542,10 +542,10 @@ fn bracket_list_nested() {
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list(
+            list(
                 bracket_default_index(
                     &[OpenBracket],
-                    delimited_list(
+                    list(
                         pattern,
                         Comma,
                         |tok| *tok == CloseBracket),
@@ -585,7 +585,7 @@ fn bracket_list_nested() {
 }
 
 
-/// Test successful `delimited_list_bounded` combinator.
+/// Test successful `list_bounded` combinator.
 //
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_list::bracket_list_commas -- --exact --nocapture > .trace
@@ -600,7 +600,7 @@ fn bracket_list_commas() {
 
     let (value, succ) = bracket_default_index(
             &[OpenBracket],
-            delimited_list_bounded(
+            list_bounded(
                 1, None,
                 pattern,
                 Comma,
