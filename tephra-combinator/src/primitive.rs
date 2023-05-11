@@ -443,7 +443,7 @@ impl<T> Eval for Token<T> where T: Clone + PartialEq {
 ///
 /// No error recovery is attempted.
 pub fn end_of_text<'text, Sc>(
-    lexer: Lexer<'text, Sc>,
+    mut lexer: Lexer<'text, Sc>,
     _ctx: Context<'text, Sc>)
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,

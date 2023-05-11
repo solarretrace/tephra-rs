@@ -213,7 +213,6 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Scans to the next unfiltered token and buffers it. This method is
     /// idempotent.
     fn scan_to_buffer(&mut self) {
-
         let mut scanner = self.scanner.clone();
         while self.cursor.byte < self.source_text.len() {
             match scanner.scan(self.source_text(), self.cursor) {
@@ -247,8 +246,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     /// Returns the next token that would be returned by the `next` method
     /// without advancing the lexer position, assuming the lexer state is
     /// unchanged by the time `next` is called.
-    pub fn peek(&self) -> Option<Sc::Token> {
-        
+    pub fn peek(&mut self) -> Option<Sc::Token> {
         if let Some((tok, _, _)) = self.buffer.as_ref() {
             Some(tok.clone())
         } else {
@@ -257,8 +255,24 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
     }
 
+    /// Returns the next token if it satisfies the predicate `pred`.
+    pub fn next_if<P>(&mut self, pred: P) -> Option<Sc::Token>
+        where P: FnOnce(&Sc::Token) -> bool
+    {
+        match self.peek().as_ref().map(pred) {
+            Some(true) => self.next(),
+            _          => None
+        }
+    }
+
+    /// Returns the next token if it is equal to `expected`.
+    pub fn next_if_eq(&mut self, expected: Sc::Token) -> Option<Sc::Token>
+    {
+        if self.peek() == Some(expected) { self.next() } else { None }
+    }
+
     /// Retrieves the `next` token from the buffer if any token is buffered.
-    fn next_buffered(&mut self) -> Option<<Self as Iterator>::Item> {
+    fn next_buffered(&mut self) -> Option<Sc::Token> {
 
         match self.buffer.take() {
             None => None,

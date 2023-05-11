@@ -192,7 +192,7 @@ pub(in crate::test) enum Pattern<'text> {
 }
 
 pub(in crate::test) fn pattern<'text>(
-    lexer: Lexer<'text, Abc>,
+    mut lexer: Lexer<'text, Abc>,
     ctx: Context<'text, Abc>)
     -> ParseResult<'text, Abc, Pattern<'text>>
 {
