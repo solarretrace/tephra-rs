@@ -12,6 +12,7 @@
 use crate::bracket;
 use crate::list;
 use crate::implies;
+use crate::sub;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
@@ -65,8 +66,8 @@ fn build_test_lexer(text: &'static str) -> (
     SourceText<&'static str>)
 {
     let source = SourceText::new(text);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let lexer = Lexer::new(Abc::new(), source)
+        .with_filter(Some(Rc::new(|tok| *tok != AbcToken::Ws)));
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx = Context::empty();
 
@@ -100,11 +101,11 @@ fn pattern_implies() {
     let expected = Some((
         Pattern::Abc(Spanned {
             value: "abc",
-            span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
+            span: Span::enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
         }),
         Pattern::Bxx(Spanned {
             value: "bdd",
-            span: Span::new_enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
+            span: Span::enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
         }),
     ));
 
@@ -149,7 +150,7 @@ fn pattern_implies_failed_right() {
         .entered();
     let (lexer, ctx, _errors, source) = build_test_lexer("abc cdd");
 
-    let actual = implies(pattern, pattern)
+    let actual = implies(pattern, sub(pattern))
         (lexer, ctx)
         .map_err(|e| e.into_source_error(source))
         .unwrap_err();
@@ -195,16 +196,16 @@ fn pattern_implies_list() {
     let expected = Some((
         Pattern::Abc(Spanned {
             value: "abc",
-            span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
+            span: Span::enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
         }),
         Some(vec![
             Some(Pattern::Bxx(Spanned {
                 value: "bdd",
-                span: Span::new_enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
+                span: Span::enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
             })),
             Some(Pattern::Abc(Spanned {
                 value: "abc",
-                span: Span::new_enclosing(Pos::new(9, 0, 9), Pos::new(12, 0, 12)),
+                span: Span::enclosing(Pos::new(9, 0, 9), Pos::new(12, 0, 12)),
             })),
         ]),
     ));

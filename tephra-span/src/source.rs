@@ -118,7 +118,7 @@ impl<T> SourceText<T> where T: AsRef<str> {
     /// Returns the full span of the text.
     pub fn full_span(&self) -> Span {
         let end = self.end_position();
-        Span::new_enclosing(self.offset, end)
+        Span::enclosing(self.offset, end)
     }
 
     /// Returns the start position of the text.

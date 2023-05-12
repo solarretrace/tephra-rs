@@ -14,6 +14,7 @@ use crate::center;
 use crate::left;
 use crate::one;
 use crate::raw;
+use crate::sub;
 use crate::recover;
 use crate::right;
 use crate::stabilize;
@@ -71,8 +72,8 @@ fn build_test_lexer(text: &'static str) -> (
     SourceText<&'static str>)
 {
     let source = SourceText::new(text);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let lexer = Lexer::new(Abc::new(), source)
+        .with_filter(Some(Rc::new(|tok| *tok != AbcToken::Ws)));
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx_errors = errors.clone();
     let ctx = Context::new(Some(Box::new(move |e| 
@@ -168,11 +169,11 @@ fn pattern_both() {
     let expected = (
         Pattern::Abc(Spanned {
             value: "abc",
-            span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
+            span: Span::enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
         }),
         Pattern::Xyc(Spanned {
             value: "dac",
-            span: Span::new_enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
+            span: Span::enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
         }),
     );
 
@@ -202,7 +203,7 @@ fn pattern_left() {
     let actual = value;
     let expected = Pattern::Abc(Spanned {
         value: "abc",
-        span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
+        span: Span::enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
     });
 
     assert_eq!(actual, expected);
@@ -231,7 +232,7 @@ fn pattern_right() {
     let actual = value;
     let expected = Pattern::Xyc(Spanned {
         value: "dac",
-        span: Span::new_enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
+        span: Span::enclosing(Pos::new(4, 0, 4), Pos::new(7, 0, 7)),
     });
 
     assert_eq!(actual, expected);
@@ -251,7 +252,7 @@ fn pattern_right_failed() {
         .entered();
     let (lexer, ctx, _errors, source) = build_test_lexer("abc ddd");
 
-    let actual = right(pattern, pattern)
+    let actual = right(pattern, sub(pattern))
         (lexer.clone(), ctx)
         .map_err(|e| e.into_source_error(source))
         .unwrap_err();
@@ -318,7 +319,7 @@ fn pattern_center() {
     let actual = value;
     let expected = Pattern::Abc(Spanned {
         value: "abc",
-        span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+        span: Span::enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
     });
 
     assert_eq!(actual, expected);
@@ -341,7 +342,7 @@ fn pattern_center_recover() {
 
     let (value, succ) = center(
             one(OpenBracket),
-            recover(pattern, recover_before(CloseBracket)),
+            recover(sub(pattern), recover_before(CloseBracket)),
             stabilize(one(CloseBracket)))
         (lexer.clone(), ctx)
         .expect("successful parse")
@@ -380,7 +381,7 @@ fn pattern_center_recover_delayed() {
 
     let (value, succ) = center(
             one(OpenBracket),
-            recover(pattern, recover_before(CloseBracket)),
+            recover(sub(pattern), recover_before(CloseBracket)),
             stabilize(one(CloseBracket)))
         (lexer.clone(), ctx)
         .expect("successful parse")
@@ -390,7 +391,7 @@ fn pattern_center_recover_delayed() {
     let expected = None;
 
     assert_eq!(actual, expected);
-    assert_eq!(succ.lexer.cursor_pos(), Pos::new(11, 0, 11));
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(10, 0, 10));
 
     assert_eq!(errors.read().unwrap().len(), 1);
     assert_eq!(format!("{}", errors.write().unwrap().pop().unwrap()), "\

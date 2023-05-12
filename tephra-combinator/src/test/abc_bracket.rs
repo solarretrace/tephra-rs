@@ -69,8 +69,8 @@ fn build_test_lexer(text: &'static str) -> (
     SourceText<&'static str>)
 {
     let source = SourceText::new(text);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let lexer = Lexer::new(Abc::new(), source)
+        .with_filter(Some(Rc::new(|tok| *tok != AbcToken::Ws)));
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx_errors = errors.clone();
     let ctx = Context::new(Some(Box::new(move |e| 
@@ -110,7 +110,7 @@ error: expected open bracket
  --> (0:0-0:5, bytes 0-5)
   | 
 0 |  abc 
-  |  \\ bracket expected here
+  | \\ bracket expected here
 ");
 }
 
@@ -297,7 +297,7 @@ fn comma_bracket_index() {
     let actual = value;
     let expected = Spanned {
         value: (Some(Comma), 0),
-        span: Span::new_enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
+        span: Span::enclosing(Pos::new(0, 0, 0), Pos::new(3, 0, 3)),
     };
     println!("{actual:?}");
     assert_eq!(actual, expected);
@@ -334,11 +334,11 @@ fn matching_both() {
     let actual = value;
     let expected = ((Some(Pattern::Abc(Spanned {
             value: "abc",
-            span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+            span: Span::enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
         })), 0), 
         (Some(Pattern::Xyc(Spanned {
             value: "aac",
-            span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
+            span: Span::enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
         })), 0));
 
     assert_eq!(actual, expected);
@@ -376,7 +376,7 @@ fn matching_both_first_fail() {
         None, 
         Some(Pattern::Xyc(Spanned {
             value: "aac",
-            span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
+            span: Span::enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
         })));
 
     assert_eq!(actual, expected);

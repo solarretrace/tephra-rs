@@ -40,7 +40,7 @@ fn span_offset_within_empty() {
     const TEXT: &str = "abcd";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
-    let span = Span::new_at(Pos::new(100, 10, 10));
+    let span = Span::at(Pos::new(100, 10, 10));
 
     // Check text clip.
     let actual = source.clipped(span);
@@ -79,7 +79,7 @@ fn span_offset_widen_to_line() {
     const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
-    let span = Span::new_enclosing(
+    let span = Span::enclosing(
             Pos::new(104, 11, 2),
             Pos::new(108, 11, 6))
         .widen_to_line(source);
@@ -101,7 +101,7 @@ fn span_offset_empty_widen_to_line() {
     const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
-    let span = Span::new_at(Pos::new(106, 11, 4))
+    let span = Span::at(Pos::new(106, 11, 4))
         .widen_to_line(source);
 
     // Check text clip.
@@ -121,7 +121,7 @@ fn span_offset_line_widen_to_line() {
     const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
-    let span = Span::new_enclosing(
+    let span = Span::enclosing(
             Pos::new(102, 11, 0),
             Pos::new(110, 11, 8))
         .widen_to_line(source);
@@ -212,10 +212,10 @@ fn span_offset_enclose() {
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 
-    let a = Span::new_enclosing(
+    let a = Span::enclosing(
         Pos::new(103, 12, 0),
         Pos::new(110, 14, 4));
-    let b = Span::new_enclosing(
+    let b = Span::enclosing(
         Pos::new(105, 13, 1),
         Pos::new(120, 16, 3));
     let span = a.enclose(b);
@@ -238,10 +238,10 @@ fn span_offset_union() {
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 
-    let a = Span::new_enclosing(
+    let a = Span::enclosing(
         Pos::new(103, 12, 0),
         Pos::new(110, 14, 4));
-    let b = Span::new_enclosing(
+    let b = Span::enclosing(
         Pos::new(105, 13, 1),
         Pos::new(120, 16, 3));
     let span = a.union(b).next().unwrap();
@@ -264,10 +264,10 @@ fn span_offset_intersect() {
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 
-    let a = Span::new_enclosing(
+    let a = Span::enclosing(
         Pos::new(103, 12, 0),
         Pos::new(110, 14, 4));
-    let b = Span::new_enclosing(
+    let b = Span::enclosing(
         Pos::new(105, 13, 1),
         Pos::new(120, 16, 3));
     let span = a.intersect(b).unwrap();
@@ -290,10 +290,10 @@ fn span_offset_minus() {
     let source = SourceText::new(TEXT)
         .with_start_position(Pos::new(100, 10, 10));
 
-    let a = Span::new_enclosing(
+    let a = Span::enclosing(
         Pos::new(103, 12, 0),
         Pos::new(110, 14, 4));
-    let b = Span::new_enclosing(
+    let b = Span::enclosing(
         Pos::new(105, 13, 1),
         Pos::new(120, 16, 3));
     let span = a.minus(b).next().unwrap();

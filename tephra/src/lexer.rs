@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Lexer definitions.
 ////////////////////////////////////////////////////////////////////////////////
+#![allow(missing_docs)]
 
 // Internal library imports.
 use tephra_error::Highlight;
@@ -30,88 +31,89 @@ use std::rc::Rc;
 ////////////////////////////////////////////////////////////////////////////////
 // Scanner
 ////////////////////////////////////////////////////////////////////////////////
-/// Trait for parsing a value from a string prefix. Contains the lexer state for
-/// a set of parseable tokens.
+
 pub trait Scanner: Debug + Clone + PartialEq {
     /// The parse token type.
     type Token: Display + Debug + Clone + PartialEq + Send + Sync + 'static;
 
-    /// Parses a token from the given source text.
     fn scan(&mut self, source: SourceTextRef<'_>, base: Pos)
         -> Option<(Self::Token, Pos)>;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ScannerBuffer<Sc>
+    where Sc: Scanner,
+{
+    peek_scanner: Sc,
+    peek_begin: Pos,
+    peek_cursor: Pos,
+    token: Sc::Token
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Lexer
 ////////////////////////////////////////////////////////////////////////////////
-/// A lexical analyzer which lazily parses tokens from the source text.
 #[derive(Clone)]
-pub struct Lexer<'text, Sc> where Sc: Scanner {
-    /// The source text to tokenize.
+pub struct Lexer<'text, Sc>
+    where Sc: Scanner,
+{
     source_text: SourceTextRef<'text>,
-    /// The token inclusion filter. Any token for which this returns false will
-    /// be skipped automatically.
-    #[allow(clippy::type_complexity)]
-    filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>,
-
-    /// The position of the start of the last lexed token.
-    token_start: Pos,
-    /// The position of the start of the current parse sequence.
-    parse_start: Pos,
-    /// The end position of the lexer cursor for the parse and last lexed token.
-    end: Pos,
-    /// The current position of the lexer cursor.
-    cursor: Pos,
-
-    /// The error recovery type.
-    recover: Option<Recover<Sc::Token>>,
-
-    /// The next token to emit, its position, and the resulting scanner state.
-    buffer: Option<(Sc::Token, Pos, Sc)>,
-    /// The internal user-defined Scanner.
     scanner: Sc,
+    filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>,
+    recover: Option<Recover<Sc::Token>>,
+    buffer: Option<ScannerBuffer<Sc>>,
+    parse_begin: Pos,
+    token_begin: Pos,
+    cursor: Pos,
 }
 
 impl<'text, Sc> Lexer<'text, Sc>
     where Sc: Scanner,
 {
-    /// Constructs a new Lexer for the given text.
+    // Constructors
+    ////////////////////////////////////////////////////////////////////////////
     #[must_use]
     pub fn new(scanner: Sc, source_text: SourceTextRef<'text>) -> Self {
-        Lexer {
+        Self {
             source_text,
-            filter: None,
-            token_start: Pos::ZERO,
-            parse_start: Pos::ZERO,
-            end: Pos::ZERO,
-            cursor: Pos::ZERO,
-            buffer: None,
-            recover: None,
             scanner,
+            filter: None,
+            recover: None,
+            buffer: None,
+            parse_begin: Pos::default(),
+            token_begin: Pos::default(),
+            cursor: Pos::default(),
         }
     }
 
-    /// Sets the column metrics for the Lexer.
     #[must_use]
     pub fn with_column_metrics(mut self, metrics: ColumnMetrics) -> Self {
         *self.column_metrics_mut() = metrics;
         self
     }
 
-    /// Sets the line ending style for the Lexer.
     #[must_use]
     pub fn with_line_ending(mut self, line_ending: LineEnding) -> Self {
         self.column_metrics_mut().line_ending = line_ending;
         self
     }
 
-    /// Sets the tab width for the Lexer.
     #[must_use]
     pub fn with_tab_width(mut self, tab_width: u8) -> Self {
         self.column_metrics_mut().tab_width = tab_width;
         self
     }
+
+    #[must_use]
+    pub fn with_filter(mut self, filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>)
+        -> Self
+    {
+        let _ = self.set_filter(filter);
+        self
+    }
+
+    // Accessors
+    ////////////////////////////////////////////////////////////////////////////
 
     /// Returns the underlying source text.
     pub fn source_text(&self) -> SourceTextRef<'text> {
@@ -123,8 +125,7 @@ impl<'text, Sc> Lexer<'text, Sc>
         self.source_text.column_metrics()
     }
 
-    /// Returns the column metrics for the source.
-    pub fn column_metrics_mut(&mut self) -> &mut ColumnMetrics {
+    fn column_metrics_mut(&mut self) -> &mut ColumnMetrics {
         self.source_text.column_metrics_mut()
     }
 
@@ -138,124 +139,123 @@ impl<'text, Sc> Lexer<'text, Sc>
         self.column_metrics().tab_width
     }
 
-    /// Returns true if there is no more text available to process.
+    // TODO: Mention filtered tokens.
     pub fn is_empty(&self) -> bool {
-        // TODO: Replace with Option::is_some_and when stabilized.
         self.cursor.byte >= self.source_text.len()
-            || match self.filter.as_ref()
-        {
-            None    => false,
-            Some(_) => self.buffer.is_none(),
-        }
     }
 
-    /// Returns the start position for the lexer's current parse.
-    pub fn start_pos(&self) -> Pos {
-        self.parse_start
+    pub fn is_empty_with_filter(&mut self) -> bool {
+        self.buffer_next();
+        self.cursor.byte >= self.source_text.len()
+    }
+    
+    pub fn recover_state(&self) -> Option<&Recover<Sc::Token>> {
+        self.recover.as_ref()
     }
 
-    /// Returns the end position for the lexer's current parse.
-    pub fn end_pos(&self) -> Pos {
-        self.end
+    pub fn set_recover_state(&mut self, recover: Option<Recover<Sc::Token>>) {
+        self.recover = recover;
     }
 
-    /// Returns the position of the lexer's cursor.
+    pub fn filter(&self) -> Option<&Rc<dyn Fn(&Sc::Token) -> bool>> {
+        self.filter.as_ref()
+    }
+
+    pub fn set_filter(
+        &mut self,
+        filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>)
+        -> Option<Rc<dyn Fn(&Sc::Token) -> bool>>
+    {
+        let res = self.filter.take();
+        self.filter = filter;
+        self.buffer = None;
+        res
+    }
+
+    // Spans
+    ////////////////////////////////////////////////////////////////////////////
+    pub fn begin_sublex(&mut self) {
+        self.parse_begin = self.cursor;
+        self.token_begin = self.cursor;
+    }
+
+    #[must_use]
+    pub fn into_sublexer(mut self) -> Self {
+        self.begin_sublex();
+        self
+    }
+
+    pub fn token_span(&self) -> Span {
+        Span::enclosing(self.token_begin, self.cursor)
+    }
+
+    pub fn parse_span(&self) -> Span {
+        Span::enclosing(self.parse_begin, self.cursor)
+    }
+
     pub fn cursor_pos(&self) -> Pos {
         self.cursor
     }
 
-    /// Consumes the text from the `parse_start` of the current parse past any
-    /// filtered tokens after the current position. This ends the 'current
-    /// parse' and prevents further spans from including any previously lexed
-    /// text.
-    pub fn end_current_parse(&mut self) {
-        self.scan_to_buffer();
-        self.token_start = self.cursor;
-        self.parse_start = self.cursor;
-        self.end = self.cursor;
+    pub fn peek_token_span(&self) -> Option<Span> {
+        self.buffer
+            .as_ref()
+            .and_then(|buf| if buf.peek_begin == buf.peek_cursor {
+                None
+            } else {
+                Some(Span::enclosing(buf.peek_begin, buf.peek_cursor))
+            })
     }
 
-    /// Creates a sublexer starting at the current lex position. The returned
-    /// lexer will begin a new parse and advance past any filtered tokens.
-    #[must_use]
-    pub fn into_sublexer(mut self) -> Self {
-        self.end_current_parse();
-        self
+    pub fn peek_parse_span(&self) -> Option<Span> {
+        self.buffer
+            .as_ref()
+            .map(|buf| if buf.peek_begin == self.cursor {
+                Span::enclosing(self.parse_begin, buf.peek_cursor)
+            } else {
+                Span::enclosing(self.parse_begin, self.cursor)
+            })
     }
 
-    /// Sets the token filter to the given function. Any token for which the
-    /// filter returns `false` will be automatically skipped.
-    pub fn set_filter_fn<F>(&mut self, filter: F) 
-        where F: for<'a> Fn(&'a Sc::Token) -> bool + 'static
-    {
-        self.set_filter(Some(Rc::new(filter)));
+    pub fn peek_cursor_pos(&self) -> Option<Pos> {
+        self.buffer
+            .as_ref()
+            .map(|buf| buf.peek_cursor)
     }
 
-    /// Returns the token filter, removing it from the lexer.
-    #[allow(clippy::type_complexity)]
-    pub fn take_filter(&mut self) -> Option<Rc<dyn Fn(&Sc::Token) -> bool>>
-    {
-        self.cursor = self.end;
-        self.buffer = None;
-        self.filter.take()
-    }
+    // Peeking
+    ////////////////////////////////////////////////////////////////////////////
+    fn buffer_next(&mut self) {
+        if self.buffer.is_some() { return; }
 
-    /// Sets the token filter directly.
-    #[allow(clippy::type_complexity)]
-    pub fn set_filter(
-        &mut self,
-        filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>)
-    {
-        self.filter = filter;
-        self.scan_to_buffer();
-    }
-
-    /// Scans to the next unfiltered token and buffers it. This method is
-    /// idempotent.
-    fn scan_to_buffer(&mut self) {
-        let mut scanner = self.scanner.clone();
-        while self.cursor.byte < self.source_text.len() {
-            match scanner.scan(self.source_text(), self.cursor) {
-                Some((token, adv)) if self.filter
-                    .as_ref()
-                    .map_or(false, |f| !(f)(&token)) => 
-                {
-                    // Parsed a filtered token. If we have not yet started a
-                    // parse, we advance the parse_start and the cursor.
-                    if self.cursor == self.parse_start {
-                        self.parse_start = adv;
-                    }
-                    self.cursor = adv;
-                },
-
-                Some((token, adv)) => {
-
-                    // Parsed a non-filtered token.
-                    self.buffer = Some((token, adv, scanner));
-                    break;
-                },
-
-                None => {
-                    self.buffer = None; 
-                    break;
-                },
+        let mut peek_scanner = self.scanner.clone();
+        let mut peek_cursor = self.cursor;
+        while let Some((tok, adv)) = peek_scanner
+            .scan(self.source_text, peek_cursor)
+        {
+            if self.filter.as_ref().map_or(false, |f| !(f)(&tok)) {
+                // Found a filtered token.
+                peek_cursor = adv;
+            } else {
+                // Found a non-filtered token.
+                self.buffer = Some(ScannerBuffer {
+                    peek_scanner,
+                    peek_begin: peek_cursor,
+                    peek_cursor: adv,
+                    token: tok,
+                });
+                break;
             }
         }
     }
 
-    /// Returns the next token that would be returned by the `next` method
-    /// without advancing the lexer position, assuming the lexer state is
-    /// unchanged by the time `next` is called.
     pub fn peek(&mut self) -> Option<Sc::Token> {
-        if let Some((tok, _, _)) = self.buffer.as_ref() {
-            Some(tok.clone())
-        } else {
-            // TODO: Make this more efficient.
-            self.clone().next()
-        }
+        self.buffer_next();
+        self.buffer
+            .as_ref()
+            .map(|buf| buf.token.clone())
     }
 
-    /// Returns the next token if it satisfies the predicate `pred`.
     pub fn next_if<P>(&mut self, pred: P) -> Option<Sc::Token>
         where P: FnOnce(&Sc::Token) -> bool
     {
@@ -265,124 +265,49 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
     }
 
-    /// Returns the next token if it is equal to `expected`.
-    pub fn next_if_eq(&mut self, expected: Sc::Token) -> Option<Sc::Token>
-    {
-        if self.peek() == Some(expected) { self.next() } else { None }
+    pub fn next_if_eq(&mut self, expected: &Sc::Token) -> Option<Sc::Token> {
+        if self.peek().as_ref() == Some(expected) { self.next() } else { None }
     }
 
-    /// Retrieves the `next` token from the buffer if any token is buffered.
-    fn next_buffered(&mut self) -> Option<Sc::Token> {
+    // Advancing
+    ////////////////////////////////////////////////////////////////////////////
+    fn next_nonfiltered(&mut self) -> Option<Sc::Token> {
+        if let Some(buf) = self.buffer.take() {
+            self.scanner = buf.peek_scanner;
+            self.token_begin = buf.peek_begin;
+            if self.parse_begin == self.cursor {
+                self.parse_begin = buf.peek_begin;
+            }
+            self.cursor = buf.peek_cursor;
+            return Some(buf.token);
+        }
 
-        match self.buffer.take() {
-            None => None,
-            Some((token, adv, scanner)) => {
-                self.token_start = self.cursor;
-                self.end = adv;
+        let behind = self.parse_begin == self.cursor;
+        while let Some((tok, adv)) = self.scanner
+            .scan(self.source_text, self.cursor)
+        {
+            if self.filter.as_ref().map_or(false, |f| !(f)(&tok)) {
+                // Found a filtered token.
                 self.cursor = adv;
-                self.scanner = scanner;
-                self.scan_to_buffer();
-
-                Some(token)
-            },
+            } else {
+                // Found a non-filtered token.
+                if behind {
+                    self.parse_begin = self.token_begin;
+                }
+                self.token_begin = self.cursor;
+                self.cursor = adv;
+                return Some(tok);
+            }
         }
+        None
     }
 
-    /// Extends the receiver lexer to include the current parse span of the
-    /// `other` lexer. (The `other` lexer's `Scanner` state will be discarded.)
-    #[must_use]
-    pub fn join(mut self, other: Self) -> Self {
-        if self.end < other.end {
-            self.end = other.end;
-            self.token_start = other.token_start;
-        }
-
-        if self.cursor < other.cursor {
-            self.cursor = other.cursor;
-        }
-
-        self.scanner = other.scanner;
-        self.buffer = other.buffer;
-        self
-    }
-    
-    /// Returns the span (excluding filtered text) of the `token_start` lexed
-    /// token.
-    pub fn token_span(&self) -> Span {
-        Span::new_enclosing(self.token_start, self.end)
-    }
-
-    /// Returns the span (excludinf filtered text) of the next available token.
-    pub fn peek_token_span(&self) -> Option<Span> {
-        if let Some((_, pos, _)) = self.buffer.as_ref() {
-            Some(Span::new_enclosing(self.end, *pos))
-        } else {
-            self.clone()
-                .iter_with_spans()
-                .peekable()
-                .peek()
-                .map(|(_tok, span)| *span)
-        }
-    }
-
-    /// Returns the span (excluding filtered text) from the start of the parse
-    /// to the current position.
-    pub fn parse_span(&self) -> Span {
-        Span::new_enclosing(self.parse_start, self.end)
-    }
-
-    /// Returns the span (including filtered text) from the start of the parse
-    /// to the current position.
-    pub fn parse_span_unfiltered(&self) -> Span {
-        Span::new_enclosing(self.parse_start, self.cursor)
-    }
-
-    /// Returns the span at the start of the current parse.
-    pub fn start_span(&self) -> Span {
-        Span::new_at(self.parse_start)
-    }
-
-    /// Returns the span at the end of the lexed text (the end of the current
-    /// parse.)
-    pub fn end_span(&self) -> Span {
-        Span::new_at(self.end)
-    }
-
-    /// Returns the span at the lexer cursor.
-    pub fn cursor_span(&self) -> Span {
-        Span::new_at(self.cursor)
-    }
-
-    /// Returns an iterator over the lexer tokens together with their spans.
-    pub fn iter_with_spans<'l>(&'l mut self)
-        -> IterWithSpans<'text, 'l, Sc>
-        where Sc: Scanner
-    {
-        IterWithSpans { lexer: self }
-    }
-
-    /// Returns the recover state used to indicate a token to advance to when a
-    /// recoverable parse error occurs.
-    pub fn recover_state(&self) -> Option<&Recover<Sc::Token>> {
-        self.recover.as_ref()
-    }
-
-    /// Sets the recover state used to indicate a token to advance to when a
-    /// recoverable parse error occurs.
-    pub fn set_recover_state(&mut self, recover: Option<Recover<Sc::Token>>) {
-        self.recover = recover;
-    }
-
-    /// Advances to the next token indicated by the current recover state.
-    ///
-    /// Returns the span of the skipped text, or an `UnexpectedTokenError` if the
-    /// end-of-text is reached during recovery.
     pub fn advance_to_recover(&mut self) -> Result<Span, RecoverError> {
         if self.recover.is_none() {
-            return Ok(self.cursor_span());
+            return Ok(Span::at(self.cursor));
         }
 
-        let start_pos = self.cursor_pos();
+        let start_pos = self.cursor;
         let rec = self.recover
             .clone()
             .unwrap();
@@ -402,23 +327,16 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
 
         if token_found {
-            Ok(Span::new_enclosing(start_pos, self.cursor_pos()))
+            Ok(Span::enclosing(start_pos, self.cursor))
         } else {
             Err(RecoverError)
         }
     }
 
-
-    /// Advances the lexer state up to the next token satisfying the given
-    /// predicate. 
-    ///
-    /// Returns `true` if one of the given tokens was found, and `false` if the
-    /// end of text was reached.
     pub fn advance_up_to<P>(&mut self, pred: P) -> bool
         where P: Fn(&Sc::Token) -> bool
     {
         while let Some(tok) = self.peek() {
-
             if pred(&tok) { return true; }
             let _ = self.next();
         }
@@ -439,32 +357,75 @@ impl<'text, Sc> Lexer<'text, Sc>
         false
     }
 
-    /// Advances the lexer state up to the next token satisfying the given
-    /// predicate, with token filtering disabled.
-    ///
-    /// Returns `true` if one of the given tokens was found, and `false` if the
-    /// end of text was reached.
-    pub fn advance_up_to_unfiltered<P>(&mut self, pred: P) -> bool
-        where P: Fn(&Sc::Token) -> bool
-    {
-        let filter = self.take_filter();
-        let res = self.advance_up_to(pred);
-        self.set_filter(filter);
-        res
-    }
+    // Miscellaneous
+    ////////////////////////////////////////////////////////////////////////////
 
-    /// Advances the lexer state to after the next token satisfying the given
-    /// predicate, with token filtering disabled.
-    ///
-    /// Returns `true` if one of the given tokens was found, and `false` if the
-    /// end of text was reached.
-    pub fn advance_to_unfiltered<P>(&mut self, pred: P) -> bool
-        where P: Fn(&Sc::Token) -> bool
+    /// Returns an iterator over the lexer tokens together with their spans.
+    pub fn iter_with_spans(&mut self) -> IterWithSpans<'text, '_, Sc>
+        where Sc: Scanner
     {
-        let filter = self.take_filter();
-        let res = self.advance_to(pred);
-        self.set_filter(filter);
-        res
+        IterWithSpans { lexer: self }
+    }
+}
+
+#[cfg(test)]
+impl<'text, Sc> PartialEq for Lexer<'text, Sc>
+    where Sc: Scanner,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.scanner == other.scanner &&
+        self.filter.is_some() == other.filter.is_some() &&
+        self.recover.is_some() == other.recover.is_some() &&
+        self.token_begin == other.token_begin &&
+        self.parse_begin == other.parse_begin &&
+        self.cursor == other.cursor &&
+        self.buffer == other.buffer &&
+        self.source_text == other.source_text
+    }
+}
+
+impl<'text, Sc> Debug for Lexer<'text, Sc>
+    where Sc: Scanner,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Lexer")
+            .field("parse_begin", &self.parse_begin)
+            .field("token_begin", &self.token_begin)
+            .field("cursor", &self.cursor)
+            .field("buffer", &self.buffer)
+            .field("scanner", &self.scanner)
+            .field("filter", &self.filter.is_some())
+            .field("recover", &self.recover.is_some())
+            .field("source_text", &self.source_text)
+            .finish()
+    }
+}
+
+impl<'text, Sc> Display for Lexer<'text, Sc>
+    where Sc: Scanner,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut spans = SpanDisplay::new(
+                self.source_text,
+                Span::enclosing(self.parse_begin, self.cursor))
+            .with_highlight(Highlight::new(self.token_span(),
+                format!("token ({})", self.token_span())))
+            .with_highlight(Highlight::new(self.parse_span(),
+                format!("parse ({})", self.parse_span())))
+            .with_highlight(Highlight::new(Span::at(self.cursor),
+                format!("cursor ({}), scanner: {:?}",
+                    Span::at(self.cursor),
+                    self.scanner)));
+        if let Some(span) = self.peek_token_span() {
+            spans = spans.with_highlight(Highlight::new(span,
+                format!("peek ({})", span)));
+        }
+        let source_display = CodeDisplay::new("Lexer")
+            .with_color(true)
+            .with_note_type()
+            .with_span_display(spans);
+
+        source_display.write(f, self.source_text)
     }
 }
 
@@ -474,99 +435,11 @@ impl<'text, Sc> Iterator for Lexer<'text, Sc>
     type Item = Sc::Token;
     
     fn next(&mut self) -> Option<Self::Item> {
-        while self.cursor.byte < self.source_text.len() {
-            if self.buffer.is_some() {
-                return self.next_buffered();
-            }
-
-            match self.scanner.scan(self.source_text, self.cursor) {
-                Some((token, adv)) if self.filter
-                    .as_ref()
-                    .map_or(false, |f| !(f)(&token)) => 
-                {
-                    // Parsed a filtered token.
-                    self.cursor = adv;
-                    self.token_start = adv;
-                },
-
-                Some((token, adv)) => {
-                    // Parsed a non-filtered token.
-                    self.token_start = self.cursor;
-                    self.end = adv;
-                    self.cursor = adv;
-
-                    if self.filter.is_some() {
-                        self.scan_to_buffer();
-                    }
-                    return Some(token);
-                },
-
-                None => {
-                    self.token_start = self.cursor;
-                    return None;
-                },
-            }
-        }
-        None
-    }
-}
-
-impl<'text, Sc> Debug for Lexer<'text, Sc>
-    where Sc: Scanner,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Lexer")
-            .field("source_text", &self.source_text)
-            .field("scanner", &self.scanner)
-            .field("filter_set", &self.filter.is_some())
-            .field("token_start", &self.token_start)
-            .field("parse_start", &self.parse_start)
-            .field("end", &self.end)
-            .field("cursor", &self.cursor)
-            .field("recover", &self.recover.is_some())
-            .field("buffer", &self.buffer)
-            .finish()
+        self.next_nonfiltered()
     }
 }
 
 
-impl<'text, Sc> PartialEq for Lexer<'text, Sc>
-    where Sc: Scanner,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.source_text == other.source_text &&
-        self.scanner == other.scanner &&
-        self.filter.is_some() == other.filter.is_some() &&
-        self.token_start == other.token_start &&
-        self.parse_start == other.parse_start &&
-        self.end == other.end && 
-        self.cursor == other.cursor &&
-        self.buffer == other.buffer &&
-        self.recover.is_some() == other.recover.is_some()
-    }
-}
-
-impl<'text, Sc> Display for Lexer<'text, Sc>
-    where Sc: Scanner,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let source_display = CodeDisplay::new("lexer state")
-            .with_color(true)
-            .with_note_type()
-            .with_span_display(SpanDisplay::new(
-                    self.source_text,
-                    self.parse_span_unfiltered())
-                .with_highlight(Highlight::new(self.token_span(),
-                    format!("token ({})", self.token_span())))
-                .with_highlight(Highlight::new(self.parse_span(),
-                    format!("parse ({})", self.parse_span())))
-                .with_highlight(Highlight::new(self.cursor_span(),
-                    format!("cursor ({})", self.cursor_span()))));
-
-        writeln!(f, "Scanner: {:?}", self.scanner)?;
-        source_display.write(f, self.source_text)
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // IterWithSpans

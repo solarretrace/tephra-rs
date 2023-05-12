@@ -62,7 +62,7 @@ fn source_text_basic_full_span() {
 fn span_basic_widen_to_line() {
     const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
-    let span = Span::new_enclosing(
+    let span = Span::enclosing(
             Pos::new(4, 1, 2),
             Pos::new(8, 1, 6))
         .widen_to_line(source);
@@ -83,7 +83,7 @@ fn span_basic_widen_to_line() {
 fn span_basic_empty_widen_to_line() {
     const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
-    let span = Span::new_at(Pos::new(6, 1, 4))
+    let span = Span::at(Pos::new(6, 1, 4))
         .widen_to_line(source);
 
     // Check text clip.
@@ -102,7 +102,7 @@ fn span_basic_empty_widen_to_line() {
 fn span_basic_line_widen_to_line() {
     const TEXT: &str = " \n  abcd  \n ";
     let source = SourceText::new(TEXT);
-    let span = Span::new_enclosing(
+    let span = Span::enclosing(
             Pos::new(2, 1, 0),
             Pos::new(10, 1, 8))
         .widen_to_line(source);
@@ -189,10 +189,10 @@ fn span_basic_enclose() {
     const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
 
-    let a = Span::new_enclosing(
+    let a = Span::enclosing(
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
-    let b = Span::new_enclosing(
+    let b = Span::enclosing(
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3));
     let span = a.enclose(b);
@@ -214,10 +214,10 @@ fn span_basic_union() {
     const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
 
-    let a = Span::new_enclosing(
+    let a = Span::enclosing(
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
-    let b = Span::new_enclosing(
+    let b = Span::enclosing(
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3));
     let span = a.union(b).next().unwrap();
@@ -239,10 +239,10 @@ fn span_basic_intersect() {
     const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
 
-    let a = Span::new_enclosing(
+    let a = Span::enclosing(
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
-    let b = Span::new_enclosing(
+    let b = Span::enclosing(
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3));
     let span = a.intersect(b).unwrap();
@@ -264,10 +264,10 @@ fn span_basic_minus() {
     const TEXT: &str = "\n \n\n \nabcd\n def \nghi\n";
     let source = SourceText::new(TEXT);
 
-    let a = Span::new_enclosing(
+    let a = Span::enclosing(
         Pos::new(3, 2, 0),
         Pos::new(10, 4, 4));
-    let b = Span::new_enclosing(
+    let b = Span::enclosing(
         Pos::new(5, 3, 1),
         Pos::new(20, 6, 3));
     let span = a.minus(b).next().unwrap();

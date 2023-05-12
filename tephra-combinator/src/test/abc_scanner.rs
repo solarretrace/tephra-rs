@@ -228,8 +228,8 @@ pub(in crate::test) fn pattern<'text>(
 
     // Setup error context.
     let ctx = ctx.pushed(std::rc::Rc::new(move |e| {
-        let parse_span = e.parse_span();
-        let e = e.into_owned();
+        let parse_span = e.error_span();
+        let e = e.into_error();
         // Collect the token span so that we can include it in the final span.
         // Non-pattern tokens are excluded.
         let token_span = e
@@ -339,7 +339,7 @@ impl std::fmt::Display for ParsePatternError {
 impl std::error::Error for ParsePatternError {}
 
 impl ParseError for ParsePatternError {
-    fn parse_span(&self) -> Option<Span> {
+    fn error_span(&self) -> Option<Span> {
         self.parse_span
     }
 
@@ -351,7 +351,7 @@ impl ParseError for ParsePatternError {
         Self::into_source_error(*self, source_text)
     }
 
-    fn into_owned(self: Box<Self> )
+    fn into_error(self: Box<Self>)
         -> Box<dyn std::error::Error + Send + Sync + 'static>
     {
         self
@@ -383,8 +383,8 @@ fn build_test_lexer(text: &'static str) -> (
     SourceText<&'static str>)
 {
     let source = SourceText::new(text);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let lexer = Lexer::new(Abc::new(), source)
+        .with_filter(Some(Rc::new(|tok| *tok != AbcToken::Ws)));
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx_errors = errors.clone();
     let ctx = Context::new(Some(Box::new(move |e| 
@@ -404,7 +404,7 @@ fn build_test_lexer(text: &'static str) -> (
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_scanner::abc_tokens -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn abc_tokens() {
     let _trace_guard = setup_test_environment();
     let _trace_span = span!(Level::DEBUG, "abc_tokens")
@@ -434,7 +434,7 @@ fn abc_tokens() {
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_scanner::abc_pattern -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn abc_pattern() {
     let _trace_guard = setup_test_environment();
     let _trace_span = span!(Level::DEBUG, "abc_pattern")
@@ -461,7 +461,7 @@ fn abc_pattern() {
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_scanner::bxx_pattern -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn bxx_pattern() {
     let _trace_guard = setup_test_environment();
     let _trace_span = span!(Level::DEBUG, "bxx_pattern")
@@ -488,7 +488,7 @@ fn bxx_pattern() {
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_scanner::xyc_pattern -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn xyc_pattern() {
     let _trace_guard = setup_test_environment();
     let _trace_span = span!(Level::DEBUG, "xyc_pattern")
@@ -516,7 +516,7 @@ fn xyc_pattern() {
 // To collect trace output:
 // RUST_LOG=TRACE cargo test --all-features test::abc_scanner::initial_newline_ws_skip -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn initial_newline_ws_skip() {
     let _trace_guard = setup_test_environment();
     let _trace_span = span!(Level::DEBUG, "initial_newline_ws_skip")

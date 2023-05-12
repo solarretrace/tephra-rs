@@ -34,7 +34,7 @@ impl ParseError for ParseIntError {
         SourceErrorRef::new(source_text, format!("{self}"))
     }
 
-    fn into_owned(self: Box<Self>)
+    fn into_error(self: Box<Self>)
         -> Box<dyn std::error::Error + Send + Sync + 'static>
     {
         self
@@ -55,7 +55,7 @@ impl ParseError for ParseFloatError {
         SourceErrorRef::new(source_text, format!("{self}"))
     }
 
-    fn into_owned(self: Box<Self>)
+    fn into_error(self: Box<Self>)
         -> Box<dyn std::error::Error + Send + Sync + 'static>
     {
         self

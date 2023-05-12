@@ -35,7 +35,7 @@ use std::iter::IntoIterator;
 #[derive(Debug, Clone)]
 pub struct UnrecognizedTokenError {
     /// The span of the parse up to the start of the unrecognized token.
-    pub parse_span: Span,
+    pub error_span: Span,
 }
 
 impl UnrecognizedTokenError {
@@ -48,7 +48,7 @@ impl UnrecognizedTokenError {
         SourceError::new(source_text, "unrecognized token")
             .with_span_display(SpanDisplay::new(
                 source_text,
-                Span::new_at(self.parse_span.end())))
+                Span::at(self.error_span.end())))
             .with_cause(Box::new(self))
     }
 }
@@ -56,15 +56,15 @@ impl UnrecognizedTokenError {
 impl Display for UnrecognizedTokenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "unrecognized token {}",
-            self.parse_span.end())
+            self.error_span.end())
     }
 }
 
 impl Error for UnrecognizedTokenError {}
 
 impl ParseError for UnrecognizedTokenError {
-    fn parse_span(&self) -> Option<Span> {
-        Some(self.parse_span)
+    fn error_span(&self) -> Option<Span> {
+        Some(self.error_span)
     }
     
     fn into_source_error(
@@ -75,7 +75,7 @@ impl ParseError for UnrecognizedTokenError {
         Self::into_source_error(*self, source_text)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
+    fn into_error(self: Box<Self>) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }
@@ -189,7 +189,7 @@ pub struct UnexpectedTokenError<T>
     where T: Debug + Display + Send + Sync + 'static
 {
     /// The span of the parse up to the start of the unexpected token.
-    pub parse_span: Span,
+    pub error_span: Span,
     /// The span of the found token.
     pub token_span: Span,
     /// The expected tokens.
@@ -238,8 +238,8 @@ impl<T> Error for UnexpectedTokenError<T>
 impl<T> ParseError for UnexpectedTokenError<T>
     where T: Debug + Display + Send + Sync + 'static
 {
-    fn parse_span(&self) -> Option<Span> {
-        Some(self.parse_span)
+    fn error_span(&self) -> Option<Span> {
+        Some(self.error_span)
     }
     
     fn into_source_error(
@@ -250,7 +250,7 @@ impl<T> ParseError for UnexpectedTokenError<T>
         Self::into_source_error(*self, source_text)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
+    fn into_error(self: Box<Self>) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }
@@ -273,7 +273,7 @@ impl Display for RecoverError {
 impl Error for RecoverError {}
 
 impl ParseError for RecoverError {
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
+    fn into_error(self: Box<Self>) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }

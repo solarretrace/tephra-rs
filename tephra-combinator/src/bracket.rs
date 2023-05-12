@@ -20,6 +20,7 @@ use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
 use tephra::Success;
+use tephra::Span;
 use tephra_tracing::event;
 use tephra_tracing::Level;
 use tephra_tracing::span;
@@ -231,7 +232,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
     use MatchBracketError::*;
     let _trace_span = span!(Level::TRACE, "match_nested_*").entered();
 
-    let start_span = lexer.start_span();
+    let start_span = Span::at(lexer.parse_span().start());
     let mut open_lexer: Option<Lexer<'_, Sc>> = None;
     // Detected open tokens as (index, count) pairs.
     let mut opened: SmallVec<[(usize, usize); DEFAULT_TOKEN_VEC_SIZE]>

@@ -33,9 +33,9 @@ use tephra_span::Span;
 pub trait ParseError: std::error::Error + Send + Sync 
     + AsError<dyn std::error::Error + Send + Sync>
 {
-    /// Returns the span of the current parse when the failure occurred, if
+    /// Returns the span of the current parse up to the start of the error, if
     /// available.
-    fn parse_span(&self) -> Option<Span> { None }
+    fn error_span(&self) -> Option<Span> { None }
 
     /// Returns `true` if the error type is recoverable.
     fn is_recoverable(&self) -> bool { true }
@@ -48,11 +48,11 @@ pub trait ParseError: std::error::Error + Send + Sync
         -> SourceErrorRef<'_>
     {
         SourceError::new(source_text, format!("{self}"))
-            .with_cause(self.into_owned())
+            .with_cause(self.into_error())
     }
 
     /// Converts a `ParseError` into an owned error.
-    fn into_owned(self: Box<Self>)
+    fn into_error(self: Box<Self>)
         -> Box<dyn std::error::Error + Send + Sync + 'static>;
 }
 
@@ -60,7 +60,7 @@ pub trait ParseError: std::error::Error + Send + Sync
 impl<E> ParseError for Box<E>
     where E: std::error::Error + Send + Sync + 'static
 {
-    fn into_owned(self: Box<Self>)
+    fn into_error(self: Box<Self>)
         -> Box<dyn std::error::Error + Send + Sync + 'static>
     {
         self

@@ -44,7 +44,7 @@ impl Span {
 
     /// Constructs a new empty span starting from the given byte and page.
     #[must_use]
-    pub fn new_at(pos: Pos) -> Self {
+    pub fn at(pos: Pos) -> Self {
         let byte = ByteSpan { start: pos.byte, end: pos.byte };
         let page = PageSpan { start: pos.page, end: pos.page };
 
@@ -53,7 +53,7 @@ impl Span {
 
     /// Constructs a new span covering given start and end positions.
     #[must_use]
-    pub fn new_enclosing(mut a: Pos, mut b: Pos) -> Self {
+    pub fn enclosing(mut a: Pos, mut b: Pos) -> Self {
         if a.byte > b.byte { std::mem::swap(&mut a, &mut b); }
         let byte = ByteSpan { start: a.byte, end: b.byte };
         let page = PageSpan { start: a.page, end: b.page };
@@ -123,7 +123,7 @@ impl Span {
             return *self;
         }
 
-        Self::new_enclosing(
+        Self::enclosing(
             source.line_start_position(self.start()),
             source.line_end_position(self.end()))
     }
@@ -162,7 +162,7 @@ impl Span {
         let b_end = other.end();
         let start = if a_start < b_start { a_start } else { b_start };
         let end = if a_end > b_end { a_end } else { b_end };
-        Self::new_enclosing(start, end)
+        Self::enclosing(start, end)
     }
 
     /// Returns the smallest set of spans covering the given spans.
@@ -204,7 +204,7 @@ impl Span {
             (false, false) => return None,
         };
 
-        Some(Self::new_enclosing(start, end))
+        Some(Self::enclosing(start, end))
     }
 
     /// Returns the result of removing a portion of the span.
@@ -228,8 +228,8 @@ impl Span {
             _            => (None,             None),
         };
 
-        let l = l.map(|(a, b)| Self::new_enclosing(a, b));
-        let r = r.map(|(a, b)| Self::new_enclosing(a, b));
+        let l = l.map(|(a, b)| Self::enclosing(a, b));
+        let r = r.map(|(a, b)| Self::enclosing(a, b));
         Few::from((l, r))
     }
 
@@ -356,7 +356,7 @@ impl<'text> Iterator for SplitLines<'text> {
 
             Ordering::Equal => {
                 // Last line; no need to advance the start position.
-                let res = Some(Span::new_enclosing(
+                let res = Some(Span::enclosing(
                     self.start,
                     self.end));
 
@@ -368,7 +368,7 @@ impl<'text> Iterator for SplitLines<'text> {
                 let end = self.source
                     .line_end_position(self.start);
 
-                let res = Some(Span::new_enclosing(
+                let res = Some(Span::enclosing(
                     self.start,
                     end));
 

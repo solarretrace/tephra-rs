@@ -36,7 +36,7 @@ use std::fmt::Display;
 #[derive(Debug, Clone, Copy)]
 pub struct ParseBoundaryError {
     /// The span of the parse up to the expected parse boundary.
-    pub parse_span: Span,
+    pub error_span: Span,
     /// The expected end position of the parse.
     pub expected_end_pos: Pos,
 }
@@ -45,16 +45,16 @@ impl ParseBoundaryError {
     /// Returns the full span of the parsed and unexpected text.
     #[must_use]
     pub fn full_span(&self) -> Span {
-        Span::new_enclosing(
-            self.parse_span.start(),
+        Span::enclosing(
+            self.error_span.start(),
             self.expected_end_pos)
     }
 
     /// Returns the span of the unexpected text.
     #[must_use]
     pub fn unparsed_span(&self) -> Span {
-        Span::new_enclosing(
-            self.parse_span.end(),
+        Span::enclosing(
+            self.error_span.end(),
             self.expected_end_pos)
     }
 
@@ -86,8 +86,8 @@ impl Display for ParseBoundaryError {
 impl Error for ParseBoundaryError {}
 
 impl ParseError for ParseBoundaryError {
-    fn parse_span(&self) -> Option<Span> {
-        Some(self.parse_span)
+    fn error_span(&self) -> Option<Span> {
+        Some(self.error_span)
     }
 
     fn into_source_error(
@@ -98,7 +98,7 @@ impl ParseError for ParseBoundaryError {
         Self::into_source_error(*self, source_text)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
+    fn into_error(self: Box<Self>) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }
@@ -211,7 +211,7 @@ impl Display for MatchBracketError {
 impl Error for MatchBracketError {}
 
 impl ParseError for MatchBracketError {
-    fn parse_span(&self) -> Option<Span> {
+    fn error_span(&self) -> Option<Span> {
         Some(self.full_span())
     }
 
@@ -223,7 +223,7 @@ impl ParseError for MatchBracketError {
         Self::into_source_error(*self, source_text)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
+    fn into_error(self: Box<Self>) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }
@@ -236,7 +236,7 @@ impl ParseError for MatchBracketError {
 #[derive(Debug, Clone, Copy)]
 pub struct RepeatCountError {
     /// The span of the parse up to the start of the invalid count.
-    pub parse_span: Span,
+    pub error_span: Span,
     /// The number of parsed items found.
     pub found: usize,
     /// The minimum expected number of parsed items.
@@ -278,9 +278,9 @@ impl RepeatCountError {
         SourceError::new(source_text, "invalid item count")
             .with_span_display(SpanDisplay::new(
                     source_text,
-                    self.parse_span)
+                    self.error_span)
                 .with_highlight(Highlight::new(
-                        self.parse_span,
+                        self.error_span,
                         self.expected_description())
                     .with_error_type()))
             .with_cause(Box::new(self))
@@ -297,8 +297,8 @@ impl Display for RepeatCountError {
 impl Error for RepeatCountError {}
 
 impl ParseError for RepeatCountError {
-    fn parse_span(&self) -> Option<Span> {
-        Some(self.parse_span)
+    fn error_span(&self) -> Option<Span> {
+        Some(self.error_span)
     }
 
     fn into_source_error(
@@ -309,7 +309,7 @@ impl ParseError for RepeatCountError {
         Self::into_source_error(*self, source_text)
     }
 
-    fn into_owned(self: Box<Self> ) -> Box<dyn Error + Send + Sync + 'static> {
+    fn into_error(self: Box<Self>) -> Box<dyn Error + Send + Sync + 'static> {
         self
     }
 }

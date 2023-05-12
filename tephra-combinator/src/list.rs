@@ -59,18 +59,18 @@ pub fn up_to<'text: 'a, 'a, Sc, F, X: 'a, A>(
         A: Fn(&Sc::Token) -> bool + 'a + Clone,
 {
     move |lexer, ctx| { 
-        let mut succ = (parser)(lexer, ctx)?;
+        let mut succ = parser(lexer, ctx)?;
 
         match succ.lexer.peek() {
             None                            => Ok(succ),
             Some(tok) if (abort_pred)(&tok) => Ok(succ),
             _ => {
-                let parse_span = succ.lexer.parse_span();
+                let error_span = succ.lexer.parse_span();
                 // Advance lexer to the expected token.
                 let _ = succ.lexer.advance_to(&abort_pred);
 
                 Err(Box::new(ParseBoundaryError {
-                    parse_span,
+                    error_span,
                     expected_end_pos: succ.lexer.cursor_pos(),
                 }))
             },
@@ -114,7 +114,7 @@ pub fn list_bounded<'text: 'a, 'a, Sc, F, X: 'a, A>(
             -> ParseResult<'text, Sc, X> + 'a,
 {
     let option_parser = move |lexer, ctx| {
-        (parser)
+        parser
             (lexer, ctx)
             .map_value(Some)
     };
@@ -253,7 +253,7 @@ pub fn list_bounded_default<'text: 'a, 'a, Sc, F, X: 'a, A>(
 
         if vals.len() < low {
             let parse_error = Box::new(RepeatCountError {
-                parse_span: lexer.parse_span(),
+                error_span: lexer.parse_span(),
                 found: vals.len(),
                 expected_min: low,
                 expected_max: high,

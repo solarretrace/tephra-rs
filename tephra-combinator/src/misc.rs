@@ -15,6 +15,7 @@ use tephra::Lexer;
 use tephra::ParseResult;
 use tephra::ParseResultExt as _;
 use tephra::Scanner;
+use tephra::Span;
 use tephra::Spanned;
 use tephra::Success;
 use tephra_tracing::Level;
@@ -77,13 +78,17 @@ pub fn text<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, V>,
 {
-    move |lexer, ctx| {
-        let start = lexer.cursor_pos().byte;
+    move |mut lexer, ctx| {
+        let _ = lexer.peek();
+        let start = lexer.peek_token_span()
+            .unwrap_or(Span::at(lexer.token_span().end()))
+            .start().byte;
+
         match (parser)
             (lexer, ctx)
         {
             Ok(succ) => {
-                let end = succ.lexer.end_pos().byte;
+                let end = succ.lexer.parse_span().end().byte;
                 let value = &succ.lexer.source_text().text()[start..end];
 
                 Ok(Success {
@@ -137,17 +142,23 @@ pub fn spanned<'text, Sc, F, V>(mut parser: F)
         F: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, V>,
 {
-    move |lexer, ctx| {
+    move |mut lexer, ctx| {
+        let _ = lexer.peek();
+        let start = lexer.peek_token_span()
+            .unwrap_or(Span::at(lexer.token_span().end()))
+            .start();
+        
         match (parser)
-            (lexer.clone().into_sublexer(), ctx)
+            (lexer, ctx)
         {
             Ok(succ) => {
+                let end = succ.lexer.parse_span().end();
                 Ok(Success {
                     value: Spanned {
                         value: succ.value,
-                        span: succ.lexer.parse_span(),
+                        span: Span::enclosing(start, end),
                     },
-                    lexer: lexer.join(succ.lexer),
+                    lexer: succ.lexer,
                 })
             },
             Err(fail) => Err(fail),

@@ -75,7 +75,7 @@ pub fn one<'text, Sc>(token: Sc::Token)
 {
     move |mut lexer, _ctx| {
         let _trace_span = span!(Level::TRACE, "one").entered();
-        let parse_span = lexer.parse_span();
+        let error_span = lexer.parse_span();
 
         match lexer.next() {
             // Matching token.
@@ -92,7 +92,7 @@ pub fn one<'text, Sc>(token: Sc::Token)
             Some(lex) => {
                 event!(Level::TRACE, "UnexpectedTokenError ({:?})", lex);
                 Err(Box::new(UnexpectedTokenError {
-                    parse_span,
+                    error_span,
                     token_span: lexer.token_span(),
                     expected: Expected::Token(token.clone()),
                     found: Found::Token(lex),
@@ -103,8 +103,8 @@ pub fn one<'text, Sc>(token: Sc::Token)
             None => {
                 event!(Level::DEBUG, "UnexpectedTokenError (EndOfText)");
                 Err(Box::new(UnexpectedTokenError {
-                    parse_span,
-                    token_span: lexer.end_span(),
+                    error_span,
+                    token_span: lexer.token_span(),
                     expected: Expected::Token(token.clone()),
                     found: Found::EndOfText,
                 }))
@@ -131,7 +131,7 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
 
     move |mut lexer, _ctx| {
         let _trace_span = span!(Level::TRACE, "any").entered();
-        let parse_span = lexer.parse_span();
+        let error_span = lexer.parse_span();
 
         match lexer.peek() {
             Some(lex) => {
@@ -148,7 +148,7 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
 
                 event!(Level::TRACE, "UnexpectedTokenError ({:?})", lex);
                 Err(Box::new(UnexpectedTokenError {
-                    parse_span,
+                    error_span,
                     token_span: lexer.token_span(),
                     expected: Expected::any(tokens.iter().cloned()),
                     found: Found::Token(lex),
@@ -159,8 +159,8 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
             None => {
                 event!(Level::DEBUG, "UnexpectedTokenError (EndOfText)");
                 Err(Box::new(UnexpectedTokenError {
-                    parse_span,
-                    token_span: lexer.end_span(),
+                    error_span,
+                    token_span: lexer.token_span(),
                     expected: Expected::any(tokens.iter().cloned()),
                     found: Found::EndOfText,
                 }))
@@ -184,7 +184,7 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
 
     move |mut lexer, _ctx| {
         let _trace_span = span!(Level::TRACE, "any_index").entered();
-        let parse_span = lexer.parse_span();
+        let error_span = lexer.parse_span();
 
         match lexer.peek() {
             Some(lex) => {
@@ -201,7 +201,7 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
 
                 event!(Level::TRACE, "UnexpectedTokenError ({:?})", lex);
                 Err(Box::new(UnexpectedTokenError {
-                    parse_span,
+                    error_span,
                     token_span: lexer.token_span(),
                     expected: Expected::any(tokens.iter().cloned()),
                     found: Found::Token(lex),
@@ -212,8 +212,8 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
             None => {
                 event!(Level::DEBUG, "UnexpectedTokenError (EndOfText)");
                 Err(Box::new(UnexpectedTokenError {
-                    parse_span,
-                    token_span: lexer.end_span(),
+                    error_span,
+                    token_span: lexer.token_span(),
                     expected: Expected::any(tokens.iter().cloned()),
                     found: Found::EndOfText,
                 }))
@@ -276,7 +276,7 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
     let cap = tokens.len();
     move |mut lexer, _ctx| {
         let _trace_span = span!(Level::TRACE, "seq").entered();
-        let parse_span = lexer.parse_span();
+        let error_span = lexer.parse_span();
         let mut found = Vec::with_capacity(cap);
         
         for token in tokens {
@@ -291,7 +291,7 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 Some(lex) => {
                     event!(Level::TRACE, "UnexpectedTokenError ({:?})", lex);
                     return Err(Box::new(UnexpectedTokenError {
-                        parse_span,
+                        error_span,
                         token_span: lexer.token_span(),
                         expected: Expected::Token(token.clone()),
                         found: Found::Token(lex),
@@ -302,8 +302,8 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 None => {
                     event!(Level::DEBUG, "UnexpectedTokenError (EndOfText)");
                     return Err(Box::new(UnexpectedTokenError {
-                        parse_span,
-                        token_span: lexer.end_span(),
+                        error_span,
+                        token_span: lexer.token_span(),
                         expected: Expected::Token(token.clone()),
                         found: Found::EndOfText,
                     }));
@@ -333,7 +333,7 @@ pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
 {
     move |mut lexer, _ctx| {
         let _trace_span = span!(Level::TRACE, "seq_count").entered();
-        let parse_span = lexer.parse_span();
+        let error_span = lexer.parse_span();
         
         let mut count = 0;
         for token in tokens {
@@ -354,7 +354,7 @@ pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
                 None => {
                     event!(Level::ERROR, "UnrecognizedTokenError: {}", lexer);
                     return Err(Box::new(UnrecognizedTokenError {
-                        parse_span,
+                        error_span,
                     }))
                 },
             }
@@ -385,14 +385,14 @@ pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
 {
     let pred = DnfVec::from(expr.map(Token));
     move |mut lexer, _ctx| {
-        let parse_span = lexer.parse_span();
+        let error_span = lexer.parse_span();
 
         match lexer.next() {
             // Unexpected end-of-text.
             None => {
                 Err(Box::new(UnexpectedTokenError {
-                    parse_span,
-                    token_span: lexer.end_span(),
+                    error_span,
+                    token_span: lexer.token_span(),
                     expected: Expected::<Sc::Token>::Other(
                         format!("{pred:?}")),
                     found: Found::EndOfText,
@@ -411,7 +411,7 @@ pub fn pred<'text, Sc>(expr: Expr<Sc::Token>)
             // TODO: Better predicate formatting.
             Some(lex) => {
                 Err(Box::new(UnexpectedTokenError {
-                    parse_span,
+                    error_span,
                     token_span: lexer.token_span(),
                     expected: Expected::Other(format!("{pred:?}")),
                     found: Found::Token(lex),
@@ -448,7 +448,7 @@ pub fn end_of_text<'text, Sc>(
     -> ParseResult<'text, Sc, ()>
     where Sc: Scanner,
 {
-    let parse_span = lexer.parse_span();
+    let error_span = lexer.parse_span();
 
     if lexer.is_empty() {
         event!(Level::TRACE, "end_of_text: Success");
@@ -461,8 +461,8 @@ pub fn end_of_text<'text, Sc>(
 
         event!(Level::ERROR, "end_of_text: UnexpectedTokenError {}", lexer);
         Err(Box::new(UnexpectedTokenError {
-            parse_span,
-            token_span: lexer.end_span(),
+            error_span,
+            token_span: lexer.token_span(),
             expected: Expected::EndOfText,
             found: Found::Token(lex),
         }))

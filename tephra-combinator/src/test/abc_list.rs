@@ -12,7 +12,6 @@
 use crate::bracket_default_index;
 use crate::list;
 use crate::list_bounded;
-use crate::sub;
 use crate::test::abc_scanner::Abc;
 use crate::test::abc_scanner::AbcToken;
 use crate::test::abc_scanner::pattern;
@@ -67,8 +66,8 @@ fn build_test_lexer(text: &'static str) -> (
     SourceText<&'static str>)
 {
     let source = SourceText::new(text);
-    let mut lexer = Lexer::new(Abc::new(), source);
-    lexer.set_filter_fn(|tok| *tok != AbcToken::Ws);
+    let lexer = Lexer::new(Abc::new(), source)
+        .with_filter(Some(Rc::new(|tok| *tok != AbcToken::Ws)));
     let errors = Rc::new(RwLock::new(Vec::new()));
     let ctx_errors = errors.clone();
     let ctx = Context::new(Some(Box::new(move |e| 
@@ -134,11 +133,11 @@ fn list_one() {
     let expected = [
         Some(Pattern::Abc(Spanned {
             value: "abc",
-            span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+            span: Span::enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
         }))];
 
     assert_eq!(actual, expected);
-    assert_eq!(succ.lexer.cursor_pos(), Pos::new(5, 0, 5));
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(4, 0, 4));
 }
 
 /// Test successful `list_bounded` combinator.
@@ -170,7 +169,7 @@ fn bracket_list_one() {
     let expected = (vec![
         Some(Pattern::Abc(Spanned {
             value: "abc",
-            span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+            span: Span::enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
         }))],
         0);
 
@@ -203,15 +202,15 @@ fn list_two() {
     let expected = [
         Some(Pattern::Abc(Spanned {
             value: "abc",
-            span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+            span: Span::enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
         })), 
         Some(Pattern::Xyc(Spanned {
             value: "aac",
-            span: Span::new_enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
+            span: Span::enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
         }))];
 
     assert_eq!(actual, expected);
-    assert_eq!(succ.lexer.cursor_pos(), Pos::new(9, 0, 9));
+    assert_eq!(succ.lexer.cursor_pos(), Pos::new(8, 0, 8));
 }
 
 /// Test successful `list_bounded` combinator.
@@ -243,11 +242,11 @@ fn bracket_list_two() {
     let expected = (vec![
         Some(Pattern::Abc(Spanned {
             value: "abc",
-            span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+            span: Span::enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
         })),
         Some(Pattern::Xyc(Spanned {
             value: "aac",
-            span: Span::new_enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
+            span: Span::enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
         }))],
         0);
 
@@ -269,10 +268,10 @@ fn list_one_failed() {
     use AbcToken::*;
 
     let actual = unrecoverable(
-        sub(list_bounded(
+        list_bounded(
             1, None,
             pattern,
-            Comma, |_| false)))
+            Comma, |_| false))
         (lexer.clone(), ctx)
         .map_err(|e| e.into_source_error(source))
         .unwrap_err();
@@ -282,7 +281,7 @@ error: invalid item count
  --> (0:0-0:2, bytes 0-2)
   | 
 0 |   
-  |   \\ expected 1 item; found 0
+  | \\ expected 1 item; found 0
 ");
 }
 
@@ -393,7 +392,7 @@ error: invalid item count
  --> (0:0-0:9, bytes 0-9)
   | 
 0 | [       ]
-  |         \\ expected 1 item; found 0
+  |  \\ expected 1 item; found 0
 ");
 }
 
@@ -426,7 +425,7 @@ fn bracket_list_two_recovered_first() {
         None,
         Some(Pattern::Xyc(Spanned {
             value: "aac",
-            span: Span::new_enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
+            span: Span::enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
         }))],
         0);
 
@@ -439,7 +438,7 @@ error: expected pattern
  --> (0:0-0:9, bytes 0-9)
   | 
 0 | [   ,aac]
-  |     \\ expected 'ABC', 'BXX', or 'XYC' pattern
+  |  \\ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 
@@ -473,7 +472,7 @@ fn bracket_list_two_recovered_second() {
     let expected = (vec![
             Some(Pattern::Abc(Spanned {
                 value: "abc",
-                span: Span::new_enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
+                span: Span::enclosing(Pos::new(1, 0, 1), Pos::new(4, 0, 4)),
             })),
         ],
         0);
@@ -565,17 +564,17 @@ fn bracket_list_nested() {
             Some((vec![
                 Some(Pattern::Abc(Spanned {
                     value: "abc",
-                    span: Span::new_enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
+                    span: Span::enclosing(Pos::new(5, 0, 5), Pos::new(8, 0, 8)),
                 })),
                 Some(Pattern::Abc(Spanned {
                     value: "abc",
-                    span: Span::new_enclosing(Pos::new(10, 0, 10), Pos::new(13, 0, 13)),
+                    span: Span::enclosing(Pos::new(10, 0, 10), Pos::new(13, 0, 13)),
                 })),
             ], 0)),
             Some((vec![
                 Some(Pattern::Xyc(Spanned {
                     value: "aac",
-                    span: Span::new_enclosing(Pos::new(17, 0, 17), Pos::new(20, 0, 20)),
+                    span: Span::enclosing(Pos::new(17, 0, 17), Pos::new(20, 0, 20)),
                 })),
             ], 0)),
         ], 0);
@@ -620,7 +619,7 @@ fn bracket_list_commas() {
             None,
             Some(Pattern::Abc(Spanned {
                 value: "abc",
-                span: Span::new_enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
+                span: Span::enclosing(Pos::new(6, 0, 6), Pos::new(9, 0, 9)),
             })),
         ], 0);
 

@@ -99,9 +99,11 @@
 
 
 // Public modules.
+mod context;
 mod lexer;
 mod result;
-mod context;
+#[cfg(test)]
+mod test;
 
 pub use tephra_span::*;
 pub use tephra_error::*;

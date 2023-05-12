@@ -8,6 +8,7 @@
 //! Lexer tests.
 ////////////////////////////////////////////////////////////////////////////////
 
+
 // Internal library imports.
 use crate::both;
 use crate::one;
@@ -22,6 +23,9 @@ use tephra::Pos;
 use tephra::Scanner;
 use tephra::SourceText;
 use tephra::SourceTextRef;
+
+// Standard library imports.
+use std::rc::Rc;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,8 +124,11 @@ fn setup_test_environment() {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Tests `Lexer::new`.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::empty -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn empty() {
     setup_test_environment();
 
@@ -134,9 +141,13 @@ fn empty() {
         None);
 }
 
+
 /// Tests `Lexer::next`.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::simple -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn simple() {
     setup_test_environment();
 
@@ -152,8 +163,11 @@ fn simple() {
 
 
 /// Tests `Lexer::peek`.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::simple_peek -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn simple_peek() {
     setup_test_environment();
 
@@ -162,7 +176,9 @@ fn simple_peek() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
 
+    println!("{}", lexer);
     assert_eq!(lexer.peek(), Some(Aa));
+    println!("{}", lexer);
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(lexer.peek(), Some(Ws));
     assert_eq!(lexer.next(), Some(Ws));
@@ -172,9 +188,13 @@ fn simple_peek() {
     assert_eq!(lexer.next(), None);
 }
 
+
 /// Tests `Lexer::iter_with_spans`.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::simple_iter -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn simple_iter() {
     setup_test_environment();
 
@@ -199,8 +219,11 @@ fn simple_iter() {
 
 
 /// Tests `Lexer`'s auto-filtering capability.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::auto_filter -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn auto_filter() {
     setup_test_environment();
 
@@ -208,15 +231,15 @@ fn auto_filter() {
     const TEXT: &str = "aaaabaaaab";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
-    lexer.set_filter_fn(|tok| *tok != Aa);
+    let _ = lexer.set_filter(Some(Rc::new(|tok| *tok != Aa)));
 
     assert_eq!(lexer.peek(), Some(B));
 
-    let f = lexer.take_filter();
+    let f = lexer.set_filter(None);
 
     assert_eq!(lexer.peek(), Some(Aa));
 
-    lexer.set_filter(f);
+    let _ = lexer.set_filter(f);
 
     let actual = lexer
         .iter_with_spans()
@@ -226,9 +249,9 @@ fn auto_filter() {
         .collect::<Vec<_>>();
 
     let expected = vec![
-            (B,   "\"b\" (0:4-0:5, bytes 4-5)".to_string()),
-            (B,   "\"b\" (0:9-0:10, bytes 9-10)".to_string()),
-        ];
+        (B, "\"b\" (0:4-0:5, bytes 4-5)".to_string()),
+        (B, "\"b\" (0:9-0:10, bytes 9-10)".to_string()),
+    ];
 
     // for (i, act) in actual.iter().enumerate() {
     //     println!("{:?}", act);
@@ -241,8 +264,11 @@ fn auto_filter() {
 
 
 /// Tests `Lexer` with whitespace filter.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::whitespace_filter -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn whitespace_filter() {
     setup_test_environment();
 
@@ -250,7 +276,7 @@ fn whitespace_filter() {
     const TEXT: &str = "aa b \nbdef\n aaa";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    let _ = lexer.set_filter(Some(Rc::new(|tok| *tok != Ws)));
 
     let actual = lexer
         .iter_with_spans()
@@ -279,8 +305,11 @@ fn whitespace_filter() {
 
 
 /// Tests `both` with whitespace filter.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::both_whitespace_filter -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn both_whitespace_filter() {
     setup_test_environment();
 
@@ -289,7 +318,7 @@ fn both_whitespace_filter() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
     let ctx = Context::empty();
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    let _ = lexer.set_filter(Some(Rc::new(|tok| *tok != Ws)));
 
     let (actual, _) = both(
             text(one(Aa)),
@@ -303,9 +332,13 @@ fn both_whitespace_filter() {
     assert_eq!(actual, expected);
 }
 
+
 /// Tests `Lexer` display output formatting.
+//
+// To collect trace output:
+// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::display_formatting -- --exact --nocapture > .trace
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn display_formatting() {
     setup_test_environment();
 
@@ -313,75 +346,67 @@ fn display_formatting() {
     const TEXT: &str = "aa b \nbdef\n aaa";
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
-    lexer.set_filter_fn(|tok| *tok != Ws);
+    let _ = lexer.set_filter(Some(Rc::new(|tok| *tok != Ws)));
 
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(None)
-note: lexer state
+note: Lexer
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
   | \\ token (0:0, byte 0)
   | \\ parse (0:0, byte 0)
-  | \\ cursor (0:0, byte 0)
+  | \\ cursor (0:0, byte 0), scanner: Test(None)
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(Aa))
-note: lexer state
+note: Lexer
  --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
   | -- token (0:0-0:2, bytes 0-2)
   | -- parse (0:0-0:2, bytes 0-2)
-  |    \\ cursor (0:3, byte 3)
+  |   \\ cursor (0:2, byte 2), scanner: Test(Some(Aa))
 ");
 
     assert_eq!(lexer.next(), Some(B));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(B))
-note: lexer state
- --> (0:0-1:4, bytes 0-10)
+note: Lexer
+ --> (0:0-0:5, bytes 0-5)
   | 
 0 | aa b 
   |    - token (0:3-0:4, bytes 3-4)
   | ---- parse (0:0-0:4, bytes 0-4)
-1 | bdef
-  | \\ cursor (1:0, byte 6)
+  |     \\ cursor (0:4, byte 4), scanner: Test(Some(B))
 ");
 
     assert_eq!(lexer.next(), Some(B));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(B))
-note: lexer state
+note: Lexer
  --> (0:0-1:4, bytes 0-10)
   | 
 0 | / aa b 
 1 | | bdef
   | | - token (1:0-1:1, bytes 6-7)
   | |_^ parse (0:0-1:1, bytes 0-7)
-  |    \\ cursor (1:1, byte 7)
+  |    \\ cursor (1:1, byte 7), scanner: Test(Some(B))
 ");
 
     assert_eq!(lexer.next(), Some(Def));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(Def))
-note: lexer state
- --> (0:0-2:4, bytes 0-15)
+note: Lexer
+ --> (0:0-1:4, bytes 0-10)
   | 
 0 | / aa b 
 1 | | bdef
   | |  --- token (1:1-1:4, bytes 7-10)
   | |____^ parse (0:0-1:4, bytes 0-10)
-2 |    aaa
-  |    \\ cursor (2:1, byte 12)
+  |       \\ cursor (1:4, byte 10), scanner: Test(Some(Def))
 ");
 
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(Aa))
-note: lexer state
+note: Lexer
  --> (0:0-2:4, bytes 0-15)
   | 
 0 | / aa b 
@@ -389,13 +414,12 @@ note: lexer state
 2 | |  aaa
   | |  -- token (2:1-2:3, bytes 12-14)
   | |___^ parse (0:0-2:3, bytes 0-14)
-  |      \\ cursor (2:3, byte 14)
+  |      \\ cursor (2:3, byte 14), scanner: Test(Some(Aa))
 ");
 
     assert_eq!(lexer.next(), Some(A));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(A))
-note: lexer state
+note: Lexer
  --> (0:0-2:4, bytes 0-15)
   | 
 0 | / aa b 
@@ -403,15 +427,16 @@ note: lexer state
 2 | |  aaa
   | |    - token (2:3-2:4, bytes 14-15)
   | |____^ parse (0:0-2:4, bytes 0-15)
-  |       \\ cursor (2:4, byte 15)
+  |       \\ cursor (2:4, byte 15), scanner: Test(Some(A))
 ");
 
     assert_eq!(lexer.next(), None);
 }
 
+
 /// Tests `Lexer` display output formatting with tabstops.
 #[test]
-#[timeout(100)]
+#[timeout(50)]
 fn tabstop_align() {
     setup_test_environment();
 
@@ -421,25 +446,23 @@ fn tabstop_align() {
     let mut lexer = Lexer::new(Test::new(), source);
 
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(None)
-note: lexer state
+note: Lexer
  --> (0:0-0:9, bytes 0-5)
   | 
 0 | 	aa	a
   | \\ token (0:0, byte 0)
   | \\ parse (0:0, byte 0)
-  | \\ cursor (0:0, byte 0)
+  | \\ cursor (0:0, byte 0), scanner: Test(None)
 ");
 
     assert_eq!(lexer.next(), Some(Ws));
     assert_eq!(format!("{}", lexer), "\
-Scanner: Test(Some(Ws))
-note: lexer state
+note: Lexer
  --> (0:0-0:9, bytes 0-5)
   | 
 0 | 	aa	a
   | ---- token (0:0-0:4, bytes 0-1)
   | ---- parse (0:0-0:4, bytes 0-1)
-  |     \\ cursor (0:4, byte 1)
+  |     \\ cursor (0:4, byte 1), scanner: Test(Some(Ws))
 ");
 }

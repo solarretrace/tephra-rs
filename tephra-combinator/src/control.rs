@@ -248,7 +248,7 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
 /// A combinator which filters tokens during exectution of the given parser.
 ///
 /// ### Parameters
-/// + `filter_fn`: A function which will return `false` for any
+/// + `filter`: A function which will return `false` for any
 /// [`Scanner::Token`] to be excluded during the parse.
 /// + `parser`: The parser to run with with the applied token filter.
 ///
@@ -257,27 +257,28 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
 /// No error recovery is attempted.
 ///
 /// [`Scanner::Token`]: tephra::Scanner#associatedtype.Token
-pub fn filter_with<'text, Sc, F, P, V>(filter_fn: F, mut parser: P)
+pub fn filter_with<'text, Sc, F, P, V>(filter: F, mut parser: P)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, V>
     where
         Sc: Scanner,
-        F: for<'a> Fn(&'a Sc::Token) -> bool + Clone + 'static,
+        F: for<'a> Fn(&'a Sc::Token) -> bool + 'static,
         P: FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
             -> ParseResult<'text, Sc, V>,
 {
+    #![allow(trivial_casts)]
+    let filter = Rc::new(filter) as Rc<dyn for<'a> Fn(&'a Sc::Token) -> bool>;
     move |mut lexer, ctx| {
         let _trace_span = span!(Level::TRACE, "filter_with").entered();
 
-        let old_filter = lexer.take_filter();
-        lexer.set_filter_fn(filter_fn.clone());
+        let old_filter = lexer.set_filter(Some(Rc::clone(&filter)));
         event!(Level::TRACE, "new lexer filter applied");
 
         (parser)
             (lexer, ctx)
             .map(|mut succ| {
                 event!(Level::TRACE, "lexer filter restored");
-                succ.lexer.set_filter(old_filter);
+                let _ = succ.lexer.set_filter(old_filter);
                 succ
             })
     }
@@ -303,14 +304,14 @@ pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
     move |mut lexer, ctx| {
         let _trace_span = span!(Level::TRACE, "unfiltered").entered();
 
-        let filter = lexer.take_filter();
+        let filter = lexer.set_filter(None);
         event!(Level::TRACE, "lexer filter disabled");
 
         (parser)
             (lexer, ctx)
             .map(|mut succ| {
-        event!(Level::TRACE, "lexer filter enabled");
-                succ.lexer.set_filter(filter);
+                event!(Level::TRACE, "lexer filter enabled");
+                let _ = succ.lexer.set_filter(filter);
                 succ
             })
     }
