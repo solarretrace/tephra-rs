@@ -250,6 +250,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     }
 
     pub fn peek(&mut self) -> Option<Sc::Token> {
+        if self.cursor.byte >= self.source_text.len() {
+            return None;
+        }
         self.buffer_next();
         self.buffer
             .as_ref()
@@ -272,6 +275,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     // Advancing
     ////////////////////////////////////////////////////////////////////////////
     fn next_nonfiltered(&mut self) -> Option<Sc::Token> {
+        if self.cursor.byte >= self.source_text.len() {
+            return None;
+        }
         if let Some(buf) = self.buffer.take() {
             self.scanner = buf.peek_scanner;
             self.token_begin = buf.peek_begin;
