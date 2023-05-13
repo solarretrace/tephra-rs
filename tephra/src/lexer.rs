@@ -45,7 +45,7 @@ struct ScannerBuffer<Sc>
     where Sc: Scanner,
 {
     peek_scanner: Sc,
-    peek_begin: Pos,
+    peek_start: Pos,
     peek_cursor: Pos,
     token: Sc::Token
 }
@@ -62,8 +62,8 @@ pub struct Lexer<'text, Sc>
     filter: Option<Rc<dyn Fn(&Sc::Token) -> bool>>,
     recover: Option<Recover<Sc::Token>>,
     buffer: Option<ScannerBuffer<Sc>>,
-    parse_begin: Pos,
-    token_begin: Pos,
+    parse_start: Pos,
+    token_start: Pos,
     cursor: Pos,
 }
 
@@ -80,8 +80,8 @@ impl<'text, Sc> Lexer<'text, Sc>
             filter: None,
             recover: None,
             buffer: None,
-            parse_begin: Pos::default(),
-            token_begin: Pos::default(),
+            parse_start: Pos::default(),
+            token_start: Pos::default(),
             cursor: Pos::default(),
         }
     }
@@ -174,23 +174,23 @@ impl<'text, Sc> Lexer<'text, Sc>
 
     // Spans
     ////////////////////////////////////////////////////////////////////////////
-    pub fn begin_sublex(&mut self) {
-        self.parse_begin = self.cursor;
-        self.token_begin = self.cursor;
+    pub fn start_sublex(&mut self) {
+        self.parse_start = self.cursor;
+        self.token_start = self.cursor;
     }
 
     #[must_use]
     pub fn into_sublexer(mut self) -> Self {
-        self.begin_sublex();
+        self.start_sublex();
         self
     }
 
     pub fn token_span(&self) -> Span {
-        Span::enclosing(self.token_begin, self.cursor)
+        Span::enclosing(self.token_start, self.cursor)
     }
 
     pub fn parse_span(&self) -> Span {
-        Span::enclosing(self.parse_begin, self.cursor)
+        Span::enclosing(self.parse_start, self.cursor)
     }
 
     pub fn cursor_pos(&self) -> Pos {
@@ -200,20 +200,20 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn peek_token_span(&self) -> Option<Span> {
         self.buffer
             .as_ref()
-            .and_then(|buf| if buf.peek_begin == buf.peek_cursor {
+            .and_then(|buf| if buf.peek_start == buf.peek_cursor {
                 None
             } else {
-                Some(Span::enclosing(buf.peek_begin, buf.peek_cursor))
+                Some(Span::enclosing(buf.peek_start, buf.peek_cursor))
             })
     }
 
     pub fn peek_parse_span(&self) -> Option<Span> {
         self.buffer
             .as_ref()
-            .map(|buf| if buf.peek_begin == self.cursor {
-                Span::enclosing(self.parse_begin, buf.peek_cursor)
+            .map(|buf| if buf.peek_start == self.cursor {
+                Span::enclosing(self.parse_start, buf.peek_cursor)
             } else {
-                Span::enclosing(self.parse_begin, self.cursor)
+                Span::enclosing(self.parse_start, self.cursor)
             })
     }
 
@@ -240,7 +240,7 @@ impl<'text, Sc> Lexer<'text, Sc>
                 // Found a non-filtered token.
                 self.buffer = Some(ScannerBuffer {
                     peek_scanner,
-                    peek_begin: peek_cursor,
+                    peek_start: peek_cursor,
                     peek_cursor: adv,
                     token: tok,
                 });
@@ -280,15 +280,15 @@ impl<'text, Sc> Lexer<'text, Sc>
         }
         if let Some(buf) = self.buffer.take() {
             self.scanner = buf.peek_scanner;
-            self.token_begin = buf.peek_begin;
-            if self.parse_begin == self.cursor {
-                self.parse_begin = buf.peek_begin;
+            self.token_start = buf.peek_start;
+            if self.parse_start == self.cursor {
+                self.parse_start = buf.peek_start;
             }
             self.cursor = buf.peek_cursor;
             return Some(buf.token);
         }
 
-        let behind = self.parse_begin == self.cursor;
+        let behind = self.parse_start == self.cursor;
         while let Some((tok, adv)) = self.scanner
             .scan(self.source_text, self.cursor)
         {
@@ -298,9 +298,9 @@ impl<'text, Sc> Lexer<'text, Sc>
             } else {
                 // Found a non-filtered token.
                 if behind {
-                    self.parse_begin = self.token_begin;
+                    self.parse_start = self.token_start;
                 }
-                self.token_begin = self.cursor;
+                self.token_start = self.cursor;
                 self.cursor = adv;
                 return Some(tok);
             }
@@ -382,8 +382,8 @@ impl<'text, Sc> PartialEq for Lexer<'text, Sc>
         self.scanner == other.scanner &&
         self.filter.is_some() == other.filter.is_some() &&
         self.recover.is_some() == other.recover.is_some() &&
-        self.token_begin == other.token_begin &&
-        self.parse_begin == other.parse_begin &&
+        self.token_start == other.token_start &&
+        self.parse_start == other.parse_start &&
         self.cursor == other.cursor &&
         self.buffer == other.buffer &&
         self.source_text == other.source_text
@@ -395,8 +395,8 @@ impl<'text, Sc> Debug for Lexer<'text, Sc>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Lexer")
-            .field("parse_begin", &self.parse_begin)
-            .field("token_begin", &self.token_begin)
+            .field("parse_start", &self.parse_start)
+            .field("token_start", &self.token_start)
             .field("cursor", &self.cursor)
             .field("buffer", &self.buffer)
             .field("scanner", &self.scanner)
@@ -413,7 +413,7 @@ impl<'text, Sc> Display for Lexer<'text, Sc>
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut spans = SpanDisplay::new(
                 self.source_text,
-                Span::enclosing(self.parse_begin, self.cursor))
+                Span::enclosing(self.parse_start, self.cursor))
             .with_highlight(Highlight::new(self.token_span(),
                 format!("token ({})", self.token_span())))
             .with_highlight(Highlight::new(self.parse_span(),
