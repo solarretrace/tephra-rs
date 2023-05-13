@@ -232,7 +232,7 @@ fn match_nested_brackets<'text: 'a, 'a, Sc, A>(
     use MatchBracketError::*;
     let _trace_span = span!(Level::TRACE, "match_nested_*").entered();
 
-    let start_span = Span::at(lexer.parse_span().start());
+    let start_span = Span::at(lexer.cursor_pos());
     let mut open_lexer: Option<Lexer<'_, Sc>> = None;
     // Detected open tokens as (index, count) pairs.
     let mut opened: SmallVec<[(usize, usize); DEFAULT_TOKEN_VEC_SIZE]>
