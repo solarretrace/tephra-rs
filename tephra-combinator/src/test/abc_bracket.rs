@@ -110,7 +110,7 @@ error: expected open bracket
  --> (0:0-0:5, bytes 0-5)
   | 
 0 |  abc 
-  | \\ bracket expected here
+  |  \\ bracket expected here
 ");
 }
 

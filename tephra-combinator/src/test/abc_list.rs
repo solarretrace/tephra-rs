@@ -281,7 +281,7 @@ error: invalid item count
  --> (0:0-0:2, bytes 0-2)
   | 
 0 |   
-  | \\ expected 1 item; found 0
+  |   \\ expected 1 item; found 0
 ");
 }
 
@@ -392,7 +392,7 @@ error: invalid item count
  --> (0:0-0:9, bytes 0-9)
   | 
 0 | [       ]
-  |  \\ expected 1 item; found 0
+  |         \\ expected 1 item; found 0
 ");
 }
 
@@ -438,7 +438,7 @@ error: expected pattern
  --> (0:0-0:9, bytes 0-9)
   | 
 0 | [   ,aac]
-  |  \\ expected 'ABC', 'BXX', or 'XYC' pattern
+  |     \\ expected 'ABC', 'BXX', or 'XYC' pattern
 ");
 }
 

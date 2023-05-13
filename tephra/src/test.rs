@@ -49,7 +49,7 @@ impl Scanner for Void {
 
 #[test]
 fn verify_lexer_size() {
-    assert_eq!(std::mem::size_of::<Lexer<'_, Void>>(), 224);
+    assert_eq!(std::mem::size_of::<Lexer<'_, Void>>(), 232);
 }
 
 #[test]
@@ -64,12 +64,12 @@ fn verify_span_size() {
 
 #[test]
 fn verify_success_size() {
-    assert_eq!(std::mem::size_of::<Success<'_, Void, ()>>(), 224);
+    assert_eq!(std::mem::size_of::<Success<'_, Void, ()>>(), 232);
 }
 
 #[test]
 fn verify_result_size() {
-    assert_eq!(std::mem::size_of::<ParseResult<'_, Void, ()>>(), 224);
+    assert_eq!(std::mem::size_of::<ParseResult<'_, Void, ()>>(), 232);
 }
 
 #[test]

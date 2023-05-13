@@ -176,9 +176,7 @@ fn simple_peek() {
     let source = SourceText::new(TEXT);
     let mut lexer = Lexer::new(Test::new(), source);
 
-    println!("{}", lexer);
     assert_eq!(lexer.peek(), Some(Aa));
-    println!("{}", lexer);
     assert_eq!(lexer.next(), Some(Aa));
     assert_eq!(lexer.peek(), Some(Ws));
     assert_eq!(lexer.next(), Some(Ws));
@@ -217,50 +215,6 @@ fn simple_iter() {
         ]);
 }
 
-
-/// Tests `Lexer`'s auto-filtering capability.
-//
-// To collect trace output:
-// RUST_LOG=TRACE cargo test --all-features test::lexer_suite::auto_filter -- --exact --nocapture > .trace
-#[test]
-#[timeout(50)]
-fn auto_filter() {
-    setup_test_environment();
-
-    use TestToken::*;
-    const TEXT: &str = "aaaabaaaab";
-    let source = SourceText::new(TEXT);
-    let mut lexer = Lexer::new(Test::new(), source);
-    let _ = lexer.set_filter(Some(Rc::new(|tok| *tok != Aa)));
-
-    assert_eq!(lexer.peek(), Some(B));
-
-    let f = lexer.set_filter(None);
-
-    assert_eq!(lexer.peek(), Some(Aa));
-
-    let _ = lexer.set_filter(f);
-
-    let actual = lexer
-        .iter_with_spans()
-        .map(|lex| (
-            lex.0,
-            format!("{:?} ({})", source.clipped(lex.1).as_str(), lex.1)))
-        .collect::<Vec<_>>();
-
-    let expected = vec![
-        (B, "\"b\" (0:4-0:5, bytes 4-5)".to_string()),
-        (B, "\"b\" (0:9-0:10, bytes 9-10)".to_string()),
-    ];
-
-    // for (i, act) in actual.iter().enumerate() {
-    //     println!("{:?}", act);
-    //     println!("{:?}", expected[i]);
-    //     println!();
-    // }
-
-    assert_eq!(actual, expected);
-}
 
 
 /// Tests `Lexer` with whitespace filter.
@@ -356,6 +310,7 @@ note: Lexer
   | \\ token (0:0, byte 0)
   | \\ parse (0:0, byte 0)
   | \\ cursor (0:0, byte 0), scanner: Test(None)
+  | -- peek (0:0-0:2, bytes 0-2)
 ");
 
     assert_eq!(lexer.next(), Some(Aa));

@@ -65,6 +65,7 @@ pub struct Lexer<'text, Sc>
     parse_start: Pos,
     token_start: Pos,
     cursor: Pos,
+    filter_eager: bool,
 }
 
 impl<'text, Sc> Lexer<'text, Sc>
@@ -78,6 +79,7 @@ impl<'text, Sc> Lexer<'text, Sc>
             source_text,
             scanner,
             filter: None,
+            filter_eager: true,
             recover: None,
             buffer: None,
             parse_start: Pos::default(),
@@ -109,6 +111,9 @@ impl<'text, Sc> Lexer<'text, Sc>
         -> Self
     {
         let _ = self.set_filter(filter);
+        if self.filter_eager {
+            self.buffer_next();
+        }
         self
     }
 
@@ -169,6 +174,9 @@ impl<'text, Sc> Lexer<'text, Sc>
         let res = self.filter.take();
         self.filter = filter;
         self.buffer = None;
+        if self.filter_eager {
+            self.buffer_next();
+        }
         res
     }
 
@@ -177,6 +185,9 @@ impl<'text, Sc> Lexer<'text, Sc>
     pub fn start_sublex(&mut self) {
         self.parse_start = self.cursor;
         self.token_start = self.cursor;
+        if self.filter_eager {
+            self.buffer_next();
+        }
     }
 
     #[must_use]
@@ -228,6 +239,7 @@ impl<'text, Sc> Lexer<'text, Sc>
     fn buffer_next(&mut self) {
         if self.buffer.is_some() { return; }
 
+        let behind = self.parse_start == self.cursor;
         let mut peek_scanner = self.scanner.clone();
         let mut peek_cursor = self.cursor;
         while let Some((tok, adv)) = peek_scanner
@@ -236,6 +248,12 @@ impl<'text, Sc> Lexer<'text, Sc>
             if self.filter.as_ref().map_or(false, |f| !(f)(&tok)) {
                 // Found a filtered token.
                 peek_cursor = adv;
+                if behind && self.filter_eager {
+                    self.scanner = peek_scanner.clone();
+                    self.cursor = adv;
+                    self.parse_start = adv;
+                    self.token_start = adv;
+                }
             } else {
                 // Found a non-filtered token.
                 self.buffer = Some(ScannerBuffer {
@@ -295,6 +313,10 @@ impl<'text, Sc> Lexer<'text, Sc>
             if self.filter.as_ref().map_or(false, |f| !(f)(&tok)) {
                 // Found a filtered token.
                 self.cursor = adv;
+                if behind && self.filter_eager {
+                    self.parse_start = adv;
+                    self.token_start = adv;
+                }
             } else {
                 // Found a non-filtered token.
                 if behind {
@@ -401,6 +423,7 @@ impl<'text, Sc> Debug for Lexer<'text, Sc>
             .field("buffer", &self.buffer)
             .field("scanner", &self.scanner)
             .field("filter", &self.filter.is_some())
+            .field("filter_eager", &self.filter_eager)
             .field("recover", &self.recover.is_some())
             .field("source_text", &self.source_text)
             .finish()
