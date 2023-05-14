@@ -38,7 +38,7 @@ pub fn raw<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
-        let _trace_span = span!(Level::DEBUG, "raw").entered();
+        let _trace_span = span!(Level::DEBUG, "~raw").entered();
 
         let mut ctx = ctx.clone()
             .locked(true);
@@ -60,7 +60,7 @@ pub fn unrecoverable<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>
 {
     move |lexer, ctx| {
-        let _trace_span = span!(Level::DEBUG, "unrecoverable").entered();
+        let _trace_span = span!(Level::DEBUG, "~unrec").entered();
 
         let mut ctx = ctx.clone();
         let _ = ctx.take_error_sink();
@@ -148,7 +148,7 @@ pub fn recover_default<'text, Sc, F, V>(
         V: Default
 {
     move |lexer, ctx| {
-        let _trace_span = span!(Level::DEBUG, "recover_*").entered();
+        let _trace_span = span!(Level::DEBUG, "~rec_").entered();
 
         let mut base_lexer = lexer.clone();
         base_lexer.set_recover_state(Some(Rc::clone(&recover)));
@@ -202,7 +202,7 @@ pub fn stabilize<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>
 {
     move |mut lexer, ctx| {
-        let _trace_span = span!(Level::DEBUG, "stabilize").entered();
+        let _trace_span = span!(Level::DEBUG, "~sta").entered();
 
         let mut res = (parser)
             (lexer.clone(), ctx.clone());
@@ -269,7 +269,7 @@ pub fn filter_with<'text, Sc, F, P, V>(filter: F, mut parser: P)
     #![allow(trivial_casts)]
     let filter = Rc::new(filter) as Rc<dyn for<'a> Fn(&'a Sc::Token) -> bool>;
     move |mut lexer, ctx| {
-        let _trace_span = span!(Level::TRACE, "filter_with").entered();
+        let _trace_span = span!(Level::TRACE, "~filt_").entered();
 
         let old_filter = lexer.set_filter(Some(Rc::clone(&filter)));
         event!(Level::TRACE, "new lexer filter applied");
@@ -302,7 +302,7 @@ pub fn unfiltered<'text, Sc, F, V>(mut parser: F)
             -> ParseResult<'text, Sc, V>,
 {
     move |mut lexer, ctx| {
-        let _trace_span = span!(Level::TRACE, "unfiltered").entered();
+        let _trace_span = span!(Level::TRACE, "~unfilt").entered();
 
         let filter = lexer.set_filter(None);
         event!(Level::TRACE, "lexer filter disabled");
