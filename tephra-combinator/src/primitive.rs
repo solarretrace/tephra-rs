@@ -74,7 +74,7 @@ pub fn one<'text, Sc>(token: Sc::Token)
     where Sc: Scanner,
 {
     move |mut lexer, _ctx| {
-        let _trace_span = span!(Level::TRACE, "one").entered();
+        let _trace_span = span!(Level::TRACE, "one", token=?token).entered();
         let error_span = lexer.parse_span();
 
         match lexer.next() {
@@ -136,6 +136,8 @@ pub fn any<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         match lexer.peek() {
             Some(lex) => {
                 for token in tokens {
+                    let _trace_span = span!(Level::TRACE, "any", token=?token)
+                        .entered();
                     if lex == *token {
                         let _ = lexer.next();
                         event!(Level::TRACE, "success ({:?})", lex);
@@ -189,6 +191,8 @@ pub fn any_index<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         match lexer.peek() {
             Some(lex) => {
                 for (idx, token) in tokens.iter().enumerate() {
+                    let _trace_span = span!(Level::TRACE, "any", token=?token)
+                        .entered();
                     if lex == *token {
                         let _ = lexer.next();
                         event!(Level::TRACE, "success ({:?}@{:?})", lex, idx);
@@ -280,6 +284,8 @@ pub fn seq<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         let mut found = Vec::with_capacity(cap);
         
         for token in tokens {
+            let _trace_span = span!(Level::TRACE, "one", token=?token)
+                .entered();
             match lexer.next() {
                 // Matching token.
                 Some(lex) if lex == *token => {
@@ -337,6 +343,8 @@ pub fn seq_count<'text, 'a, Sc>(tokens: &'a [Sc::Token])
         
         let mut count = 0;
         for token in tokens {
+            let _trace_span = span!(Level::TRACE, "one", token=?token)
+                .entered();
             if lexer.is_empty() { break }
 
             match lexer.peek() {

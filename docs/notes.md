@@ -218,7 +218,7 @@ Three important aspects of nice parsing:
 
     `either`: attempts two parses, returning the first which succeeds.
     `maybe`: attempts a parse which may fail without error (i.e., empty parse alternative.)
-    `maybe_if`: requires a parse to succeed only if the given predicate is true.
+    `require_if`: requires a parse to succeed only if the given predicate is true.
 
     Efficient alternative combinators should use peek to act like implicative combinators.
 

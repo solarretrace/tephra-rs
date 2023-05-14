@@ -85,9 +85,9 @@ pub fn maybe<'text, Sc, F, V>(mut parser: F)
 /// predicate is true.
 ///
 /// This acts like a `maybe` combinator that can be conditionally disabled:
-/// `maybe_if(|| false, p)` is identical to `maybe(p)` and 
-/// `maybe_if(|| true, p)` is identical to `p`.
-pub fn maybe_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
+/// `require_if(|| false, p)` is identical to `maybe(p)` and 
+/// `require_if(|| true, p)` is identical to `p`.
+pub fn require_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
     -> impl FnMut(Lexer<'text, Sc>, Context<'text, Sc>)
         -> ParseResult<'text, Sc, Option<V>>
     where
@@ -97,7 +97,7 @@ pub fn maybe_if<'text, Sc, P, F, V>(mut pred: P, mut parser: F)
 {
     move |lexer, ctx| {
         let branch = (pred)();
-        event!(Level::TRACE, "maybe_if: branch={}", branch);
+        event!(Level::TRACE, "require_if: branch={}", branch);
         if branch {
             parser(lexer, ctx)
                 .map_value(Some)
