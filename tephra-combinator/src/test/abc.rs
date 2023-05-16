@@ -12,6 +12,8 @@
 // Internal library imports.
 use crate::any;
 use crate::both;
+use crate::bracket_default;
+use crate::list;
 use crate::one;
 use crate::seq;
 use crate::spanned;
@@ -172,12 +174,69 @@ impl Scanner for Abc {
 ////////////////////////////////////////////////////////////////////////////////
 // Abc grammar
 ////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(in crate::test) enum Flex<'text> {
+    Pat(Pattern<'text>),
+    Block(Spanned<Vec<Option<Flex<'text>>>>),
+}
+
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::test) enum Pattern<'text> {
     Abc(Spanned<&'text str>),
     Bxx(Spanned<&'text str>),
     Xyc(Spanned<&'text str>),
 }
+
+
+pub(in crate::test) fn pattern_block<'text>(
+    lexer: Lexer<'text, Abc>,
+    ctx: Context<'text, Abc>)
+    -> ParseResult<'text, Abc, Spanned<Vec<Option<Flex<'text>>>>>
+{
+    use AbcToken::*;
+    let _trace_span = span!(Level::DEBUG, "block").entered();
+
+    bracket_default(
+        &[OpenBracket],
+        spanned(pattern_list),
+        &[CloseBracket], |tok| *tok == CloseBracket)
+        (lexer, ctx)
+}
+
+
+pub(in crate::test) fn pattern_list<'text>(
+    lexer: Lexer<'text, Abc>,
+    ctx: Context<'text, Abc>)
+    -> ParseResult<'text, Abc, Vec<Option<Flex<'text>>>>
+{
+    use AbcToken::*;
+
+    list(
+        flex,
+        Comma, |tok| *tok == CloseBracket)
+        (lexer, ctx)
+}
+
+pub(in crate::test) fn flex<'text>(
+    mut lexer: Lexer<'text, Abc>,
+    ctx: Context<'text, Abc>)
+    -> ParseResult<'text, Abc, Flex<'text>>
+{
+    use AbcToken::*;
+    
+    match lexer.peek() {
+        Some(OpenBracket) => pattern_block
+            (lexer, ctx)
+            .map_value(Flex::Block),
+        _ => pattern
+            (lexer, ctx)
+            .map_value(Flex::Pat),
+    }
+}
+
+
 
 pub(in crate::test) fn pattern<'text>(
     mut lexer: Lexer<'text, Abc>,
