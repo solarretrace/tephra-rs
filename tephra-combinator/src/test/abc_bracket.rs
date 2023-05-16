@@ -15,10 +15,10 @@ use crate::bracket_index;
 use crate::one;
 use crate::raw;
 use crate::spanned;
-use crate::test::abc_scanner::Abc;
-use crate::test::abc_scanner::AbcToken;
-use crate::test::abc_scanner::pattern;
-use crate::test::abc_scanner::Pattern;
+use crate::test::abc::Abc;
+use crate::test::abc::AbcToken;
+use crate::test::abc::pattern;
+use crate::test::abc::Pattern;
 use crate::unrecoverable;
 
 // External library imports.
@@ -429,4 +429,3 @@ error: mismatched brackets
   |     ^ ... does not match the closing bracket here
 ");
 }
-

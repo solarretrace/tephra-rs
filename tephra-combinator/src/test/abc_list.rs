@@ -12,10 +12,10 @@
 use crate::bracket_default_index;
 use crate::list;
 use crate::list_bounded;
-use crate::test::abc_scanner::Abc;
-use crate::test::abc_scanner::AbcToken;
-use crate::test::abc_scanner::pattern;
-use crate::test::abc_scanner::Pattern;
+use crate::test::abc::Abc;
+use crate::test::abc::AbcToken;
+use crate::test::abc::pattern;
+use crate::test::abc::Pattern;
 use crate::unrecoverable;
 
 // External library imports.

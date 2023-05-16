@@ -18,10 +18,10 @@ use crate::sub;
 use crate::recover;
 use crate::right;
 use crate::stabilize;
-use crate::test::abc_scanner::Abc;
-use crate::test::abc_scanner::AbcToken;
-use crate::test::abc_scanner::pattern;
-use crate::test::abc_scanner::Pattern;
+use crate::test::abc::Abc;
+use crate::test::abc::AbcToken;
+use crate::test::abc::pattern;
+use crate::test::abc::Pattern;
 
 // External library imports.
 use ntest::timeout;

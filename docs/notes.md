@@ -273,29 +273,7 @@ Three important aspects of nice parsing:
 + context ops
 + results
 
-# Lexer invariants:
-
-// The token_span fn must return the span of the last non-filtered token
-// returned.
-//
-// The peek_token_span fn must return the span of the next non-filtered token
-// that would be returned.
-//
-// The parse_span fn must return the span of the text since the last call to
-// end_current_parse up to the end of the last non-filtered token. The beginning
-// of the parse_span must be the start of a non-filtered token at the time the
-// cursor was at that position, and the end of the parse_span must be the end
-// of the last non-filtered token returned.
-//
-// The cursor_pos may end after a filtered token. 
-//
-// The parse_end must end after a non-filtered token and the start_pos must end
-// before a non-filtered token.
-//
-// Any change to the token filter must restart the parse from the current
-// parse_end.
-
-
+# Lexer Diagram:
 
 
 ...AAA...BBBCCCDDD...EEE...
